@@ -64,7 +64,7 @@ init config =
 type Msg
     = RegisteredGuest (Result Http.Error RegisterResponse)
     | JoinedRoom (Result Http.Error String)
-    | Sync (Result Http.Error SyncResponse)
+    | GotSync (Result Http.Error SyncResponse)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -98,13 +98,15 @@ update msg model =
                         roomId
 
                 _ ->
-                    Debug.log "FUCK" Cmd.none
+                    -- TODO: error better
+                    Debug.log "Couldn't get access token" Cmd.none
             )
 
-        Sync (Ok syncresponse) ->
-            ( model, Cmd.none )
+        GotSync (Ok syncResponse) ->
+            -- XXX DEBUG
+            ( { model | error = Just <| Debug.toString syncResponse }, Cmd.none )
 
-        Sync (Err err) ->
+        GotSync (Err err) ->
             ( { model | error = Just <| Debug.toString err }, Cmd.none )
 
         RegisteredGuest (Err err) ->
@@ -124,7 +126,7 @@ subscriptions model =
 
 
 
--- MATRIX
+-- Matrix Client-Server API
 
 
 type alias RegisterResponse =
@@ -135,9 +137,32 @@ type alias RegisterResponse =
 
 
 type alias SyncResponse =
-    { rooms : { join : { timeline : { prevBatch : String } } }
+    { rooms : { join : { timeline : SyncTimeline } }
     , nextBatch : String
     }
+
+
+type alias SyncTimeline =
+    { prevBatch : String
+    , events : List RoomEvent
+    }
+
+
+type RoomEvent
+    = MessageEvent { content : Message, sender : String, origin_server_ts : Int }
+    | UnsupportedRoomEvent String
+
+
+type Message
+    = Text { body : String, format : Maybe String, formatted_body : Maybe String }
+    | Emote
+    | Notice
+    | Image
+    | File
+    | Audio
+    | Location
+    | Video
+    | UnsupportedMessageType
 
 
 clientServerEndpoint : String -> List String -> List QueryParameter -> String
@@ -190,7 +215,7 @@ syncClient homeserverUrl accessToken roomId =
         , url = clientServerEndpoint homeserverUrl [ "sync" ] []
         , headers = [ Http.header "Authorization" <| "Bearer " ++ accessToken ]
         , body = Http.emptyBody
-        , expect = Http.expectJson Sync <| decodeSyncResponse roomId
+        , expect = Http.expectJson GotSync <| decodeSyncResponse roomId
 
         -- TODO: set these?
         , timeout = Nothing
@@ -240,14 +265,14 @@ decodeSyncResponse roomId =
         (JD.field "next_batch" JD.string)
 
 
-decodeRooms : String -> JD.Decoder { join : { timeline : { prevBatch : String } } }
+decodeRooms : String -> JD.Decoder { join : { timeline : SyncTimeline } }
 decodeRooms roomId =
     JD.map
         (\join -> { join = join })
         (JD.field "join" <| decodeJoinedRoom roomId)
 
 
-decodeJoinedRoom : String -> JD.Decoder { timeline : { prevBatch : String } }
+decodeJoinedRoom : String -> JD.Decoder { timeline : SyncTimeline }
 decodeJoinedRoom roomId =
     JD.field roomId <|
         JD.map
@@ -255,11 +280,67 @@ decodeJoinedRoom roomId =
             (JD.field "timeline" decodeTimeline)
 
 
-decodeTimeline : JD.Decoder { prevBatch : String }
+decodeTimeline : JD.Decoder SyncTimeline
 decodeTimeline =
-    JD.map
-        (\prevBatch -> { prevBatch = prevBatch })
+    JD.map2
+        (\prevBatch events -> { prevBatch = prevBatch, events = events })
         (JD.field "prev_batch" JD.string)
+        (JD.field "events" <| JD.list decodeRoomEvent)
+
+
+decodeRoomEvent : JD.Decoder RoomEvent
+decodeRoomEvent =
+    JD.field "type" JD.string
+        |> JD.andThen
+            (\eventType ->
+                case eventType of
+                    "m.room.message" ->
+                        JD.map3
+                            (\msg s ots -> MessageEvent { content = msg, sender = s, origin_server_ts = ots })
+                            (JD.field "content" decodeMessage)
+                            (JD.field "sender" JD.string)
+                            (JD.field "origin_server_ts" JD.int)
+
+                    _ ->
+                        JD.succeed (UnsupportedRoomEvent eventType)
+            )
+
+
+decodeMessage : JD.Decoder Message
+decodeMessage =
+    JD.field "msgtype" JD.string
+        |> JD.andThen
+            (\mt ->
+                case mt of
+                    "m.text" ->
+                        JD.map
+                            (\body -> Text { body = body, format = Nothing, formatted_body = Nothing })
+                            (JD.field "body" JD.string)
+
+                    "m.emote" ->
+                        JD.succeed Emote
+
+                    "m.notice" ->
+                        JD.succeed Notice
+
+                    "m.image" ->
+                        JD.succeed Image
+
+                    "m.file" ->
+                        JD.succeed File
+
+                    "m.audio" ->
+                        JD.succeed Audio
+
+                    "m.location" ->
+                        JD.succeed Location
+
+                    "m.video" ->
+                        JD.succeed Video
+
+                    _ ->
+                        JD.succeed UnsupportedMessageType
+            )
 
 
 
@@ -272,28 +353,8 @@ view model =
         [ -- view errors
           case model.error of
             Nothing ->
-                text ""
+                text "no error"
 
             Just errmsg ->
                 h1 [] [ text <| "ERROR: " ++ errmsg ]
-
-        -- debug: accessToken
-        , h1 []
-            [ case model.accessToken of
-                Nothing ->
-                    text "no auth yet"
-
-                Just token ->
-                    text <| "token! " ++ token
-            ]
-
-        -- debug: roomAlias
-        , h1 []
-            [ case model.roomAlias of
-                Nothing ->
-                    text "no alias yet"
-
-                Just roomAlias ->
-                    text <| "alias! " ++ roomAlias
-            ]
         ]
