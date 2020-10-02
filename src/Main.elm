@@ -5,7 +5,9 @@ import Html exposing (..)
 import Html.Events exposing (..)
 import Http
 import Json.Decode as JD
-import Json.Decode.Pipeline as Pipeline
+import Json.Decode.Pipeline as Pipeline exposing (required)
+import Url exposing (percentEncode)
+import Url.Builder exposing (QueryParameter, crossOrigin)
 
 
 main =
@@ -62,6 +64,7 @@ init config =
 type Msg
     = RegisteredGuest (Result Http.Error RegisterResponse)
     | JoinedRoom (Result Http.Error String)
+    | Sync (Result Http.Error SyncResponse)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -87,9 +90,22 @@ update msg model =
 
         JoinedRoom (Ok roomId) ->
             ( { model | roomId = Just roomId }
-              -- TODO /sync
-            , Cmd.none
+            , case model.accessToken of
+                Just accessToken ->
+                    syncClient
+                        model.config.defaultHomeserverUrl
+                        accessToken
+                        roomId
+
+                _ ->
+                    Debug.log "FUCK" Cmd.none
             )
+
+        Sync (Ok syncresponse) ->
+            ( model, Cmd.none )
+
+        Sync (Err err) ->
+            ( { model | error = Just <| Debug.toString err }, Cmd.none )
 
         RegisteredGuest (Err err) ->
             ( { model | error = Just <| Debug.toString err }, Cmd.none )
@@ -118,6 +134,22 @@ type alias RegisterResponse =
     }
 
 
+type alias SyncResponse =
+    { rooms : { join : { timeline : { prevBatch : String } } }
+    , nextBatch : String
+    }
+
+
+clientServerEndpoint : String -> List String -> List QueryParameter -> String
+clientServerEndpoint homeserverUrl endpoint params =
+    crossOrigin
+        homeserverUrl
+        ([ "_matrix", "client", "r0" ]
+            ++ List.map percentEncode endpoint
+        )
+        params
+
+
 makeRoomAlias : String -> String -> String -> String
 makeRoomAlias siteName uniqueId serverName =
     "#comments_" ++ siteName ++ "_" ++ uniqueId ++ ":" ++ serverName
@@ -126,7 +158,11 @@ makeRoomAlias siteName uniqueId serverName =
 registerGuest : String -> Cmd Msg
 registerGuest homeserverUrl =
     Http.post
-        { url = homeserverUrl ++ "/_matrix/client/r0/register?kind=guest"
+        { url =
+            clientServerEndpoint
+                homeserverUrl
+                [ "register" ]
+                [ Url.Builder.string "kind" "guest" ]
         , body = Http.stringBody "application/json" "{}"
         , expect = Http.expectJson RegisteredGuest decodeRegistration
         }
@@ -136,7 +172,7 @@ joinRoom : String -> String -> String -> Cmd Msg
 joinRoom homeserverUrl accessToken roomAlias =
     Http.request
         { method = "POST"
-        , url = homeserverUrl ++ "/_matrix/client/r0/join/" ++ roomAlias
+        , url = clientServerEndpoint homeserverUrl [ "join", roomAlias ] []
         , headers = [ Http.header "Authorization" <| "Bearer " ++ accessToken ]
         , body = Http.stringBody "application/json" "{}"
         , expect = Http.expectJson JoinedRoom decodeRoomId
@@ -147,22 +183,19 @@ joinRoom homeserverUrl accessToken roomAlias =
         }
 
 
-
-{--
 syncClient : String -> String -> String -> Cmd Msg
-syncClient homeserverUrl accessToken roomAlias =
+syncClient homeserverUrl accessToken roomId =
     Http.request
         { method = "GET"
-        , url = homeserverUrl ++ "/_matrix/client/r0/sync"
+        , url = clientServerEndpoint homeserverUrl [ "sync" ] []
         , headers = [ Http.header "Authorization" <| "Bearer " ++ accessToken ]
         , body = Http.emptyBody
-        , expect = Http.expectJson GotSync
+        , expect = Http.expectJson Sync <| decodeSyncResponse roomId
 
         -- TODO: set these?
         , timeout = Nothing
         , tracker = Nothing
         }
---}
 
 
 serverNameFromUserId : String -> Maybe String
@@ -199,12 +232,37 @@ decodeRoomId =
     JD.field "room_id" JD.string
 
 
+decodeSyncResponse : String -> JD.Decoder SyncResponse
+decodeSyncResponse roomId =
+    JD.map2
+        (\rooms nextBatch -> { rooms = rooms, nextBatch = nextBatch })
+        (JD.field "rooms" <| decodeRooms roomId)
+        (JD.field "next_batch" JD.string)
 
-{-
-   decodeSync : JD.Decoder String
-   decodeSync =
-       JD.succeed SyncResponse
--}
+
+decodeRooms : String -> JD.Decoder { join : { timeline : { prevBatch : String } } }
+decodeRooms roomId =
+    JD.map
+        (\join -> { join = join })
+        (JD.field "join" <| decodeJoinedRoom roomId)
+
+
+decodeJoinedRoom : String -> JD.Decoder { timeline : { prevBatch : String } }
+decodeJoinedRoom roomId =
+    JD.field roomId <|
+        JD.map
+            (\timeline -> { timeline = timeline })
+            (JD.field "timeline" decodeTimeline)
+
+
+decodeTimeline : JD.Decoder { prevBatch : String }
+decodeTimeline =
+    JD.map
+        (\prevBatch -> { prevBatch = prevBatch })
+        (JD.field "prev_batch" JD.string)
+
+
+
 -- VIEW
 
 
