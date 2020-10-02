@@ -5,6 +5,7 @@ import Html exposing (..)
 import Html.Events exposing (..)
 import Http
 import Json.Decode as JD
+import Json.Decode.Pipeline as Pipeline
 
 
 main =
@@ -21,26 +22,36 @@ main =
 
 
 type alias Model =
-    { defaultHomeserverUrl : String
+    { -- provided config
+      config : StaticConfig
+    , roomAlias : Maybe String
+
+    -- internal state
     , accessToken : Maybe String
-    , roomAlias : String
     , roomId : Maybe String
+
+    -- used for fatal errors
     , error : Maybe String
     }
 
 
-init : { defaultHomeserverUrl : String } -> ( Model, Cmd Msg )
-init { defaultHomeserverUrl } =
-    ( { accessToken = Nothing
-      , defaultHomeserverUrl = defaultHomeserverUrl
-      , roomAlias = "#public_test_room:olli.ng"
+type alias StaticConfig =
+    -- TODO: allow config to use different homeservers for different tasks
+    { defaultHomeserverUrl : String
+    , siteName : String
+    , uniqueId : String
+    }
+
+
+init : StaticConfig -> ( Model, Cmd Msg )
+init config =
+    ( { config = config
+      , roomAlias = Nothing
+      , accessToken = Nothing
       , roomId = Nothing
       , error = Nothing
       }
-    , Cmd.batch
-        [ guestRegister defaultHomeserverUrl
-        , getRoomId defaultHomeserverUrl "%23public_test_room%3Aolli.ng"
-        ]
+    , Cmd.batch [ registerGuest config.defaultHomeserverUrl ]
     )
 
 
@@ -49,24 +60,41 @@ init { defaultHomeserverUrl } =
 
 
 type Msg
-    = RegisteredGuest (Result Http.Error String)
-    | GotRoomId (Result Http.Error String)
+    = RegisteredGuest (Result Http.Error RegisterResponse)
+    | JoinedRoom (Result Http.Error String)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        RegisteredGuest (Ok accessToken) ->
-            ( { model | accessToken = Just accessToken }, Cmd.none )
+        RegisteredGuest (Ok response) ->
+            let
+                roomAlias =
+                    makeRoomAlias
+                        model.config.siteName
+                        model.config.uniqueId
+                        response.serverName
+            in
+            ( { model
+                | accessToken = Just response.accessToken
+                , roomAlias = Just roomAlias
+              }
+            , joinRoom
+                model.config.defaultHomeserverUrl
+                response.accessToken
+                roomAlias
+            )
 
-        RegisteredGuest (Err _) ->
-            -- TODO: display error!
-            ( model, Cmd.none )
+        JoinedRoom (Ok roomId) ->
+            ( { model | roomId = Just roomId }
+              -- TODO /sync
+            , Cmd.none
+            )
 
-        GotRoomId (Ok roomId) ->
-            ( { model | roomId = Just roomId }, Cmd.none )
+        RegisteredGuest (Err err) ->
+            ( { model | error = Just <| Debug.toString err }, Cmd.none )
 
-        GotRoomId (Err err) ->
+        JoinedRoom (Err err) ->
             ( { model | error = Just <| Debug.toString err }, Cmd.none )
 
 
@@ -83,8 +111,20 @@ subscriptions model =
 -- MATRIX
 
 
-guestRegister : String -> Cmd Msg
-guestRegister homeserverUrl =
+type alias RegisterResponse =
+    { userId : String
+    , serverName : String
+    , accessToken : String
+    }
+
+
+makeRoomAlias : String -> String -> String -> String
+makeRoomAlias siteName uniqueId serverName =
+    "#comments_" ++ siteName ++ "_" ++ uniqueId ++ ":" ++ serverName
+
+
+registerGuest : String -> Cmd Msg
+registerGuest homeserverUrl =
     Http.post
         { url = homeserverUrl ++ "/_matrix/client/r0/register?kind=guest"
         , body = Http.stringBody "application/json" "{}"
@@ -92,17 +132,66 @@ guestRegister homeserverUrl =
         }
 
 
-getRoomId : String -> String -> Cmd Msg
-getRoomId homeserverUrl roomAlias =
-    Http.get
-        { url = homeserverUrl ++ "/_matrix/client/r0/directory/room/" ++ roomAlias
-        , expect = Http.expectJson GotRoomId decodeRoomId
+joinRoom : String -> String -> String -> Cmd Msg
+joinRoom homeserverUrl accessToken roomAlias =
+    Http.request
+        { method = "POST"
+        , url = homeserverUrl ++ "/_matrix/client/r0/join/" ++ roomAlias
+        , headers = [ Http.header "Authorization" <| "Bearer " ++ accessToken ]
+        , body = Http.stringBody "application/json" "{}"
+        , expect = Http.expectJson JoinedRoom decodeRoomId
+
+        -- TODO: set these?
+        , timeout = Nothing
+        , tracker = Nothing
         }
 
 
-decodeRegistration : JD.Decoder String
+
+{--
+syncClient : String -> String -> String -> Cmd Msg
+syncClient homeserverUrl accessToken roomAlias =
+    Http.request
+        { method = "GET"
+        , url = homeserverUrl ++ "/_matrix/client/r0/sync"
+        , headers = [ Http.header "Authorization" <| "Bearer " ++ accessToken ]
+        , body = Http.emptyBody
+        , expect = Http.expectJson GotSync
+
+        -- TODO: set these?
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+--}
+
+
+serverNameFromUserId : String -> Maybe String
+serverNameFromUserId userId =
+    userId
+        |> String.split ":"
+        |> List.drop 1
+        |> List.head
+
+
+decodeRegistration : JD.Decoder RegisterResponse
 decodeRegistration =
-    JD.field "access_token" JD.string
+    JD.map3 RegisterResponse
+        -- userId
+        (JD.field "user_id" JD.string)
+        -- serverName
+        (JD.field "user_id" JD.string
+            |> JD.andThen
+                (\userId ->
+                    case serverNameFromUserId userId of
+                        Nothing ->
+                            JD.fail <| "Could not parse serverName from userId: " ++ userId
+
+                        Just serverName ->
+                            JD.succeed serverName
+                )
+        )
+        -- accessToken
+        (JD.field "access_token" JD.string)
 
 
 decodeRoomId : JD.Decoder String
@@ -111,34 +200,42 @@ decodeRoomId =
 
 
 
+{-
+   decodeSync : JD.Decoder String
+   decodeSync =
+       JD.succeed SyncResponse
+-}
 -- VIEW
 
 
 view : Model -> Html Msg
 view model =
     div []
-        [ case model.error of
+        [ -- view errors
+          case model.error of
             Nothing ->
                 text ""
 
             Just errmsg ->
                 h1 [] [ text <| "ERROR: " ++ errmsg ]
-        , h1 [] [ text "Hello, world" ]
+
+        -- debug: accessToken
         , h1 []
             [ case model.accessToken of
-                Just token ->
-                    text <| "token! " ++ token
-
                 Nothing ->
                     text "no auth yet"
-            ]
-        , h1 []
-            [ text <| "looking for " ++ model.roomAlias ++ "...\n"
-            , case model.roomId of
-                Nothing ->
-                    text ""
 
-                Just roomId ->
-                    text <| "found id! " ++ roomId
+                Just token ->
+                    text <| "token! " ++ token
+            ]
+
+        -- debug: roomAlias
+        , h1 []
+            [ case model.roomAlias of
+                Nothing ->
+                    text "no alias yet"
+
+                Just roomAlias ->
+                    text <| "alias! " ++ roomAlias
             ]
         ]

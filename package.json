@@ -7,14 +7,14 @@
     "example": "examples"
   },
   "scripts": {
+    "dev": "parcel -p 8080 ./examples/index.html",
     "build": "parcel build --no-minify ./src/main.js"
   },
   "author": "Asbjørn Olling",
   "license": "MIT",
-  "dependencies": {
-    "matrix-js-sdk": "^8.4.0"
-  },
+  "dependencies": {},
   "devDependencies": {
+    "elm-hot": "^1.1.5",
     "node-elm-compiler": "^5.0.5"
   }
 }
