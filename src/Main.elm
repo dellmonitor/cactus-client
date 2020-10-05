@@ -1,11 +1,13 @@
 module Main exposing (main)
 
 import Browser
+import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Events exposing (..)
 import Http
 import Json.Decode as JD
 import Json.Decode.Pipeline as Pipeline exposing (required)
+import Task exposing (Task)
 import Url exposing (percentEncode)
 import Url.Builder exposing (QueryParameter, crossOrigin)
 
@@ -27,7 +29,7 @@ type alias Model =
     { config : StaticConfig
 
     -- room state
-    , roomState : RoomState
+    , room : Maybe Room
 
     -- used for fatal errors
     , error : Maybe String
@@ -42,29 +44,13 @@ type alias StaticConfig =
     }
 
 
-type RoomState
-    = NoAccess
-    | Registered
-        { accessToken : String
-        , roomAlias : String
-        }
-    | Joined
-        { accessToken : String
-        , roomAlias : String
-        , roomId : String
-        , roomEvents : List RoomEvent
-        }
-
-
 init : StaticConfig -> ( Model, Cmd Msg )
 init config =
     ( { config = config
-      , roomState = NoAccess
-
-      -- display error
+      , room = Nothing
       , error = Nothing
       }
-    , Cmd.batch [ registerGuest config.defaultHomeserverUrl ]
+    , Task.attempt GotRoom <| getInitialRoom config
     )
 
 
@@ -73,95 +59,20 @@ init config =
 
 
 type Msg
-    = RegisteredGuest (Result Http.Error RegisterResponse)
-    | JoinedRoom (Result Http.Error String)
-    | GotSync (Result Http.Error SyncResponse)
+    = GotRoom (Result Http.Error Room)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    let
-        unexpectedStateError =
-            Just <| "Unexpected RoomState:" ++ Debug.toString model.roomState ++ "\nMsg:" ++ Debug.toString msg
-    in
-    case ( msg, model.roomState ) of
-        ( RegisteredGuest (Ok response), NoAccess ) ->
-            let
-                roomAlias =
-                    makeRoomAlias
-                        model.config.siteName
-                        model.config.uniqueId
-                        response.serverName
-            in
-            ( { model
-                | roomState =
-                    Registered
-                        { accessToken = response.accessToken
-                        , roomAlias = roomAlias
-                        }
-              }
-            , joinRoom
-                model.config.defaultHomeserverUrl
-                response.accessToken
-                roomAlias
+    case msg of
+        GotRoom (Ok room) ->
+            ( { model | room = Just room }
+            , Cmd.none
             )
 
-        ( RegisteredGuest (Err err), _ ) ->
+        GotRoom (Err err) ->
             -- HTTP/Json error
             ( { model | error = Just <| Debug.toString err }, Cmd.none )
-
-        ( RegisteredGuest _, _ ) ->
-            -- unexpected http response - impossible state?
-            ( { model | error = unexpectedStateError }, Cmd.none )
-
-        ( JoinedRoom (Ok roomId), Registered { accessToken, roomAlias } ) ->
-            ( { model
-                | roomState =
-                    Joined
-                        { accessToken = accessToken
-                        , roomAlias = roomAlias
-                        , roomId = roomId
-                        , roomEvents = []
-                        }
-              }
-            , -- initial sync
-              syncClient
-                model.config.defaultHomeserverUrl
-                accessToken
-                roomId
-                Nothing
-            )
-
-        ( JoinedRoom (Err err), Registered _ ) ->
-            ( { model | error = Just <| Debug.toString err }, Cmd.none )
-
-        ( JoinedRoom _, _ ) ->
-            ( { model | error = unexpectedStateError }
-            , Cmd.none
-            )
-
-        ( GotSync (Ok syncResponse), Joined roomState ) ->
-            let
-                newRoomEvents =
-                    mergeRoomEvents
-                        roomState.roomEvents
-                        syncResponse.room.timeline.events
-
-                newRoomState =
-                    { roomState | roomEvents = newRoomEvents }
-            in
-            ( { model | roomState = Joined newRoomState }
-              -- TODO: another sync
-            , Cmd.none
-            )
-
-        ( GotSync (Err err), Joined _ ) ->
-            ( { model | error = Just <| Debug.toString err }, Cmd.none )
-
-        ( GotSync _, _ ) ->
-            ( { model | error = unexpectedStateError }
-            , Cmd.none
-            )
 
 
 
@@ -171,29 +82,6 @@ update msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.none
-
-
-
--- MATRIX TYPES
-
-
-type alias RegisterResponse =
-    { userId : String
-    , serverName : String
-    , accessToken : String
-    }
-
-
-type alias SyncResponse =
-    { room : { timeline : SyncTimeline }
-    , nextBatch : String
-    }
-
-
-type alias SyncTimeline =
-    { prevBatch : String
-    , events : List RoomEvent
-    }
 
 
 type alias Event a =
@@ -252,7 +140,7 @@ mergeRoomEvents events newEvents =
 
 
 
--- MATRIX API
+-- MATRIX API HELPERS
 
 
 clientServerEndpoint : String -> List String -> List QueryParameter -> String
@@ -270,80 +158,212 @@ makeRoomAlias siteName uniqueId serverName =
     "#comments_" ++ siteName ++ "_" ++ uniqueId ++ ":" ++ serverName
 
 
-registerGuest : String -> Cmd Msg
+handleJsonResponse : JD.Decoder a -> Http.Response String -> Result Http.Error a
+handleJsonResponse decoder response =
+    case response of
+        Http.BadUrl_ url ->
+            Err (Http.BadUrl url)
+
+        Http.Timeout_ ->
+            Err Http.Timeout
+
+        Http.BadStatus_ { statusCode } _ ->
+            Err (Http.BadStatus statusCode)
+
+        Http.NetworkError_ ->
+            Err Http.NetworkError
+
+        Http.GoodStatus_ _ body ->
+            case JD.decodeString decoder body of
+                Err _ ->
+                    Err (Http.BadBody body)
+
+                Ok result ->
+                    Ok result
+
+
+
+-- REGISTER
+
+
+type alias RegisterResponse =
+    { userId : String
+    , serverName : String
+    , accessToken : String
+    }
+
+
+registerGuest : String -> Task Http.Error RegisterResponse
 registerGuest homeserverUrl =
-    Http.post
-        { url =
-            clientServerEndpoint
-                homeserverUrl
-                [ "register" ]
-                [ Url.Builder.string "kind" "guest" ]
-        , body = Http.stringBody "application/json" "{}"
-        , expect = Http.expectJson RegisteredGuest decodeRegistration
-        }
-
-
-joinRoom : String -> String -> String -> Cmd Msg
-joinRoom homeserverUrl accessToken roomAlias =
-    Http.request
+    Http.task
         { method = "POST"
-        , url = clientServerEndpoint homeserverUrl [ "join", roomAlias ] []
-        , headers = [ Http.header "Authorization" <| "Bearer " ++ accessToken ]
+        , headers = []
+        , url =
+            clientServerEndpoint homeserverUrl [ "register" ] [ Url.Builder.string "kind" "guest" ]
         , body = Http.stringBody "application/json" "{}"
-        , expect = Http.expectJson JoinedRoom decodeRoomId
-
-        -- TODO: set these?
+        , resolver = Http.stringResolver <| handleJsonResponse decodeRegisterResponse
         , timeout = Nothing
-        , tracker = Nothing
         }
 
 
-syncClient : String -> String -> String -> Maybe String -> Cmd Msg
-syncClient homeserverUrl accessToken roomId since =
-    let
-        timeout =
-            5000
 
-        sinceParams : List QueryParameter
-        sinceParams =
-            case since of
-                Nothing ->
-                    []
+-- ROOM ID LOOKUP
 
-                Just sinceStr ->
-                    [ Url.Builder.string "since" sinceStr ]
-    in
-    Http.request
+
+getRoomId : String -> String -> Task Http.Error String
+getRoomId homeserverUrl roomAlias =
+    Http.task
+        { method = "GET"
+        , url = clientServerEndpoint homeserverUrl [ "directory", "room", roomAlias ] []
+        , headers = []
+        , body = Http.stringBody "application/json" "{}"
+        , resolver = Http.stringResolver <| handleJsonResponse decodeRoomId
+        , timeout = Nothing
+        }
+
+
+
+-- INITIAL SINCE TOKEN
+
+
+getSinceToken : { homeserverUrl : String, accessToken : String, roomId : String } -> Task Http.Error String
+getSinceToken { homeserverUrl, accessToken, roomId } =
+    Http.task
         { method = "GET"
         , url =
-            clientServerEndpoint
-                homeserverUrl
-                [ "sync" ]
-                (Url.Builder.int "timeout" 3000 :: sinceParams)
+            clientServerEndpoint homeserverUrl
+                [ "events" ]
+                [ Url.Builder.string "room_id" roomId
+                , Url.Builder.int "timeout" 0
+                ]
         , headers = [ Http.header "Authorization" <| "Bearer " ++ accessToken ]
-        , body = Http.emptyBody
-        , expect = Http.expectJson GotSync <| decodeSyncResponse roomId
+        , body = Http.stringBody "application/json" "{}"
 
-        -- TODO: set these?
+        -- TODO - better message
+        , resolver = Http.stringResolver <| handleJsonResponse <| JD.field "end" JD.string
         , timeout = Nothing
-        , tracker = Nothing
         }
 
 
-serverNameFromUserId : String -> Maybe String
-serverNameFromUserId userId =
-    userId
-        |> String.split ":"
-        |> List.drop 1
-        |> List.head
+getMessages :
+    { homeserverUrl : String
+    , accessToken : String
+    , roomId : String
+    , since : String
+    }
+    ->
+        Task Http.Error
+            { start : String
+            , end : String
+            , chunk : List RoomEvent
+            }
+getMessages { homeserverUrl, accessToken, roomId, since } =
+    Http.task
+        { method = "GET"
+        , url =
+            clientServerEndpoint homeserverUrl
+                [ "rooms", roomId, "messages" ]
+                [ Url.Builder.string "dir" "b" ]
+        , headers = [ Http.header "Authorization" <| "Bearer " ++ accessToken ]
+        , body = Http.stringBody "application/json" "{}"
+        , resolver = Http.stringResolver <| handleJsonResponse decodeMessages
+        , timeout = Nothing
+        }
+
+
+decodeMessages : JD.Decoder { start : String, end : String, chunk : List RoomEvent }
+decodeMessages =
+    JD.map3
+        (\start end chunk -> { start = start, end = end, chunk = chunk })
+        (JD.field "start" JD.string)
+        (JD.field "end" JD.string)
+        (JD.field "chunk" <| JD.list decodeRoomEvent)
+
+
+type alias Room =
+    { accessToken : String
+    , roomAlias : String
+    , roomId : String
+    , events : List RoomEvent
+    }
+
+
+
+{- INITIAL ROOM GET
+   1. registerGuest
+   2. getRoomId
+   3. getSinceToken
+   4. getMessages
+   TODO: 5. ...getUsers
+-}
+
+
+getInitialRoom : StaticConfig -> Task Http.Error Room
+getInitialRoom config =
+    -- Register a guest user and and get serverName
+    registerGuest config.defaultHomeserverUrl
+        -- find roomId from roomAlias
+        |> Task.andThen
+            (\data ->
+                let
+                    roomAlias =
+                        makeRoomAlias
+                            config.siteName
+                            config.uniqueId
+                            data.serverName
+                in
+                getRoomId config.defaultHomeserverUrl roomAlias
+                    |> Task.map
+                        (\roomId ->
+                            { accessToken = data.accessToken
+                            , roomId = roomId
+                            , roomAlias = roomAlias
+                            }
+                        )
+            )
+        -- get since token from /events
+        |> Task.andThen
+            (\data ->
+                getSinceToken
+                    { homeserverUrl = config.defaultHomeserverUrl
+                    , accessToken = data.accessToken
+                    , roomId = data.roomId
+                    }
+                    |> Task.map
+                        (\sinceToken ->
+                            { accessToken = data.accessToken
+                            , roomId = data.roomId
+                            , roomAlias = data.roomAlias
+                            , sinceToken = sinceToken
+                            }
+                        )
+            )
+        -- get messages from /room/{roomId}/messages
+        |> Task.andThen
+            (\data ->
+                getMessages
+                    { homeserverUrl = config.defaultHomeserverUrl
+                    , accessToken = data.accessToken
+                    , roomId = data.roomId
+                    , since = data.sinceToken
+                    }
+                    |> Task.map
+                        (\events ->
+                            { accessToken = data.accessToken
+                            , roomAlias = data.roomAlias
+                            , roomId = data.roomId
+                            , events = events.chunk
+                            }
+                        )
+            )
 
 
 
 -- DECODERS
 
 
-decodeRegistration : JD.Decoder RegisterResponse
-decodeRegistration =
+decodeRegisterResponse : JD.Decoder RegisterResponse
+decodeRegisterResponse =
     JD.map3 RegisterResponse
         -- userId
         (JD.field "user_id" JD.string)
@@ -363,32 +383,17 @@ decodeRegistration =
         (JD.field "access_token" JD.string)
 
 
+serverNameFromUserId : String -> Maybe String
+serverNameFromUserId userId =
+    userId
+        |> String.split ":"
+        |> List.drop 1
+        |> List.head
+
+
 decodeRoomId : JD.Decoder String
 decodeRoomId =
     JD.field "room_id" JD.string
-
-
-decodeSyncResponse : String -> JD.Decoder SyncResponse
-decodeSyncResponse roomId =
-    JD.map2
-        (\room nextBatch -> { room = room, nextBatch = nextBatch })
-        (JD.field "rooms" <| JD.field "join" <| JD.field roomId <| decodeRoom)
-        (JD.field "next_batch" JD.string)
-
-
-decodeRoom : JD.Decoder { timeline : SyncTimeline }
-decodeRoom =
-    JD.map
-        (\t -> { timeline = t })
-        (JD.field "timeline" decodeTimeline)
-
-
-decodeTimeline : JD.Decoder SyncTimeline
-decodeTimeline =
-    JD.map2
-        (\prevBatch events -> { prevBatch = prevBatch, events = events })
-        (JD.field "prev_batch" JD.string)
-        (JD.field "events" <| JD.list decodeRoomEvent)
 
 
 decodeRoomEvent : JD.Decoder RoomEvent
@@ -486,7 +491,7 @@ view : Model -> Html Msg
 view model =
     div [] <|
         [ -- view errors
-          h1 [] <|
+          h5 [] <|
             case model.error of
                 Nothing ->
                     []
@@ -494,15 +499,12 @@ view model =
                 Just errmsg ->
                     [ text <| "ERROR: " ++ errmsg ]
         , -- show MessageEvents
-          case model.roomState of
-            NoAccess ->
-                p [] [ text "Creating guest user..." ]
-
-            Registered _ ->
+          case model.room of
+            Nothing ->
                 p [] [ text "Getting comments..." ]
 
-            Joined joinedRoom ->
-                viewRoomEvents joinedRoom.roomEvents
+            Just room ->
+                viewRoomEvents room.events
         ]
 
 
@@ -523,7 +525,7 @@ viewMessageEvent messageEvent =
                     textMessage.body
 
                 _ ->
-                    "unsupported event"
+                    "unsupported message event"
     in
     div []
         [ p [] [ text messageEvent.sender ]
