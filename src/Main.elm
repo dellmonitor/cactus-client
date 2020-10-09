@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Browser
+import Date
 import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Events exposing (..)
@@ -8,6 +9,7 @@ import Http
 import Json.Decode as JD
 import Json.Decode.Pipeline as Pipeline exposing (required)
 import Task exposing (Task)
+import Time
 import Url exposing (percentEncode)
 import Url.Builder exposing (QueryParameter, crossOrigin)
 
@@ -148,14 +150,14 @@ onlyMessageEvents roomEvents =
 mergeNewMessages : Room -> GetMessagesResponse -> Room
 mergeNewMessages room newMessages =
     { room
-        | events = mergeRoomEvents room.events newMessages.chunk
+        | events = sortByTime (room.events ++ newMessages.chunk)
         , end = newMessages.end
     }
 
 
-mergeRoomEvents : List RoomEvent -> List RoomEvent -> List RoomEvent
-mergeRoomEvents events newEvents =
-    (events ++ newEvents)
+sortByTime : List RoomEvent -> List RoomEvent
+sortByTime events =
+    events
         |> List.sortBy
             (\e ->
                 case e of
@@ -274,7 +276,7 @@ getInitialRoom config =
                             { accessToken = data.accessToken
                             , roomAlias = data.roomAlias
                             , roomId = data.roomId
-                            , events = events.chunk
+                            , events = sortByTime events.chunk
                             , start = events.start
                             , end = events.end
                             }
@@ -550,9 +552,37 @@ viewRoomEvents roomEvents =
             (onlyMessageEvents roomEvents)
 
 
+toUtcString : Int -> String
+toUtcString timestamp =
+    let
+        time =
+            Time.millisToPosix timestamp
+
+        dateStr =
+            String.fromInt (Time.toYear Time.utc time)
+                ++ "-"
+                ++ String.fromInt (Date.monthToNumber <| Time.toMonth Time.utc time)
+                ++ "-"
+                ++ String.fromInt (Time.toDay Time.utc time)
+
+        timeStr =
+            String.fromInt (Time.toHour Time.utc time)
+                ++ ":"
+                ++ String.fromInt (Time.toMinute Time.utc time)
+                ++ ":"
+                ++ String.fromInt (Time.toSecond Time.utc time)
+                ++ " (UTC)"
+    in
+    dateStr ++ " " ++ timeStr
+
+
 viewMessageEvent : Event Message -> Html Msg
 viewMessageEvent messageEvent =
     let
+        timeStr : String
+        timeStr =
+            toUtcString messageEvent.originServerTs
+
         textBody =
             case messageEvent.content of
                 Text textMessage ->
@@ -563,6 +593,7 @@ viewMessageEvent messageEvent =
     in
     div []
         [ p [] [ text messageEvent.sender ]
+        , p [] [ text timeStr ]
         , p [] [ text textBody ]
         ]
 
