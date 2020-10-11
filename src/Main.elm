@@ -106,6 +106,21 @@ update msg model =
             )
 
 
+
+-- MATRIX TYPES
+
+
+type alias Room =
+    { accessToken : String
+    , roomAlias : String
+    , roomId : String
+    , events : List RoomEvent
+    , start : String
+    , end : String
+    , members : Dict String RoomMember
+    }
+
+
 type alias Event a =
     { eventType : String
     , content : a
@@ -282,6 +297,26 @@ getInitialRoom config =
                             }
                         )
             )
+        -- get joined members
+        |> Task.andThen
+            (\data ->
+                getJoinedMembers
+                    { homeserverUrl = config.defaultHomeserverUrl
+                    , accessToken = data.accessToken
+                    , roomId = data.roomId
+                    }
+                    |> Task.map
+                        (\members ->
+                            { accessToken = data.accessToken
+                            , roomAlias = data.roomAlias
+                            , roomId = data.roomId
+                            , events = sortByTime data.events
+                            , start = data.start
+                            , end = data.end
+                            , members = members
+                            }
+                        )
+            )
 
 
 
@@ -415,14 +450,56 @@ decodeMessages =
         (JD.field "chunk" <| JD.list decodeRoomEvent)
 
 
-type alias Room =
-    { accessToken : String
-    , roomAlias : String
-    , roomId : String
-    , events : List RoomEvent
-    , start : String
-    , end : String
+
+-- JOINED MEMBERS
+
+
+type alias RoomMember =
+    { displayname : Maybe String
+    , avatarUrl : Maybe String
+    , userId : String
     }
+
+
+getJoinedMembers : { homeserverUrl : String, accessToken : String, roomId : String } -> Task Http.Error (Dict String RoomMember)
+getJoinedMembers { homeserverUrl, accessToken, roomId } =
+    Http.task
+        { method = "GET"
+        , url = clientServerEndpoint homeserverUrl [ "rooms", roomId, "members" ] []
+        , headers = [ Http.header "Authorization" <| "Bearer " ++ accessToken ]
+        , body = Http.emptyBody
+        , resolver = Http.stringResolver <| handleJsonResponse decodeRoomMemberResponse
+        , timeout = Nothing
+        }
+
+
+decodeRoomMemberResponse : JD.Decoder (Dict String RoomMember)
+decodeRoomMemberResponse =
+    (JD.field "chunk" <| JD.list decodeRoomMemberEvent)
+        |> JD.andThen
+            (\roomMembers ->
+                roomMembers
+                    |> List.map (\rm -> ( rm.userId, rm ))
+                    |> Dict.fromList
+                    |> JD.succeed
+            )
+
+
+decodeRoomMemberEvent : JD.Decoder RoomMember
+decodeRoomMemberEvent =
+    (JD.field "content" <| decodeRoomMemberContent)
+        |> JD.andThen
+            (\content ->
+                JD.field "state_key" JD.string
+                    |> JD.andThen (\uid -> JD.succeed <| RoomMember content.displayname content.avatarUrl uid)
+            )
+
+
+decodeRoomMemberContent : JD.Decoder { displayname : Maybe String, avatarUrl : Maybe String }
+decodeRoomMemberContent =
+    JD.map2 (\dn au -> { displayname = dn, avatarUrl = au })
+        (JD.maybe <| JD.field "displayname" JD.string)
+        (JD.maybe <| JD.field "avatar_url" JD.string)
 
 
 
@@ -538,17 +615,17 @@ view model =
 
             Just room ->
                 div []
-                    [ viewRoomEvents room.events
+                    [ viewRoomEvents room.members room.events
                     , viewMoreButton
                     ]
         ]
 
 
-viewRoomEvents : List RoomEvent -> Html Msg
-viewRoomEvents roomEvents =
+viewRoomEvents : Dict String RoomMember -> List RoomEvent -> Html Msg
+viewRoomEvents members roomEvents =
     div [] <|
         List.map
-            viewMessageEvent
+            (viewMessageEvent members)
             (onlyMessageEvents roomEvents)
 
 
@@ -576,8 +653,8 @@ toUtcString timestamp =
     dateStr ++ " " ++ timeStr
 
 
-viewMessageEvent : Event Message -> Html Msg
-viewMessageEvent messageEvent =
+viewMessageEvent : Dict String RoomMember -> Event Message -> Html Msg
+viewMessageEvent members messageEvent =
     let
         timeStr : String
         timeStr =
@@ -590,10 +667,15 @@ viewMessageEvent messageEvent =
 
                 _ ->
                     "unsupported message event"
+
+        name : String
+        name =
+            Dict.get messageEvent.sender members
+                |> Maybe.map (\m -> Maybe.withDefault "" m.displayname)
+                |> Maybe.withDefault messageEvent.sender
     in
     div []
-        [ p [] [ text messageEvent.sender ]
-        , p [] [ text timeStr ]
+        [ p [] [ text <| name ++ " " ++ timeStr ]
         , p [] [ text textBody ]
         ]
 
