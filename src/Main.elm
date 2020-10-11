@@ -4,6 +4,7 @@ import Browser
 import Date
 import Dict exposing (Dict)
 import Html exposing (..)
+import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http
 import Json.Decode as JD
@@ -188,14 +189,22 @@ sortByTime events =
 -- MATRIX API HELPERS
 
 
-clientServerEndpoint : String -> List String -> List QueryParameter -> String
-clientServerEndpoint homeserverUrl endpoint params =
+matrixEndpoint : List String -> String -> List String -> List QueryParameter -> String
+matrixEndpoint pathPrefix homeserverUrl path params =
     crossOrigin
         homeserverUrl
-        ([ "_matrix", "client", "r0" ]
-            ++ List.map percentEncode endpoint
-        )
+        (pathPrefix ++ List.map percentEncode path)
         params
+
+
+clientServerEndpoint : String -> List String -> List QueryParameter -> String
+clientServerEndpoint =
+    matrixEndpoint [ "_matrix", "client", "r0" ]
+
+
+mediaEndpoint : String -> List String -> List QueryParameter -> String
+mediaEndpoint =
+    matrixEndpoint [ "_matrix", "media", "r0" ]
 
 
 makeRoomAlias : String -> String -> String -> String
@@ -502,6 +511,33 @@ decodeRoomMemberContent =
         (JD.maybe <| JD.field "avatar_url" JD.string)
 
 
+mxcToHttp : String -> String -> Maybe String
+mxcToHttp homeserverUrl mxcUrl =
+    let
+        serverName =
+            mxcUrl
+                |> String.dropLeft 6
+                |> String.split "/"
+                |> List.head
+
+        mediaId =
+            mxcUrl
+                |> String.split "/"
+                |> (List.reverse >> List.head)
+    in
+    Maybe.map2
+        (\sn mid ->
+            mediaEndpoint homeserverUrl
+                [ "thumbnail", sn, mid ]
+                [ Url.Builder.int "width" 32
+                , Url.Builder.int "height" 32
+                , Url.Builder.string "method" "crop"
+                ]
+        )
+        serverName
+        mediaId
+
+
 
 -- DECODERS
 
@@ -615,17 +651,17 @@ view model =
 
             Just room ->
                 div []
-                    [ viewRoomEvents room.members room.events
+                    [ viewRoomEvents model.config.defaultHomeserverUrl room.members room.events
                     , viewMoreButton
                     ]
         ]
 
 
-viewRoomEvents : Dict String RoomMember -> List RoomEvent -> Html Msg
-viewRoomEvents members roomEvents =
+viewRoomEvents : String -> Dict String RoomMember -> List RoomEvent -> Html Msg
+viewRoomEvents defaultHomeserverUrl members roomEvents =
     div [] <|
         List.map
-            (viewMessageEvent members)
+            (viewMessageEvent defaultHomeserverUrl members)
             (onlyMessageEvents roomEvents)
 
 
@@ -653,9 +689,33 @@ toUtcString timestamp =
     dateStr ++ " " ++ timeStr
 
 
-viewMessageEvent : Dict String RoomMember -> Event Message -> Html Msg
-viewMessageEvent members messageEvent =
+viewMessageEvent : String -> Dict String RoomMember -> Event Message -> Html Msg
+viewMessageEvent defaultHomeserverUrl members messageEvent =
     let
+        member : Maybe RoomMember
+        member =
+            Dict.get messageEvent.sender members
+
+        name : String
+        name =
+            member
+                |> Maybe.map (\m -> Maybe.withDefault "" m.displayname)
+                |> Maybe.withDefault messageEvent.sender
+
+        avatarUrl : Maybe String
+        avatarUrl =
+            member
+                |> Maybe.map
+                    (\m ->
+                        case m.avatarUrl of
+                            Just mxcUrl ->
+                                mxcToHttp defaultHomeserverUrl mxcUrl
+
+                            Nothing ->
+                                Nothing
+                    )
+                |> Maybe.withDefault Nothing
+
         timeStr : String
         timeStr =
             toUtcString messageEvent.originServerTs
@@ -667,15 +727,10 @@ viewMessageEvent members messageEvent =
 
                 _ ->
                     "unsupported message event"
-
-        name : String
-        name =
-            Dict.get messageEvent.sender members
-                |> Maybe.map (\m -> Maybe.withDefault "" m.displayname)
-                |> Maybe.withDefault messageEvent.sender
     in
     div []
-        [ p [] [ text <| name ++ " " ++ timeStr ]
+        [ img [ src <| Maybe.withDefault "" avatarUrl ] []
+        , p [] [ text <| name ++ " " ++ timeStr ]
         , p [] [ text textBody ]
         ]
 
