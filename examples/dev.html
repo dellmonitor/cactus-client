@@ -1,13 +1,16 @@
 <!-- Demo file used during development
      It works if you run `npm run dev`
      and then visit localhost:8080 -->
+<head>
+  <link rel="stylesheet" type="text/css" href="../src/style.css"/>
+  <script type="text/javascript" src="../src/main.js"></script>
+</head>
 
 <div style="margin: auto; width: 50%" >
   <h1>Comments</h1>
   <div id="my-comments"></div>
 </div>
 
-<script type="text/javascript" src="../src/main.js"></script>
 <script>
   initComments({
     node: document.getElementById("my-comments"),

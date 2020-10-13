@@ -1,0 +1,48 @@
+.octopus-container {
+  display: flex;
+  font-family: sans-serif;
+}
+
+.octopus-comment {
+  display: flex;
+  flex-direction: row;
+  margin: 1em;
+}
+
+.octopus-comment-avatar {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.octopus-comment-avatar > img {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+}
+
+.octopus-comment-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.octopus-comment-header {
+  display: flex;
+}
+
+.octopus-comment-header > * {
+  margin: 0;
+  font-size: 0.8em;
+}
+
+.octopus-comment-displayname {
+  font-weight: bold;
+  padding-right: 0.5rem;
+}
+
+.octopus-comment-time {
+  opacity: 0.7;
+}
+
+.octopus-comment-body > * {
+  margin: 0;
+}

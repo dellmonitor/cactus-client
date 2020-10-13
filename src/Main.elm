@@ -635,7 +635,7 @@ decodeMessage =
 
 view : Model -> Html Msg
 view model =
-    div [] <|
+    div [ class "octopus-container" ] <|
         [ -- view errors
           h5 [] <|
             case model.error of
@@ -651,7 +651,10 @@ view model =
 
             Just room ->
                 div []
-                    [ viewRoomEvents model.config.defaultHomeserverUrl room.members room.events
+                    [ viewRoomEvents
+                        model.config.defaultHomeserverUrl
+                        room.members
+                        room.events
                     , viewMoreButton
                     ]
         ]
@@ -696,8 +699,8 @@ viewMessageEvent defaultHomeserverUrl members messageEvent =
         member =
             Dict.get messageEvent.sender members
 
-        name : String
-        name =
+        displayname : String
+        displayname =
             member
                 |> Maybe.map (\m -> Maybe.withDefault "" m.displayname)
                 |> Maybe.withDefault messageEvent.sender
@@ -728,10 +731,21 @@ viewMessageEvent defaultHomeserverUrl members messageEvent =
                 _ ->
                     "unsupported message event"
     in
-    div []
-        [ img [ src <| Maybe.withDefault "" avatarUrl ] []
-        , p [] [ text <| name ++ " " ++ timeStr ]
-        , p [] [ text textBody ]
+    div [ class "octopus-comment" ]
+        -- image
+        [ div [ class "octopus-comment-avatar" ]
+            [ img [ src <| Maybe.withDefault "" avatarUrl ] [] ]
+        , div [ class "octopus-comment-content" ]
+            -- name and time
+            [ div [ class "octopus-comment-header" ]
+                [ p [ class "octopus-comment-displayname" ] [ text displayname ]
+                , p [ class "octopus-comment-time" ] [ text timeStr ]
+                ]
+
+            -- body
+            , div [ class "octopus-comment-body" ]
+                [ p [] [ text textBody ] ]
+            ]
         ]
 
 
@@ -739,4 +753,4 @@ viewMoreButton : Html Msg
 viewMoreButton =
     button
         [ onClick ViewMoreClicked ]
-        [ text "View More!" ]
+        [ text "View more" ]
