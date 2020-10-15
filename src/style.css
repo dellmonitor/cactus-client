@@ -1,12 +1,11 @@
 .octopus-container {
-  display: flex;
-  font-family: sans-serif;
+  font-family: "Helvetica", "Arial", sans-serif;
 }
 
 .octopus-comment {
   display: flex;
   flex-direction: row;
-  margin: 1em;
+  padding: 1em;
 }
 
 .octopus-comment-avatar {
@@ -37,6 +36,11 @@
 .octopus-comment-displayname {
   font-weight: bold;
   padding-right: 0.5rem;
+}
+
+.octopus-comment-displayname > a {
+  text-decoration: none;
+  color: inherit;
 }
 
 .octopus-comment-time {

@@ -719,6 +719,10 @@ viewMessageEvent defaultHomeserverUrl members messageEvent =
                     )
                 |> Maybe.withDefault Nothing
 
+        matrixDotToUrl : String
+        matrixDotToUrl =
+            "https://matrix.to/#/" ++ messageEvent.sender
+
         timeStr : String
         timeStr =
             toUtcString messageEvent.originServerTs
@@ -738,7 +742,7 @@ viewMessageEvent defaultHomeserverUrl members messageEvent =
         , div [ class "octopus-comment-content" ]
             -- name and time
             [ div [ class "octopus-comment-header" ]
-                [ p [ class "octopus-comment-displayname" ] [ text displayname ]
+                [ p [ class "octopus-comment-displayname" ] [ a [ href matrixDotToUrl ] [ text displayname ] ]
                 , p [ class "octopus-comment-time" ] [ text timeStr ]
                 ]
 
