@@ -1,4 +1,4 @@
-module ApiUtils exposing (apiRequest, clientEndpoint, mediaEndpoint, mxcToHttp)
+module ApiUtils exposing (apiRequest, clientEndpoint, matrixDotToUrl, mediaEndpoint, thumbnailFromMxc)
 
 import Http
 import Json.Decode as JD
@@ -29,19 +29,42 @@ mediaEndpoint =
     apiEndpoint [ "_matrix", "media", "r0" ]
 
 
-mxcToHttp : String -> String -> Maybe String
-mxcToHttp homeserverUrl mxcUrl =
+matrixDotToUrl : String -> String
+matrixDotToUrl identifier =
+    -- https://matrix.to/#/<identifier>
+    crossOrigin
+        "https://matrix.to"
+        [ "#", percentEncode identifier ]
+        []
+
+
+
+-- MEDIA
+
+
+mxcServerName : String -> Maybe String
+mxcServerName mxcUrl =
+    mxcUrl
+        |> String.dropLeft 6
+        |> String.split "/"
+        |> List.head
+
+
+mxcMediaId : String -> Maybe String
+mxcMediaId mxcUrl =
+    mxcUrl
+        |> String.split "/"
+        |> (List.reverse >> List.head)
+
+
+thumbnailFromMxc : String -> String -> Maybe String
+thumbnailFromMxc homeserverUrl mxcUrl =
     let
         serverName =
-            mxcUrl
-                |> String.dropLeft 6
-                |> String.split "/"
-                |> List.head
+            mxcServerName mxcUrl
 
         mediaId =
-            mxcUrl
-                |> String.split "/"
-                |> (List.reverse >> List.head)
+            mxcMediaId mxcUrl
     in
     Maybe.map2
         (\sn mid ->

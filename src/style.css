@@ -1,52 +1,64 @@
 .octopus-container {
+  /* everything */
   font-family: "Helvetica", "Arial", sans-serif;
 }
 
 .octopus-comment {
+  /* a comment */
   display: flex;
   flex-direction: row;
   padding: 1em;
 }
 
 .octopus-comment-avatar {
+  /* avatar beside comment content */
   padding-left: 1rem;
   padding-right: 1rem;
 }
 
 .octopus-comment-avatar > img {
+  /* the avatar image */
   width: 3rem;
   height: 3rem;
   border-radius: 50%;
 }
 
 .octopus-comment-content {
+  /* comment header and body */
   display: flex;
   flex-direction: column;
 }
 
 .octopus-comment-header {
+  /* user name and posting time */
   display: flex;
 }
 
 .octopus-comment-header > * {
+  /* elements in header */
   margin: 0;
-  font-size: 0.8em;
+  font-size: 1em;
 }
 
 .octopus-comment-displayname {
+  /* user name */
   font-weight: bold;
   padding-right: 0.5rem;
 }
 
 .octopus-comment-displayname > a {
+  /* dont style link */
   text-decoration: none;
   color: inherit;
 }
 
 .octopus-comment-time {
+  /* comment posting time  */
   opacity: 0.7;
 }
 
 .octopus-comment-body > * {
+  /* text or media content of comment */
   margin: 0;
+  margin-top: 0.5em;
 }

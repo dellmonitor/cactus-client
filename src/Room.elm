@@ -22,6 +22,12 @@ type alias Room =
     }
 
 
+{-| Make a matrix room alias given a sitename, a unique id for the comments
+section, and a matrix homeserver servername.
+
+    makeRoomAlias "myblog.com" "october-blogpost" "matrix.example.com" == "#comments_myblog.com_october-blogpost:matrix.example.com"
+
+-}
 makeRoomAlias : String -> String -> String -> String
 makeRoomAlias siteName uniqueId serverName =
     "#comments_" ++ siteName ++ "_" ++ uniqueId ++ ":" ++ serverName

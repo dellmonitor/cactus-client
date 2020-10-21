@@ -1,19 +1,19 @@
 module Main exposing (main)
 
-import ApiUtils exposing (mxcToHttp)
+import ApiUtils exposing (apiRequest, clientEndpoint, matrixDotToUrl)
 import Browser
-import Date
 import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http
+import Json.Decode as JD
+import Json.Encode as JE
 import Member exposing (Member)
-import Message exposing (Event, GetMessagesResponse, Message(..), RoomEvent, getMessages, onlyMessageEvents)
+import Message exposing (Event, GetMessagesResponse, Message(..), RoomEvent, getMessages, onlyMessageEvents, viewMessageEvent)
 import Register exposing (registerGuest)
 import Room exposing (Room, getInitialRoom, mergeNewMessages)
 import Task exposing (Task)
-import Time
 
 
 main =
@@ -27,7 +27,11 @@ main =
 
 type alias Model =
     { config : StaticConfig
-    , room : Maybe Room
+    , roomState :
+        Maybe
+            { room : Room
+            , editor : Editor
+            }
     , error : Maybe String
     }
 
@@ -42,7 +46,7 @@ type alias StaticConfig =
 init : StaticConfig -> ( Model, Cmd Msg )
 init config =
     ( { config = config
-      , room = Nothing
+      , roomState = Nothing
       , error = Nothing
       }
     , Task.attempt GotRoom <| getInitialRoom config
@@ -53,51 +57,223 @@ type Msg
     = GotRoom (Result Http.Error Room)
     | ViewMoreClicked
     | GotMessages (Result Http.Error GetMessagesResponse)
+      -- EDITOR
+    | EditComment String
+    | SendComment String Editor
+    | SentComment (Result Http.Error ())
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case ( msg, model.room ) of
+    case ( msg, model.roomState ) of
         ( GotRoom (Ok room), _ ) ->
-            ( { model | room = Just room }
+            -- got initial room, when loading page first ime
+            ( { model
+                | roomState =
+                    Just
+                        -- init both room and editor. this enables most of the ui
+                        { room = room
+                        , editor =
+                            { homeserverUrl = model.config.defaultHomeserverUrl
+                            , accessToken = room.accessToken
+                            , content = ""
+                            , txnId = 0
+                            , joined = False
+                            }
+                        }
+              }
             , Cmd.none
             )
 
         ( GotRoom (Err err), _ ) ->
+            -- error while setting up initial room
             ( { model | error = Just <| Debug.toString err }
             , Cmd.none
             )
 
-        ( ViewMoreClicked, Just room ) ->
+        ( ViewMoreClicked, Just roomState ) ->
+            -- "view more" button hit - issue request to fetch more messages
             ( model
             , Task.attempt GotMessages <|
                 getMessages
                     { homeserverUrl = model.config.defaultHomeserverUrl
-                    , accessToken = room.accessToken
-                    , roomId = room.roomId
-                    , from = room.end
+                    , accessToken = roomState.room.accessToken
+                    , roomId = roomState.room.roomId
+                    , from = roomState.room.end
                     }
             )
 
         ( ViewMoreClicked, _ ) ->
+            -- impossible state:
+            -- "view more" clicked - but the room hasn't finished loading yet.
             ( { model | error = Just "Can't fetch messages: no connection to homeserver" }
             , Cmd.none
             )
 
-        ( GotMessages (Ok newMsgs), Just room ) ->
-            ( { model | room = Just <| mergeNewMessages room newMsgs }
+        ( GotMessages (Ok newMsgs), Just roomState ) ->
+            -- got more messages. result of the "ViewMore"-button request
+            let
+                newRoom =
+                    mergeNewMessages roomState.room newMsgs
+
+                newRoomState =
+                    { roomState | room = newRoom }
+            in
+            ( { model | roomState = Just newRoomState }
             , Cmd.none
             )
 
         ( GotMessages (Err httpErr), Just room ) ->
+            -- http error while getting more comments
             ( { model | error = Just <| Debug.toString httpErr }
             , Cmd.none
             )
 
-        ( GotMessages newMsgs, _ ) ->
+        ( GotMessages newMsgs, Nothing ) ->
+            -- impossible state: get response with new messages,
+            -- without having an initialized room
             ( { model | error = Just "Unexpected state: got message response without a room" }
             , Cmd.none
             )
+
+        ( EditComment str, Just roomState ) ->
+            -- user changes text in comment box
+            let
+                editor =
+                    roomState.editor
+
+                newEditor =
+                    { editor | content = str }
+
+                newRoomState =
+                    { roomState | editor = newEditor }
+            in
+            ( { model | roomState = Just newRoomState }
+            , Cmd.none
+            )
+
+        ( EditComment _, Nothing ) ->
+            ( { model | error = Just "Impossible state: can't edit a text field that doesn't exist" }, Cmd.none )
+
+        ( SendComment roomId editor, _ ) ->
+            -- user hit send button
+            let
+                taskfun =
+                    if editor.joined then
+                        putMessage
+
+                    else
+                        joinAndPutMessage
+
+                newEditor =
+                    { editor
+                        | txnId = editor.txnId + 1
+                        , joined = True
+                        , content = ""
+                    }
+
+                newRoomState =
+                    Maybe.map (\rs -> { rs | editor = newEditor }) model.roomState
+            in
+            ( { model | roomState = newRoomState }
+            , Task.attempt SentComment <|
+                taskfun
+                    { homeserverUrl = editor.homeserverUrl
+                    , accessToken = editor.accessToken
+                    , roomId = roomId
+                    , txnId = editor.txnId
+                    , body = editor.content
+                    }
+            )
+
+        ( SentComment (Ok ()), _ ) ->
+            ( model
+            , Cmd.none
+            )
+
+        ( SentComment (Err httpErr), _ ) ->
+            ( { model | error = Just <| Debug.toString httpErr }
+            , Cmd.none
+            )
+
+
+
+-- EDITOR
+
+
+type alias Editor =
+    { homeserverUrl : String
+    , accessToken : String
+    , content : String
+    , txnId : Int
+    , joined : Bool
+    }
+
+
+joinAndPutMessage : { homeserverUrl : String, accessToken : String, roomId : String, txnId : Int, body : String } -> Task Http.Error ()
+joinAndPutMessage config =
+    joinRoom config
+        |> Task.andThen (\_ -> putMessage config)
+
+
+joinRoom : { a | homeserverUrl : String, accessToken : String, roomId : String } -> Task Http.Error ()
+joinRoom { homeserverUrl, accessToken, roomId } =
+    apiRequest
+        { method = "POST"
+        , url = clientEndpoint homeserverUrl [ "rooms", roomId, "join" ] []
+        , accessToken = Just accessToken
+        , responseDecoder = JD.succeed ()
+        , body = Http.stringBody "application/json" "{}"
+        }
+
+
+putMessage : { a | homeserverUrl : String, accessToken : String, roomId : String, txnId : Int, body : String } -> Task Http.Error ()
+putMessage { homeserverUrl, accessToken, roomId, txnId, body } =
+    -- post a message
+    let
+        eventType =
+            "m.room.message"
+
+        msgtype =
+            "m.text"
+    in
+    apiRequest
+        { method = "PUT"
+        , url =
+            clientEndpoint homeserverUrl
+                [ "rooms", roomId, "send", eventType, String.fromInt txnId ]
+                []
+        , accessToken = Just accessToken
+        , responseDecoder = JD.succeed ()
+        , body =
+            Http.jsonBody <|
+                JE.object
+                    [ ( "msgtype", JE.string msgtype )
+                    , ( "body", JE.string body )
+                    ]
+        }
+
+
+viewEditor : { room : Room, editor : Editor } -> Html Msg
+viewEditor { room, editor } =
+    div
+        [ class "octopus-editor" ]
+        [ a
+            [ href <| matrixDotToUrl room.roomAlias ]
+            [ text "Join via another client" ]
+        , textarea
+            [ onInput EditComment
+            , value editor.content
+            ]
+            []
+        , button
+            [ onClick <| SendComment room.roomId editor ]
+            [ text "Send" ]
+        ]
+
+
+
+-- VIEW
 
 
 view : Model -> Html Msg
@@ -111,17 +287,17 @@ view model =
 
                 Just errmsg ->
                     [ text <| "ERROR: " ++ errmsg ]
-        , -- show MessageEvents
-          case model.room of
+        , case model.roomState of
             Nothing ->
                 p [] [ text "Getting comments..." ]
 
-            Just room ->
+            Just roomState ->
                 div []
-                    [ viewRoomEvents
+                    [ viewEditor roomState
+                    , viewRoomEvents
                         model.config.defaultHomeserverUrl
-                        room.members
-                        room.events
+                        roomState.room.members
+                        roomState.room.events
                     , viewMoreButton
                     ]
         ]
@@ -133,91 +309,6 @@ viewRoomEvents defaultHomeserverUrl members roomEvents =
         List.map
             (viewMessageEvent defaultHomeserverUrl members)
             (onlyMessageEvents roomEvents)
-
-
-toUtcString : Int -> String
-toUtcString timestamp =
-    let
-        time =
-            Time.millisToPosix timestamp
-
-        dateStr =
-            String.fromInt (Time.toYear Time.utc time)
-                ++ "-"
-                ++ String.fromInt (Date.monthToNumber <| Time.toMonth Time.utc time)
-                ++ "-"
-                ++ String.fromInt (Time.toDay Time.utc time)
-
-        timeStr =
-            String.fromInt (Time.toHour Time.utc time)
-                ++ ":"
-                ++ String.fromInt (Time.toMinute Time.utc time)
-                ++ ":"
-                ++ String.fromInt (Time.toSecond Time.utc time)
-                ++ " (UTC)"
-    in
-    dateStr ++ " " ++ timeStr
-
-
-viewMessageEvent : String -> Dict String Member -> Event Message -> Html Msg
-viewMessageEvent defaultHomeserverUrl members messageEvent =
-    let
-        member : Maybe Member
-        member =
-            Dict.get messageEvent.sender members
-
-        displayname : String
-        displayname =
-            member
-                |> Maybe.map (\m -> Maybe.withDefault "" m.displayname)
-                |> Maybe.withDefault messageEvent.sender
-
-        avatarUrl : Maybe String
-        avatarUrl =
-            member
-                |> Maybe.map
-                    (\m ->
-                        case m.avatarUrl of
-                            Just mxcUrl ->
-                                mxcToHttp defaultHomeserverUrl mxcUrl
-
-                            Nothing ->
-                                Nothing
-                    )
-                |> Maybe.withDefault Nothing
-
-        matrixDotToUrl : String
-        matrixDotToUrl =
-            "https://matrix.to/#/" ++ messageEvent.sender
-
-        timeStr : String
-        timeStr =
-            toUtcString messageEvent.originServerTs
-
-        textBody =
-            case messageEvent.content of
-                Text textMessage ->
-                    textMessage.body
-
-                _ ->
-                    "unsupported message event"
-    in
-    div [ class "octopus-comment" ]
-        -- image
-        [ div [ class "octopus-comment-avatar" ]
-            [ img [ src <| Maybe.withDefault "" avatarUrl ] [] ]
-        , div [ class "octopus-comment-content" ]
-            -- name and time
-            [ div [ class "octopus-comment-header" ]
-                [ p [ class "octopus-comment-displayname" ] [ a [ href matrixDotToUrl ] [ text displayname ] ]
-                , p [ class "octopus-comment-time" ] [ text timeStr ]
-                ]
-
-            -- body
-            , div [ class "octopus-comment-body" ]
-                [ p [] [ text textBody ] ]
-            ]
-        ]
 
 
 viewMoreButton : Html Msg
