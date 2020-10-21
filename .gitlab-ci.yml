@@ -1,0 +1,13 @@
+image: node
+
+stages:
+  - js
+
+js:  
+  stage: js
+  script:
+     - npm run build
+     - mkdir public
+  artifacts:
+    paths:
+      - ./dist/main.js

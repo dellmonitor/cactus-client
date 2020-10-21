@@ -27,11 +27,7 @@ main =
 
 type alias Model =
     { config : StaticConfig
-    , roomState :
-        Maybe
-            { room : Room
-            , editor : Editor
-            }
+    , roomState : Maybe { room : Room, editor : Editor }
     , error : Maybe String
     }
 
@@ -287,7 +283,8 @@ view model =
 
                 Just errmsg ->
                     [ text <| "ERROR: " ++ errmsg ]
-        , case model.roomState of
+        , -- editor and comments section
+          case model.roomState of
             Nothing ->
                 p [] [ text "Getting comments..." ]
 
