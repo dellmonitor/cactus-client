@@ -6,8 +6,9 @@ stages:
 js:  
   stage: js
   script:
-     - npm run build
-     - mkdir public
+    - npm install
+    - npm run build
+    - mkdir public
   artifacts:
     paths:
       - ./dist/main.js
