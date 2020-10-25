@@ -3,6 +3,7 @@ module Main exposing (main)
 import ApiUtils exposing (apiRequest, clientEndpoint, matrixDotToUrl)
 import Browser
 import Dict exposing (Dict)
+import Editor exposing (Editor, joinPutLeave, viewEditor)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
@@ -28,7 +29,7 @@ main =
 
 type alias Model =
     { config : StaticConfig
-    , roomState : Maybe { room : Room, editor : Editor }
+    , roomState : Maybe { room : Room, editor : Editor.Editor }
     , error : Maybe String
     }
 
@@ -155,13 +156,6 @@ update msg model =
         ( SendComment roomId editor, _ ) ->
             -- user hit send button
             let
-                taskfun =
-                    if editor.joined then
-                        putMessage
-
-                    else
-                        joinAndPutMessage
-
                 newEditor =
                     { editor
                         | txnId = editor.txnId + 1
@@ -174,7 +168,7 @@ update msg model =
             in
             ( { model | roomState = newRoomState }
             , Task.attempt SentComment <|
-                taskfun
+                joinPutLeave
                     { homeserverUrl = editor.homeserverUrl
                     , accessToken = editor.accessToken
                     , roomId = roomId
@@ -192,81 +186,6 @@ update msg model =
             ( { model | error = Just <| Debug.toString httpErr }
             , Cmd.none
             )
-
-
-
--- EDITOR
-
-
-type alias Editor =
-    { homeserverUrl : String
-    , accessToken : String
-    , content : String
-    , txnId : Int
-    , joined : Bool
-    }
-
-
-joinAndPutMessage : { homeserverUrl : String, accessToken : String, roomId : String, txnId : Int, body : String } -> Task Http.Error ()
-joinAndPutMessage config =
-    joinRoom config
-        |> Task.andThen (\_ -> putMessage config)
-
-
-joinRoom : { a | homeserverUrl : String, accessToken : String, roomId : String } -> Task Http.Error ()
-joinRoom { homeserverUrl, accessToken, roomId } =
-    apiRequest
-        { method = "POST"
-        , url = clientEndpoint homeserverUrl [ "rooms", roomId, "join" ] []
-        , accessToken = Just accessToken
-        , responseDecoder = JD.succeed ()
-        , body = Http.stringBody "application/json" "{}"
-        }
-
-
-putMessage : { a | homeserverUrl : String, accessToken : String, roomId : String, txnId : Int, body : String } -> Task Http.Error ()
-putMessage { homeserverUrl, accessToken, roomId, txnId, body } =
-    -- post a message
-    let
-        eventType =
-            "m.room.message"
-
-        msgtype =
-            "m.text"
-    in
-    apiRequest
-        { method = "PUT"
-        , url =
-            clientEndpoint homeserverUrl
-                [ "rooms", roomId, "send", eventType, String.fromInt txnId ]
-                []
-        , accessToken = Just accessToken
-        , responseDecoder = JD.succeed ()
-        , body =
-            Http.jsonBody <|
-                JE.object
-                    [ ( "msgtype", JE.string msgtype )
-                    , ( "body", JE.string body )
-                    ]
-        }
-
-
-viewEditor : { room : Room, editor : Editor } -> Html Msg
-viewEditor { room, editor } =
-    div
-        [ class "cactus-editor" ]
-        [ a
-            [ href <| matrixDotToUrl room.roomAlias ]
-            [ text "Join via another client" ]
-        , textarea
-            [ onInput EditComment
-            , value editor.content
-            ]
-            []
-        , button
-            [ onClick <| SendComment room.roomId editor ]
-            [ text "Send" ]
-        ]
 
 
 
@@ -291,7 +210,12 @@ view model =
 
             Just roomState ->
                 div []
-                    [ viewEditor roomState
+                    [ viewEditor
+                        { editMsg = EditComment
+                        , sendMsg = SendComment roomState.room.roomId
+                        , roomAlias = roomState.room.roomAlias
+                        , editor = roomState.editor
+                        }
                     , viewRoomEvents
                         model.config.defaultHomeserverUrl
                         roomState.room.time
