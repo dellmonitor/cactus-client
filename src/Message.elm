@@ -1,4 +1,4 @@
-module Message exposing (Event, GetMessagesResponse, Message(..), RoomEvent(..), getMessages, onlyMessageEvents, viewMessageEvent)
+module Message exposing (Event, GetMessagesResponse, Message(..), RoomEvent(..), getMessages, onlyMessageEvents, timeSinceText, viewMessageEvent)
 
 import ApiUtils exposing (apiRequest, clientEndpoint, httpFromMxc, thumbnailFromMxc)
 import Date
@@ -217,7 +217,7 @@ timeSinceText now then_ =
         allTimeUnits : List ( String, Duration.Duration -> Float )
         allTimeUnits =
             [ ( "years", Duration.inJulianYears )
-            , ( "months", Duration.inJulianYears >> (\yrs -> yrs / 12) )
+            , ( "months", Duration.inJulianYears >> (*) 12 )
             , ( "weeks", Duration.inWeeks )
             , ( "days", Duration.inDays )
             , ( "hours", Duration.inHours )

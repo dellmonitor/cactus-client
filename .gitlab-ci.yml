@@ -1,7 +1,14 @@
 image: node
 
 stages:
+  - test
   - js
+
+test:
+  stage: test
+  script:
+    - npm install -g elm-test
+    - elm-test
 
 js:  
   stage: js
