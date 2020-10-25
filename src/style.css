@@ -22,11 +22,20 @@
   padding-right: 1rem;
 }
 
-.cactus-comment-avatar > img {
+.cactus-comment-avatar > * {
   /* the avatar image */
+  margin: 0;
   width: 3rem;
   height: 3rem;
   border-radius: 50%;
+}
+
+.cactus-comment-avatar > p {
+  /* in case of no avatar */
+  background: black;
+  color: white;
+  text-align: center;
+  line-height: 3rem;
 }
 
 .cactus-comment-content {

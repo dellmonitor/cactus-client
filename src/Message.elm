@@ -412,6 +412,12 @@ imgAttributes homeserverUrl attrs =
 -- VIEW
 
 
+{-| toUtcString gives a formatted string showing the posix time given as a
+YYYY-MM-DD HH:MM:SS string.
+
+    toUtcString 0 == "1970-01-01 00:00:00 (UTC)"
+
+-}
 toUtcString : Int -> String
 toUtcString timestamp =
     let
@@ -436,14 +442,14 @@ toUtcString timestamp =
     dateStr ++ " " ++ timeStr
 
 
-{-| timeSince gives a natural language string that says how long ago the
+{-| timeSinceText gives a natural language string that says how long ago the
 comment was posted.
 
-                timeSince
+    timeSince (Time.millisToPosix 4000) (Time.millisToPosix 1000) == "3 seconds ago"
 
 -}
-timeSince : Time.Posix -> Time.Posix -> String
-timeSince now then_ =
+timeSinceText : Time.Posix -> Time.Posix -> String
+timeSinceText now then_ =
     let
         diff =
             Duration.from then_ now
@@ -492,28 +498,13 @@ viewMessageEvent defaultHomeserverUrl time members messageEvent =
                 |> Maybe.map (\m -> Maybe.withDefault "" m.displayname)
                 |> Maybe.withDefault messageEvent.sender
 
-        avatarUrl : Maybe String
-        avatarUrl =
-            member
-                |> Maybe.map
-                    (\m ->
-                        case m.avatarUrl of
-                            Just mxcUrl ->
-                                thumbnailFromMxc defaultHomeserverUrl mxcUrl
-
-                            Nothing ->
-                                Nothing
-                    )
-                |> Maybe.withDefault Nothing
-
         matrixDotToUrl : String
         matrixDotToUrl =
             "https://matrix.to/#/" ++ messageEvent.sender
 
         timeStr : String
         timeStr =
-            -- toUtcString messageEvent.originServerTs
-            timeSince time messageEvent.originServerTs
+            timeSinceText time messageEvent.originServerTs
 
         body : Html msg
         body =
@@ -521,8 +512,7 @@ viewMessageEvent defaultHomeserverUrl time members messageEvent =
     in
     div [ class "cactus-comment" ]
         [ -- avatar image
-          div [ class "cactus-comment-avatar" ]
-            [ img [ src <| Maybe.withDefault "" avatarUrl ] [] ]
+          viewAvatar defaultHomeserverUrl member
         , div [ class "cactus-comment-content" ]
             -- name and time
             [ div [ class "cactus-comment-header" ]
@@ -537,6 +527,32 @@ viewMessageEvent defaultHomeserverUrl time members messageEvent =
               div [ class "cactus-comment-body" ] [ body ]
             ]
         ]
+
+
+viewAvatar : String -> Maybe Member -> Html msg
+viewAvatar homeserverUrl member =
+    let
+        avatarUrl : Maybe String
+        avatarUrl =
+            member
+                |> Maybe.map
+                    (\m ->
+                        case m.avatarUrl of
+                            Just mxcUrl ->
+                                thumbnailFromMxc homeserverUrl mxcUrl
+
+                            Nothing ->
+                                Nothing
+                    )
+                |> Maybe.withDefault Nothing
+    in
+    div [ class "cactus-comment-avatar" ] <|
+        case avatarUrl of
+            Just url ->
+                [ img [ src url ] [] ]
+
+            Nothing ->
+                [ p [] [ text "?" ] ]
 
 
 viewMessage : String -> Message -> Html msg
