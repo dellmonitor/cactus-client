@@ -4,7 +4,7 @@
       elmPackages.elm
       elmPackages.elm-format
       elmPackages.elm-test
-      elm2nix
+      elmPackages.elm-coverage
       nodejs
       nodePackages.parcel-bundler
     ];
