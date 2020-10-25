@@ -3,6 +3,12 @@
   font-family: "Helvetica", "Arial", sans-serif;
 }
 
+.octopus-editor {
+  /* comment text field and login */
+  display: flex;
+  flex-direction: column;
+}
+
 .octopus-comment {
   /* a comment */
   display: flex;
@@ -24,7 +30,7 @@
 }
 
 .octopus-comment-content {
-  /* comment header and body */
+  /* stuff left of the avatar: header and body */
   display: flex;
   flex-direction: column;
 }
@@ -33,9 +39,7 @@
   /* user name and posting time */
   display: flex;
 }
-
 .octopus-comment-header > * {
-  /* elements in header */
   margin: 0;
   font-size: 1em;
 }
@@ -61,4 +65,13 @@
   /* text or media content of comment */
   margin: 0;
   margin-top: 0.5em;
+}
+
+/* body for different message types */
+.octopus-message-text {
+}
+
+.octopus-message-emote {
+  padding-top: 0.5em;
+  opacity: 0.7;
 }

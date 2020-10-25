@@ -14,6 +14,7 @@ import Message exposing (Event, GetMessagesResponse, Message(..), RoomEvent, get
 import Register exposing (registerGuest)
 import Room exposing (Room, getInitialRoom, mergeNewMessages)
 import Task exposing (Task)
+import Time
 
 
 main =
@@ -293,6 +294,7 @@ view model =
                     [ viewEditor roomState
                     , viewRoomEvents
                         model.config.defaultHomeserverUrl
+                        roomState.room.time
                         roomState.room.members
                         roomState.room.events
                     , viewMoreButton
@@ -300,11 +302,11 @@ view model =
         ]
 
 
-viewRoomEvents : String -> Dict String Member -> List RoomEvent -> Html Msg
-viewRoomEvents defaultHomeserverUrl members roomEvents =
+viewRoomEvents : String -> Time.Posix -> Dict String Member -> List RoomEvent -> Html Msg
+viewRoomEvents defaultHomeserverUrl time members roomEvents =
     div [] <|
         List.map
-            (viewMessageEvent defaultHomeserverUrl members)
+            (viewMessageEvent defaultHomeserverUrl time members)
             (onlyMessageEvents roomEvents)
 
 

@@ -1,8 +1,9 @@
 module Message exposing (Event, GetMessagesResponse, Message(..), RoomEvent(..), getMessages, onlyMessageEvents, viewMessageEvent)
 
-import ApiUtils exposing (apiRequest, clientEndpoint, thumbnailFromMxc)
+import ApiUtils exposing (apiRequest, clientEndpoint, httpFromMxc, thumbnailFromMxc)
 import Date
 import Dict exposing (Dict)
+import Duration
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Parser
@@ -19,7 +20,7 @@ type alias Event a =
     { eventType : String
     , content : a
     , sender : String
-    , originServerTs : Int
+    , originServerTs : Time.Posix
     }
 
 
@@ -98,14 +99,14 @@ decodeMessages =
 decodeRoomEvent : JD.Decoder RoomEvent
 decodeRoomEvent =
     let
-        makeRoomEvent : (String -> a -> String -> Int -> RoomEvent) -> JD.Decoder a -> JD.Decoder RoomEvent
+        makeRoomEvent : (String -> a -> String -> Time.Posix -> RoomEvent) -> JD.Decoder a -> JD.Decoder RoomEvent
         makeRoomEvent constructor contentDecoder =
             JD.map4
                 constructor
                 (JD.field "type" JD.string)
                 (JD.field "content" contentDecoder)
                 (JD.field "sender" JD.string)
-                (JD.field "origin_server_ts" JD.int)
+                (JD.field "origin_server_ts" JD.int |> JD.map Time.millisToPosix)
     in
     -- switch on room event type,
     JD.field "type" JD.string
@@ -145,10 +146,10 @@ decodeMessage =
             (\mt ->
                 case mt of
                     "m.text" ->
-                        decodeTextMessage
+                        JD.map Text decodeFormattedText
 
                     "m.emote" ->
-                        JD.succeed (Emote <| Plain "TODO: Implement me")
+                        JD.map Emote decodeFormattedText
 
                     "m.notice" ->
                         JD.succeed Notice
@@ -206,14 +207,9 @@ decodeTextHtml =
 
                     Ok nodes ->
                         -- successful html parse
-                        -- TODO: clean up HTML
-                        JD.succeed <| Html nodes
+                        -- XXX: still not sanitized
+                        JD.succeed (Html nodes)
             )
-
-
-decodeTextMessage : JD.Decoder Message
-decodeTextMessage =
-    JD.map Text <| decodeFormattedText
 
 
 
@@ -264,31 +260,33 @@ tagWhitelist =
     ]
 
 
-cleanHtmlNode : Html.Parser.Node -> Html.Parser.Node
-cleanHtmlNode node =
-    -- XXX: this is not complete
+cleanHtmlNode : String -> Html.Parser.Node -> Html.Parser.Node
+cleanHtmlNode homeserverUrl node =
+    -- TODO: observe max depth as recommended by C/S spec
     case node of
         Html.Parser.Text _ ->
+            -- raw text gets to stay
+            node
+
+        Html.Parser.Comment str ->
+            -- keep comments also
             node
 
         Html.Parser.Element tag attrs children ->
+            -- if tag in whitelist, clean the attributes and children
             if List.member tag tagWhitelist then
                 Html.Parser.Element
                     tag
-                    (cleanAttributes tag attrs)
-                    (List.map cleanHtmlNode children)
+                    (cleanAttributes homeserverUrl tag attrs)
+                    (List.map (cleanHtmlNode homeserverUrl) children)
 
             else
-                -- element not in whitelist - leave empty
+                -- element not in whitelist - remove it
                 Html.Parser.Text ""
 
-        _ ->
-            -- TODO: last case
-            node
 
-
-cleanAttributes : String -> List ( String, String ) -> List ( String, String )
-cleanAttributes tag attrs =
+cleanAttributes : String -> String -> List ( String, String ) -> List ( String, String )
+cleanAttributes homeserverUrl tag attrs =
     -- keep omly the attributes whitelisted by the client/server api spec
     -- and transform them as per the spec
     case tag of
@@ -303,7 +301,7 @@ cleanAttributes tag attrs =
             ( "rel", "noopener" ) :: anchorAttributes attrs
 
         "img" ->
-            []
+            imgAttributes homeserverUrl attrs
 
         "ol" ->
             []
@@ -325,12 +323,12 @@ colorAttributes attrs =
                 ( "data-mx-color", colorStr ) ->
                     -- XXX: this is vulnurable to css injection
                     -- TODO: fix this shit
-                    ( "style", "color: #" ++ colorStr ) :: list
+                    ( "style", "color: " ++ colorStr ) :: list
 
                 ( "data-mx-bg-color", colorStr ) ->
                     -- XXX: this is vulnurable to css injection
                     -- TODO: fix this shit
-                    ( "style", "background: #" ++ colorStr ) :: list
+                    ( "style", "background: " ++ colorStr ) :: list
 
                 _ ->
                     -- discard all other attributes
@@ -380,8 +378,8 @@ anchorAttributes attrs =
         attrs
 
 
-imgAttributes : List ( String, String ) -> List ( String, String )
-imgAttributes attrs =
+imgAttributes : String -> List ( String, String ) -> List ( String, String )
+imgAttributes homeserverUrl attrs =
     List.foldl
         (\attr list ->
             case attr of
@@ -398,8 +396,10 @@ imgAttributes attrs =
                     attr :: list
 
                 ( "src", srcStr ) ->
-                    -- TODO: get a function that can change to media url
-                    ( "src", "TODO" ) :: list
+                    -- only keep if mxc parsing succeeds
+                    httpFromMxc homeserverUrl srcStr
+                        |> Maybe.map (\url -> ( "src", url ) :: list)
+                        |> Maybe.withDefault list
 
                 _ ->
                     list
@@ -436,8 +436,51 @@ toUtcString timestamp =
     dateStr ++ " " ++ timeStr
 
 
-viewMessageEvent : String -> Dict String Member -> Event Message -> Html msg
-viewMessageEvent defaultHomeserverUrl members messageEvent =
+{-| timeSince gives a natural language string that says how long ago the
+comment was posted.
+
+                timeSince
+
+-}
+timeSince : Time.Posix -> Time.Posix -> String
+timeSince now then_ =
+    let
+        diff =
+            Duration.from then_ now
+
+        allTimeUnits : List ( String, Duration.Duration -> Float )
+        allTimeUnits =
+            [ ( "years", Duration.inJulianYears )
+            , ( "months", Duration.inJulianYears >> (\yrs -> yrs / 12) )
+            , ( "weeks", Duration.inWeeks )
+            , ( "days", Duration.inDays )
+            , ( "hours", Duration.inHours )
+            , ( "minutes", Duration.inMinutes )
+            , ( "seconds", Duration.inSeconds )
+            ]
+
+        biggestUnitGreaterThanOne : List ( String, Duration.Duration -> Float ) -> ( String, Duration.Duration -> Float )
+        biggestUnitGreaterThanOne timeunits =
+            -- expects the unit list to be sorted by size
+            case timeunits of
+                ( name, unit ) :: rest ->
+                    if unit diff > 1 then
+                        ( name, unit )
+
+                    else
+                        biggestUnitGreaterThanOne rest
+
+                [] ->
+                    ( "seconds", Duration.inSeconds )
+
+        ( unitname, unitfun ) =
+            biggestUnitGreaterThanOne allTimeUnits
+    in
+    (String.fromInt <| floor <| unitfun diff) ++ " " ++ unitname ++ " ago"
+
+
+viewMessageEvent : String -> Time.Posix -> Dict String Member -> Event Message -> Html msg
+viewMessageEvent defaultHomeserverUrl time members messageEvent =
     let
         member : Maybe Member
         member =
@@ -469,39 +512,61 @@ viewMessageEvent defaultHomeserverUrl members messageEvent =
 
         timeStr : String
         timeStr =
-            toUtcString messageEvent.originServerTs
+            -- toUtcString messageEvent.originServerTs
+            timeSince time messageEvent.originServerTs
 
         body : Html msg
         body =
-            viewMessage messageEvent.content
+            viewMessage defaultHomeserverUrl messageEvent.content
     in
     div [ class "octopus-comment" ]
-        -- image
-        [ div [ class "octopus-comment-avatar" ]
+        [ -- avatar image
+          div [ class "octopus-comment-avatar" ]
             [ img [ src <| Maybe.withDefault "" avatarUrl ] [] ]
         , div [ class "octopus-comment-content" ]
             -- name and time
             [ div [ class "octopus-comment-header" ]
-                [ p [ class "octopus-comment-displayname" ] [ a [ href matrixDotToUrl ] [ text displayname ] ]
-                , p [ class "octopus-comment-time" ] [ text timeStr ]
+                [ p
+                    [ class "octopus-comment-displayname" ]
+                    [ a [ href matrixDotToUrl ] [ text displayname ] ]
+                , p
+                    [ class "octopus-comment-time" ]
+                    [ text timeStr ]
                 ]
-
-            -- body
-            , div [ class "octopus-comment-body" ]
-                [ body ]
+            , --  body
+              div [ class "octopus-comment-body" ] [ body ]
             ]
         ]
 
 
-viewMessage : Message -> Html msg
-viewMessage message =
+viewMessage : String -> Message -> Html msg
+viewMessage homeserverUrl message =
     case message of
-        Text (Plain str) ->
-            p [] [ text str ]
+        Text fmt ->
+            div
+                [ class "octopus-message-text" ]
+                [ viewFormattedText homeserverUrl fmt ]
 
-        Text (Html html) ->
-            div [] <| Html.Parser.Util.toVirtualDom html
+        Emote (Plain str) ->
+            div
+                [ class "octopus-message-emote" ]
+                [ p [] [ text <| "Asbjørn " ++ str ] ]
+
+        Emote fmt ->
+            div
+                [ class "octopus-message-text" ]
+                [ viewFormattedText homeserverUrl fmt ]
 
         _ ->
             -- TODO: this shouldn't be a thing
             p [] [ text "unsupported message event" ]
+
+
+viewFormattedText : String -> FormattedText -> Html msg
+viewFormattedText homeserverUrl fmt =
+    case fmt of
+        Plain str ->
+            p [] [ text str ]
+
+        Html nodes ->
+            div [] (List.map (cleanHtmlNode homeserverUrl) nodes |> Html.Parser.Util.toVirtualDom)

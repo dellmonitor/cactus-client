@@ -8,6 +8,7 @@ import Member exposing (Member, getJoinedMembers)
 import Message exposing (RoomEvent(..), getMessages)
 import Register exposing (registerGuest)
 import Task exposing (Task)
+import Time
 import Url.Builder
 
 
@@ -19,6 +20,7 @@ type alias Room =
     , start : String
     , end : String
     , members : Dict String Member
+    , time : Time.Posix
     }
 
 
@@ -48,13 +50,24 @@ sortByTime events =
             (\e ->
                 case e of
                     MessageEvent msgEvent ->
-                        .originServerTs msgEvent
+                        .originServerTs msgEvent |> Time.posixToMillis
 
                     UnsupportedEvent uEvt ->
-                        .originServerTs uEvt
+                        .originServerTs uEvt |> Time.posixToMillis
             )
 
 
+{-| This (admittedly huge) call chains 4 API requests to set up the room:
+
+1.  Register a guest account, get an access token
+2.  Get a token to sync events from
+3.  Get message events
+4.  Get current room members
+5.  (Get current time)
+
+The Task eventually completes a Room record.
+
+-}
 getInitialRoom : { defaultHomeserverUrl : String, siteName : String, uniqueId : String } -> Task Http.Error Room
 getInitialRoom config =
     -- Register a guest user and and get serverName
@@ -73,7 +86,8 @@ getInitialRoom config =
                     |> Task.map
                         (\roomId ->
                             { accessToken = data.accessToken
-                            , roomId = roomId
+                            , --
+                              roomId = roomId
                             , roomAlias = roomAlias
                             }
                         )
@@ -91,7 +105,8 @@ getInitialRoom config =
                             { accessToken = data.accessToken
                             , roomId = data.roomId
                             , roomAlias = data.roomAlias
-                            , sinceToken = sinceToken
+                            , --
+                              sinceToken = sinceToken
                             }
                         )
             )
@@ -109,7 +124,8 @@ getInitialRoom config =
                             { accessToken = data.accessToken
                             , roomAlias = data.roomAlias
                             , roomId = data.roomId
-                            , events = sortByTime events.chunk
+                            , --
+                              events = sortByTime events.chunk
                             , start = events.start
                             , end = events.end
                             }
@@ -128,15 +144,35 @@ getInitialRoom config =
                             { accessToken = data.accessToken
                             , roomAlias = data.roomAlias
                             , roomId = data.roomId
-                            , events = sortByTime data.events
+                            , events = data.events
                             , start = data.start
                             , end = data.end
-                            , members = members
+                            , --
+                              members = members
+                            }
+                        )
+            )
+        |> Task.andThen
+            (\data ->
+                Time.now
+                    |> Task.map
+                        (\time ->
+                            { accessToken = data.accessToken
+                            , roomAlias = data.roomAlias
+                            , roomId = data.roomId
+                            , events = data.events
+                            , start = data.start
+                            , end = data.end
+                            , members = data.members
+                            , --
+                              time = time
                             }
                         )
             )
 
 
+{-| Make a GET request to resolve a roomId from a given roomAlias.
+-}
 getRoomId : String -> String -> Task Http.Error String
 getRoomId homeserverUrl roomAlias =
     apiRequest
@@ -148,6 +184,9 @@ getRoomId homeserverUrl roomAlias =
         }
 
 
+{-| Make a GET to events endpoint - only to extract a "since-token", which can
+be used to fetch events from another endpoint.
+-}
 getSinceToken : { homeserverUrl : String, accessToken : String, roomId : String } -> Task Http.Error String
 getSinceToken { homeserverUrl, accessToken, roomId } =
     apiRequest

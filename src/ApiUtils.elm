@@ -1,4 +1,4 @@
-module ApiUtils exposing (apiRequest, clientEndpoint, matrixDotToUrl, mediaEndpoint, thumbnailFromMxc)
+module ApiUtils exposing (apiRequest, clientEndpoint, httpFromMxc, matrixDotToUrl, mediaEndpoint, thumbnailFromMxc)
 
 import Http
 import Json.Decode as JD
@@ -75,6 +75,21 @@ thumbnailFromMxc homeserverUrl mxcUrl =
                 , Url.Builder.string "method" "crop"
                 ]
         )
+        serverName
+        mediaId
+
+
+httpFromMxc : String -> String -> Maybe String
+httpFromMxc homeserverUrl mxcUrl =
+    let
+        serverName =
+            mxcServerName mxcUrl
+
+        mediaId =
+            mxcMediaId mxcUrl
+    in
+    Maybe.map2
+        (\sn mid -> mediaEndpoint homeserverUrl [ "download", sn, mid ] [])
         serverName
         mediaId
 
