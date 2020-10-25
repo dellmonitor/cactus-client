@@ -519,22 +519,22 @@ viewMessageEvent defaultHomeserverUrl time members messageEvent =
         body =
             viewMessage defaultHomeserverUrl messageEvent.content
     in
-    div [ class "octopus-comment" ]
+    div [ class "cactus-comment" ]
         [ -- avatar image
-          div [ class "octopus-comment-avatar" ]
+          div [ class "cactus-comment-avatar" ]
             [ img [ src <| Maybe.withDefault "" avatarUrl ] [] ]
-        , div [ class "octopus-comment-content" ]
+        , div [ class "cactus-comment-content" ]
             -- name and time
-            [ div [ class "octopus-comment-header" ]
+            [ div [ class "cactus-comment-header" ]
                 [ p
-                    [ class "octopus-comment-displayname" ]
+                    [ class "cactus-comment-displayname" ]
                     [ a [ href matrixDotToUrl ] [ text displayname ] ]
                 , p
-                    [ class "octopus-comment-time" ]
+                    [ class "cactus-comment-time" ]
                     [ text timeStr ]
                 ]
             , --  body
-              div [ class "octopus-comment-body" ] [ body ]
+              div [ class "cactus-comment-body" ] [ body ]
             ]
         ]
 
@@ -544,17 +544,17 @@ viewMessage homeserverUrl message =
     case message of
         Text fmt ->
             div
-                [ class "octopus-message-text" ]
+                [ class "cactus-message-text" ]
                 [ viewFormattedText homeserverUrl fmt ]
 
         Emote (Plain str) ->
             div
-                [ class "octopus-message-emote" ]
+                [ class "cactus-message-emote" ]
                 [ p [] [ text <| "Asbjørn " ++ str ] ]
 
         Emote fmt ->
             div
-                [ class "octopus-message-text" ]
+                [ class "cactus-message-text" ]
                 [ viewFormattedText homeserverUrl fmt ]
 
         _ ->

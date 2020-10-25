@@ -254,7 +254,7 @@ putMessage { homeserverUrl, accessToken, roomId, txnId, body } =
 viewEditor : { room : Room, editor : Editor } -> Html Msg
 viewEditor { room, editor } =
     div
-        [ class "octopus-editor" ]
+        [ class "cactus-editor" ]
         [ a
             [ href <| matrixDotToUrl room.roomAlias ]
             [ text "Join via another client" ]
@@ -275,7 +275,7 @@ viewEditor { room, editor } =
 
 view : Model -> Html Msg
 view model =
-    div [ class "octopus-container" ] <|
+    div [ class "cactus-container" ] <|
         [ -- view errors
           h5 [] <|
             case model.error of
