@@ -1,12 +1,12 @@
-module Room exposing (Room, getInitialRoom, mergeNewMessages)
+module Room exposing (Room, getInitialRoom, makeRoomAlias, mergeNewMessages)
 
-import ApiUtils exposing (apiRequest, clientEndpoint)
+import ApiUtils exposing (apiRequest, clientEndpoint, serverNameFromId)
+import Authentication exposing (registerGuest)
 import Dict exposing (Dict)
 import Http
 import Json.Decode as JD
 import Member exposing (Member, getJoinedMembers)
 import Message exposing (RoomEvent(..), getMessages)
-import Register exposing (registerGuest)
 import Task exposing (Task)
 import Time
 import Url.Builder
@@ -76,21 +76,29 @@ getInitialRoom config =
         |> Task.andThen
             (\data ->
                 let
+                    serverName =
+                        -- TODO: this doesn't work
+                        serverNameFromId data.userId
+
                     roomAlias =
-                        makeRoomAlias
-                            config.siteName
-                            config.uniqueId
-                            data.serverName
+                        Maybe.map
+                            (makeRoomAlias config.siteName config.uniqueId)
+                            serverName
                 in
-                getRoomId config.defaultHomeserverUrl roomAlias
-                    |> Task.map
-                        (\roomId ->
-                            { accessToken = data.accessToken
-                            , --
-                              roomId = roomId
-                            , roomAlias = roomAlias
-                            }
-                        )
+                case roomAlias of
+                    Nothing ->
+                        Task.fail <| Http.BadBody "Could not determine server name from user id"
+
+                    Just ra ->
+                        getRoomId config.defaultHomeserverUrl ra
+                            |> Task.map
+                                (\roomId ->
+                                    { accessToken = data.accessToken
+                                    , --
+                                      roomId = roomId
+                                    , roomAlias = ra
+                                    }
+                                )
             )
         -- get since token from /events
         |> Task.andThen

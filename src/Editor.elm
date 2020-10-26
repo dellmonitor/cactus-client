@@ -19,7 +19,6 @@ type alias Editor =
     , accessToken : String
     , content : String
     , txnId : Int
-    , joined : Bool
     }
 
 

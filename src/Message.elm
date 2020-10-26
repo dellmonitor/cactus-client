@@ -15,17 +15,17 @@ import Time
 import Url.Builder
 
 
+type RoomEvent
+    = MessageEvent (Event Message)
+    | UnsupportedEvent (Event ())
+
+
 type alias Event a =
     { eventType : String
     , content : a
     , sender : String
     , originServerTs : Time.Posix
     }
-
-
-type RoomEvent
-    = MessageEvent (Event Message)
-    | UnsupportedEvent (Event ())
 
 
 type Message

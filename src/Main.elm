@@ -12,7 +12,6 @@ import Json.Decode as JD
 import Json.Encode as JE
 import Member exposing (Member)
 import Message exposing (Event, GetMessagesResponse, Message(..), RoomEvent, getMessages, onlyMessageEvents, viewMessageEvent)
-import Register exposing (registerGuest)
 import Room exposing (Room, getInitialRoom, mergeNewMessages)
 import Task exposing (Task)
 import Time
@@ -76,7 +75,6 @@ update msg model =
                             , accessToken = room.accessToken
                             , content = ""
                             , txnId = 0
-                            , joined = False
                             }
                         }
               }
@@ -159,7 +157,6 @@ update msg model =
                 newEditor =
                     { editor
                         | txnId = editor.txnId + 1
-                        , joined = True
                         , content = ""
                     }
 

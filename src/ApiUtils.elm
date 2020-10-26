@@ -1,4 +1,4 @@
-module ApiUtils exposing (apiRequest, clientEndpoint, httpFromMxc, matrixDotToUrl, mediaEndpoint, thumbnailFromMxc)
+module ApiUtils exposing (apiRequest, clientEndpoint, httpFromMxc, matrixDotToUrl, mediaEndpoint, serverNameFromId, thumbnailFromMxc)
 
 import Http
 import Json.Decode as JD
@@ -36,6 +36,26 @@ matrixDotToUrl identifier =
         "https://matrix.to"
         [ "#", percentEncode identifier ]
         []
+
+
+{-| Get the server name of a matrix server by splitting an identifier on :
+
+    serverNameFromId "@user:server.com" == Just "server.com"
+
+    serverNameFromId "#room:server.com" == Just "server.com"
+
+    serverNameFromId "foobar" == Nothing
+
+-}
+serverNameFromId : String -> Maybe String
+serverNameFromId id =
+    if String.contains ":" id then
+        id
+            |> String.split ":"
+            |> (List.reverse >> List.head)
+
+    else
+        Nothing
 
 
 
@@ -98,6 +118,9 @@ httpFromMxc homeserverUrl mxcUrl =
 -- HTTP REQUESTS
 
 
+{-| handle the JSON response of a HTTP Request
+Flatten HTTP and JSON errors.
+-}
 handleJsonResponse : JD.Decoder a -> Http.Response String -> Result Http.Error a
 handleJsonResponse decoder response =
     case response of
@@ -122,6 +145,8 @@ handleJsonResponse decoder response =
                     Ok result
 
 
+{-| Make an optionally authenticated requests to a Matrix homeserver.
+-}
 apiRequest :
     { method : String
     , url : String
