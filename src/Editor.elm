@@ -15,11 +15,7 @@ import Task exposing (Task)
 
 
 type alias Editor =
-    { homeserverUrl : String
-    , accessToken : String
-    , content : String
-    , txnId : Int
-    }
+    { content : String }
 
 
 {-| Chain of three requests:
@@ -85,7 +81,7 @@ putMessage { homeserverUrl, accessToken, roomId, txnId, body } =
         }
 
 
-viewEditor : { editMsg : String -> msg, sendMsg : Editor -> msg, roomAlias : String, editor : Editor } -> Html msg
+viewEditor : { editMsg : String -> msg, sendMsg : msg, roomAlias : String, editor : Editor } -> Html msg
 viewEditor { editMsg, sendMsg, roomAlias, editor } =
     div
         [ class "cactus-editor" ]
@@ -98,6 +94,6 @@ viewEditor { editMsg, sendMsg, roomAlias, editor } =
             ]
             []
         , button
-            [ onClick <| sendMsg editor ]
+            [ onClick sendMsg ]
             [ text "Send" ]
         ]

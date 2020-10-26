@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import ApiUtils exposing (apiRequest, clientEndpoint, matrixDotToUrl)
+import Authentication exposing (Authentication)
 import Browser
 import Dict exposing (Dict)
 import Editor exposing (Editor, joinPutLeave, viewEditor)
@@ -28,7 +29,8 @@ main =
 
 type alias Model =
     { config : StaticConfig
-    , roomState : Maybe { room : Room, editor : Editor.Editor }
+    , editor : Editor
+    , roomState : Maybe { room : Room, auth : Authentication }
     , error : Maybe String
     }
 
@@ -43,6 +45,7 @@ type alias StaticConfig =
 init : StaticConfig -> ( Model, Cmd Msg )
 init config =
     ( { config = config
+      , editor = { content = "" }
       , roomState = Nothing
       , error = Nothing
       }
@@ -51,135 +54,104 @@ init config =
 
 
 type Msg
-    = GotRoom (Result Http.Error Room)
-    | ViewMoreClicked
-    | GotMessages (Result Http.Error GetMessagesResponse)
+    = GotRoom (Result Http.Error ( Authentication, Room ))
+    | ViewMoreClicked Authentication Room
+    | GotMessages Room (Result Http.Error GetMessagesResponse)
       -- EDITOR
     | EditComment String
-    | SendComment String Editor
+    | SendComment Authentication Room
     | SentComment (Result Http.Error ())
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case ( msg, model.roomState ) of
-        ( GotRoom (Ok room), _ ) ->
+    case msg of
+        GotRoom (Ok ( auth, room )) ->
             -- got initial room, when loading page first ime
             ( { model
                 | roomState =
                     Just
                         -- init both room and editor. this enables most of the ui
                         { room = room
-                        , editor =
-                            { homeserverUrl = model.config.defaultHomeserverUrl
-                            , accessToken = room.accessToken
-                            , content = ""
-                            , txnId = 0
-                            }
+                        , auth = auth
                         }
               }
             , Cmd.none
             )
 
-        ( GotRoom (Err err), _ ) ->
+        GotRoom (Err err) ->
             -- error while setting up initial room
             ( { model | error = Just <| Debug.toString err }
             , Cmd.none
             )
 
-        ( ViewMoreClicked, Just roomState ) ->
+        ViewMoreClicked auth room ->
             -- "view more" button hit - issue request to fetch more messages
             ( model
-            , Task.attempt GotMessages <|
+            , Task.attempt (GotMessages room) <|
                 getMessages
-                    { homeserverUrl = model.config.defaultHomeserverUrl
-                    , accessToken = roomState.room.accessToken
-                    , roomId = roomState.room.roomId
-                    , from = roomState.room.end
+                    { homeserverUrl = auth.homeserverUrl
+                    , accessToken = auth.accessToken
+                    , roomId = room.roomId
+                    , from = room.end
                     }
             )
 
-        ( ViewMoreClicked, _ ) ->
-            -- impossible state:
-            -- "view more" clicked - but the room hasn't finished loading yet.
-            ( { model | error = Just "Can't fetch messages: no connection to homeserver" }
-            , Cmd.none
-            )
-
-        ( GotMessages (Ok newMsgs), Just roomState ) ->
+        GotMessages room (Ok newMsgs) ->
             -- got more messages. result of the "ViewMore"-button request
             let
                 newRoom =
-                    mergeNewMessages roomState.room newMsgs
+                    mergeNewMessages room newMsgs
 
                 newRoomState =
-                    { roomState | room = newRoom }
+                    Maybe.map
+                        (\rs -> { rs | room = newRoom })
+                        model.roomState
             in
-            ( { model | roomState = Just newRoomState }
+            ( { model | roomState = newRoomState }
             , Cmd.none
             )
 
-        ( GotMessages (Err httpErr), Just room ) ->
+        GotMessages _ (Err httpErr) ->
             -- http error while getting more comments
             ( { model | error = Just <| Debug.toString httpErr }
             , Cmd.none
             )
 
-        ( GotMessages newMsgs, Nothing ) ->
-            -- impossible state: get response with new messages,
-            -- without having an initialized room
-            ( { model | error = Just "Unexpected state: got message response without a room" }
-            , Cmd.none
-            )
-
-        ( EditComment str, Just roomState ) ->
+        EditComment str ->
             -- user changes text in comment box
-            let
-                editor =
-                    roomState.editor
-
-                newEditor =
-                    { editor | content = str }
-
-                newRoomState =
-                    { roomState | editor = newEditor }
-            in
-            ( { model | roomState = Just newRoomState }
+            ( { model | editor = { content = str } }
             , Cmd.none
             )
 
-        ( EditComment _, Nothing ) ->
-            ( { model | error = Just "Impossible state: can't edit a text field that doesn't exist" }, Cmd.none )
-
-        ( SendComment roomId editor, _ ) ->
+        SendComment auth room ->
             -- user hit send button
             let
-                newEditor =
-                    { editor
-                        | txnId = editor.txnId + 1
-                        , content = ""
-                    }
-
-                newRoomState =
-                    Maybe.map (\rs -> { rs | editor = newEditor }) model.roomState
+                -- increment transaction Id (idempotency measure)
+                newAuth =
+                    { auth | txnId = auth.txnId + 1 }
             in
-            ( { model | roomState = newRoomState }
+            ( { model
+                | editor = { content = "" }
+                , roomState = Just { auth = newAuth, room = room }
+              }
             , Task.attempt SentComment <|
                 joinPutLeave
-                    { homeserverUrl = editor.homeserverUrl
-                    , accessToken = editor.accessToken
-                    , roomId = roomId
-                    , txnId = editor.txnId
-                    , body = editor.content
+                    { homeserverUrl = auth.homeserverUrl
+                    , accessToken = auth.accessToken
+                    , txnId = auth.txnId
+                    , roomId = room.roomId
+                    , body = model.editor.content
                     }
             )
 
-        ( SentComment (Ok ()), _ ) ->
+        SentComment (Ok _) ->
             ( model
+              -- TODO: fetch messages again
             , Cmd.none
             )
 
-        ( SentComment (Err httpErr), _ ) ->
+        SentComment (Err httpErr) ->
             ( { model | error = Just <| Debug.toString httpErr }
             , Cmd.none
             )
@@ -209,16 +181,16 @@ view model =
                 div []
                     [ viewEditor
                         { editMsg = EditComment
-                        , sendMsg = SendComment roomState.room.roomId
+                        , sendMsg = SendComment roomState.auth roomState.room
                         , roomAlias = roomState.room.roomAlias
-                        , editor = roomState.editor
+                        , editor = model.editor
                         }
                     , viewRoomEvents
                         model.config.defaultHomeserverUrl
                         roomState.room.time
                         roomState.room.members
                         roomState.room.events
-                    , viewMoreButton
+                    , viewMoreButton roomState.auth roomState.room
                     ]
         ]
 
@@ -231,8 +203,8 @@ viewRoomEvents defaultHomeserverUrl time members roomEvents =
             (onlyMessageEvents roomEvents)
 
 
-viewMoreButton : Html Msg
-viewMoreButton =
+viewMoreButton : Authentication -> Room -> Html Msg
+viewMoreButton auth room =
     button
-        [ onClick ViewMoreClicked ]
+        [ onClick (ViewMoreClicked auth room) ]
         [ text "View more" ]
