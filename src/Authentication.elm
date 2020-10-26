@@ -8,12 +8,10 @@ import Task exposing (Task)
 import Url.Builder
 
 
-{-| This module supports logging in using existing accounts on arbitrary
-Matrix homeservers using the Client-Server API.
+
+{- This module supports logging in using existing accounts on arbitrary
+   Matrix homeservers using the Client-Server API.
 -}
-type AuthType
-    = Guest
-    | User
 
 
 type alias Authentication =
@@ -23,6 +21,11 @@ type alias Authentication =
     , userId : String
     , accessToken : String
     }
+
+
+type AuthType
+    = Guest
+    | User
 
 
 {-| Decodes "user\_id" and "access\_token" fields into an AuthData record.

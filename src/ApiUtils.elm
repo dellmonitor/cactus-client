@@ -15,7 +15,7 @@ apiEndpoint : List String -> String -> List String -> List QueryParameter -> Str
 apiEndpoint pathPrefix homeserverUrl path params =
     crossOrigin
         homeserverUrl
-        (pathPrefix ++ List.map percentEncode path)
+        (List.map percentEncode <| pathPrefix ++ path)
         params
 
 
@@ -29,6 +29,14 @@ mediaEndpoint =
     apiEndpoint [ "_matrix", "media", "r0" ]
 
 
+{-| Make a matrix.to link from a matrix resource identifier.
+This link can be used to access the room from other clients.
+
+    matrixDotToUrl "@asbjorn:olli.ng" == "https://matrix.to/#/%40asbjorn%3Aolli.ng"
+
+    matrixDotToUrl "#roomAlias:matrix.org" == "https://matrix.to/#/%23roomAlias%3Amatrix.org"
+
+-}
 matrixDotToUrl : String -> String
 matrixDotToUrl identifier =
     -- https://matrix.to/#/<identifier>
@@ -38,7 +46,7 @@ matrixDotToUrl identifier =
         []
 
 
-{-| Get the server name of a matrix server by splitting an identifier on :
+{-| Get the server name from a matrix resource identifier by splitting an identifier on ':'
 
     serverNameFromId "@user:server.com" == Just "server.com"
 
