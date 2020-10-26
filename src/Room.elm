@@ -61,7 +61,7 @@ sortByTime events =
 
 1.  Register a guest account, get an access token
 2.  Get a token to sync events from
-3.  Get message events
+3.  Get message events from sync token
 4.  Get current room members
 5.  (Get current time)
 
@@ -70,113 +70,123 @@ The Task eventually completes a Room record.
 -}
 getInitialRoom : { defaultHomeserverUrl : String, siteName : String, uniqueId : String } -> Task Http.Error Room
 getInitialRoom config =
+    let
+        addRoomAlias authdata =
+            let
+                serverName =
+                    -- TODO: this doesn't work for external server
+                    serverNameFromId authdata.userId
+
+                roomAlias =
+                    Maybe.map
+                        (makeRoomAlias config.siteName config.uniqueId)
+                        serverName
+            in
+            case roomAlias of
+                Nothing ->
+                    Task.fail <| Http.BadBody "Could not determine server name from user id"
+
+                Just ra ->
+                    Task.succeed
+                        { accessToken = authdata.accessToken
+                        , roomAlias = ra
+                        }
+
+        addRoomId data =
+            getRoomId config.defaultHomeserverUrl data.roomAlias
+                |> Task.map
+                    (\roomId ->
+                        { accessToken = data.accessToken
+                        , roomAlias = data.roomAlias
+                        , --
+                          roomId = roomId
+                        }
+                    )
+
+        addSinceToken data =
+            getSinceToken
+                { homeserverUrl = config.defaultHomeserverUrl
+                , accessToken = data.accessToken
+                , roomId = data.roomId
+                }
+                |> Task.map
+                    (\sinceToken ->
+                        { accessToken = data.accessToken
+                        , roomId = data.roomId
+                        , roomAlias = data.roomAlias
+                        , --
+                          sinceToken = sinceToken
+                        }
+                    )
+
+        addEvents data =
+            getMessages
+                { homeserverUrl = config.defaultHomeserverUrl
+                , accessToken = data.accessToken
+                , roomId = data.roomId
+                , from = data.sinceToken
+                }
+                |> Task.map
+                    (\events ->
+                        { accessToken = data.accessToken
+                        , roomAlias = data.roomAlias
+                        , roomId = data.roomId
+                        , --
+                          events = sortByTime events.chunk
+                        , start = events.start
+                        , end = events.end
+                        }
+                    )
+
+        addMembers data =
+            getJoinedMembers
+                { homeserverUrl = config.defaultHomeserverUrl
+                , accessToken = data.accessToken
+                , roomId = data.roomId
+                }
+                |> Task.map
+                    (\members ->
+                        { accessToken = data.accessToken
+                        , roomAlias = data.roomAlias
+                        , roomId = data.roomId
+                        , events = data.events
+                        , start = data.start
+                        , end = data.end
+                        , --
+                          members = members
+                        }
+                    )
+
+        addTime data =
+            Time.now
+                |> Task.map
+                    (\time ->
+                        { accessToken = data.accessToken
+                        , roomAlias = data.roomAlias
+                        , roomId = data.roomId
+                        , events = data.events
+                        , start = data.start
+                        , end = data.end
+                        , members = data.members
+                        , --
+                          time = time
+                        }
+                    )
+    in
     -- Register a guest user and and get serverName
     registerGuest config.defaultHomeserverUrl
-        -- find roomId from roomAlias
-        |> Task.andThen
-            (\data ->
-                let
-                    serverName =
-                        -- TODO: this doesn't work
-                        serverNameFromId data.userId
-
-                    roomAlias =
-                        Maybe.map
-                            (makeRoomAlias config.siteName config.uniqueId)
-                            serverName
-                in
-                case roomAlias of
-                    Nothing ->
-                        Task.fail <| Http.BadBody "Could not determine server name from user id"
-
-                    Just ra ->
-                        getRoomId config.defaultHomeserverUrl ra
-                            |> Task.map
-                                (\roomId ->
-                                    { accessToken = data.accessToken
-                                    , --
-                                      roomId = roomId
-                                    , roomAlias = ra
-                                    }
-                                )
-            )
+        -- figure out which roomAlias to hit
+        |> Task.andThen addRoomAlias
+        -- then find roomId from roomAlias
+        |> Task.andThen addRoomId
         -- get since token from /events
-        |> Task.andThen
-            (\data ->
-                getSinceToken
-                    { homeserverUrl = config.defaultHomeserverUrl
-                    , accessToken = data.accessToken
-                    , roomId = data.roomId
-                    }
-                    |> Task.map
-                        (\sinceToken ->
-                            { accessToken = data.accessToken
-                            , roomId = data.roomId
-                            , roomAlias = data.roomAlias
-                            , --
-                              sinceToken = sinceToken
-                            }
-                        )
-            )
+        |> Task.andThen addSinceToken
         -- get messages from /room/{roomId}/messages
-        |> Task.andThen
-            (\data ->
-                getMessages
-                    { homeserverUrl = config.defaultHomeserverUrl
-                    , accessToken = data.accessToken
-                    , roomId = data.roomId
-                    , from = data.sinceToken
-                    }
-                    |> Task.map
-                        (\events ->
-                            { accessToken = data.accessToken
-                            , roomAlias = data.roomAlias
-                            , roomId = data.roomId
-                            , --
-                              events = sortByTime events.chunk
-                            , start = events.start
-                            , end = events.end
-                            }
-                        )
-            )
+        |> Task.andThen addEvents
         -- get joined members
-        |> Task.andThen
-            (\data ->
-                getJoinedMembers
-                    { homeserverUrl = config.defaultHomeserverUrl
-                    , accessToken = data.accessToken
-                    , roomId = data.roomId
-                    }
-                    |> Task.map
-                        (\members ->
-                            { accessToken = data.accessToken
-                            , roomAlias = data.roomAlias
-                            , roomId = data.roomId
-                            , events = data.events
-                            , start = data.start
-                            , end = data.end
-                            , --
-                              members = members
-                            }
-                        )
-            )
-        |> Task.andThen
-            (\data ->
-                Time.now
-                    |> Task.map
-                        (\time ->
-                            { accessToken = data.accessToken
-                            , roomAlias = data.roomAlias
-                            , roomId = data.roomId
-                            , events = data.events
-                            , start = data.start
-                            , end = data.end
-                            , members = data.members
-                            , --
-                              time = time
-                            }
-                        )
-            )
+        |> Task.andThen addMembers
+        -- note current time
+        |> Task.andThen addTime
 
 
 {-| Make a GET request to resolve a roomId from a given roomAlias.
