@@ -1,7 +1,7 @@
 module Main exposing (main)
 
 import ApiUtils exposing (apiRequest, clientEndpoint, matrixDotToUrl)
-import Authentication exposing (Authentication, LoginForm, initLoginForm, login, viewLoginButton, viewLoginForm)
+import Authentication exposing (Authentication, FormState(..), LoginForm, initLoginForm, login, loginWithForm, viewLoginButton, viewLoginForm)
 import Browser
 import Dict exposing (Dict)
 import Editor exposing (Editor, joinPutLeave, viewEditor)
@@ -180,25 +180,29 @@ update msg model =
             )
 
         Login form ->
-            ( model
-            , Task.attempt LoggedIn <|
-                login
-                    { homeserverUrl = form.homeserverUrl
-                    , user = form.username
-                    , password = form.password
-                    }
+            let
+                ( newForm, loginTask ) =
+                    loginWithForm form
+            in
+            ( { model | loginForm = Just newForm }
+            , Task.attempt LoggedIn loginTask
             )
 
         LoggedIn (Ok newAuth) ->
             case model.roomState of
                 Just { auth, room } ->
-                    ( { model | roomState = Just { auth = newAuth, room = room } }
+                    -- a session already exists
+                    ( { model
+                        | roomState = Just { auth = newAuth, room = room }
+                        , loginForm = Nothing
+                      }
                     , Cmd.none
                     )
 
                 Nothing ->
-                    ( model
-                      -- TODO: get messages anew
+                    -- no session
+                    ( { model | loginForm = Nothing }
+                      -- TODO: get messages for the first time
                     , Cmd.none
                     )
 

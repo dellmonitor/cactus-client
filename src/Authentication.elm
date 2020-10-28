@@ -1,8 +1,8 @@
-module Authentication exposing (Authentication, LoginForm, initLoginForm, login, registerGuest, viewLoginButton, viewLoginForm)
+module Authentication exposing (Authentication, FormState(..), LoginForm, initLoginForm, login, loginWithForm, registerGuest, viewLoginButton, viewLoginForm)
 
 import Accessibility as Html exposing (..)
 import ApiUtils exposing (apiRequest, clientEndpoint)
-import Html.Attributes exposing (class, placeholder, type_)
+import Html.Attributes exposing (class, disabled, placeholder, type_)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as JD
@@ -93,19 +93,44 @@ passwordLoginJson { user, password } =
 -- LOGIN FORM
 
 
-type alias LoginForm =
-    { username : String
-    , password : String
-    , homeserverUrl : String
-    }
+type LoginForm
+    = LoginForm
+        { username : String
+        , password : String
+        , homeserverUrl : String
+        , state : FormState
+        }
+
+
+type FormState
+    = Ready
+    | LoggingIn
 
 
 initLoginForm : LoginForm
 initLoginForm =
-    { username = ""
-    , password = ""
-    , homeserverUrl = "https://matrix.org"
-    }
+    LoginForm
+        { username = ""
+        , password = ""
+        , homeserverUrl = "https://matrix.org"
+        , state = Ready
+        }
+
+
+isValid : { a | username : String, password : String, homeserverUrl : String } -> Bool
+isValid { username, password } =
+    (username /= "") && (password /= "")
+
+
+loginWithForm : LoginForm -> ( LoginForm, Task Http.Error Authentication )
+loginWithForm (LoginForm form) =
+    ( LoginForm { form | state = LoggingIn }
+    , login
+        { homeserverUrl = form.homeserverUrl
+        , user = form.username
+        , password = form.password
+        }
+    )
 
 
 
@@ -122,7 +147,7 @@ viewLoginButton msg =
 {-| HTML view for a login form
 -}
 viewLoginForm : LoginForm -> { editMsg : LoginForm -> msg, submitMsg : LoginForm -> msg, hideMsg : msg } -> Html msg
-viewLoginForm loginForm { editMsg, submitMsg, hideMsg } =
+viewLoginForm (LoginForm form) { editMsg, submitMsg, hideMsg } =
     let
         textField { name, value, msgf, attrs } =
             labelBefore
@@ -138,24 +163,24 @@ viewLoginForm loginForm { editMsg, submitMsg, hideMsg } =
         username =
             textField
                 { name = "Username"
-                , value = loginForm.username
-                , msgf = \str -> editMsg { loginForm | username = str }
+                , value = form.username
+                , msgf = \str -> editMsg (LoginForm { form | username = str })
                 , attrs = []
                 }
 
         password =
             textField
                 { name = "Password"
-                , value = loginForm.password
-                , msgf = \str -> editMsg { loginForm | password = str }
+                , value = form.password
+                , msgf = \str -> editMsg (LoginForm { form | password = str })
                 , attrs = [ type_ "password" ]
                 }
 
         homeserverUrl =
             textField
                 { name = "Homeserver Url"
-                , value = loginForm.homeserverUrl
-                , msgf = \str -> editMsg { loginForm | homeserverUrl = str }
+                , value = form.homeserverUrl
+                , msgf = \str -> editMsg (LoginForm { form | homeserverUrl = str })
                 , attrs = []
                 }
 
@@ -166,8 +191,19 @@ viewLoginForm loginForm { editMsg, submitMsg, hideMsg } =
 
         submitButton =
             button
-                [ onClick <| submitMsg loginForm ]
-                [ p [] [ text "Log in" ] ]
+                [ onClick <| submitMsg (LoginForm form)
+                , disabled <| not (isValid form && form.state == Ready)
+                ]
+                [ p []
+                    [ text <|
+                        case form.state of
+                            Ready ->
+                                "Log in"
+
+                            LoggingIn ->
+                                "Logging in..."
+                    ]
+                ]
 
         buttons =
             div
@@ -177,6 +213,7 @@ viewLoginForm loginForm { editMsg, submitMsg, hideMsg } =
                 ]
     in
     -- TODO: this might be a good place to put a cactus logo
+    --       and/or a [Matrix] logo
     div [ class "cactus-login-form" ]
         [ h3 [] [ text "Log in using Matrix" ]
         , username
