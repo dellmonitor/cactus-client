@@ -1,6 +1,6 @@
 module TestApiUtils exposing (..)
 
-import ApiUtils exposing (clientEndpoint, matrixDotToUrl, mediaEndpoint, serverNameFromId, thumbnailFromMxc)
+import ApiUtils exposing (clientEndpoint, makeRoomAlias, matrixDotToUrl, mediaEndpoint, serverNameFromId, thumbnailFromMxc)
 import Expect exposing (Expectation)
 import Test exposing (..)
 import Url.Builder
@@ -9,11 +9,26 @@ import Url.Builder
 suite : Test
 suite =
     describe "Test ApiUtils module"
-        [ testServerNameFromId
+        [ testMakeRoomAlias
+        , testServerNameFromId
         , testClientEndpoint
         , testMediaEndpoint
         , testMatrixDotToUrl
         , testThumbnailFromMxc
+        ]
+
+
+testMakeRoomAlias : Test
+testMakeRoomAlias =
+    describe "Test makeRoomAlias"
+        [ test "makeRoomAlias with realistic values" <|
+            \_ ->
+                makeRoomAlias { siteName = "myblog", uniqueId = "october-blogpost", serverName = "matrix.example.com" }
+                    |> Expect.equal "#comments_myblog_october-blogpost:matrix.example.com"
+        , test "makeRoomAlias with other values..." <|
+            \_ ->
+                makeRoomAlias { siteName = "a", uniqueId = "b", serverName = "c" }
+                    |> Expect.equal "#comments_a_b:c"
         ]
 
 

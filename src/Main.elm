@@ -1,6 +1,6 @@
 module Main exposing (main)
 
-import ApiUtils exposing (apiRequest, clientEndpoint, matrixDotToUrl)
+import ApiUtils exposing (apiRequest, clientEndpoint, makeRoomAlias, matrixDotToUrl)
 import Authentication exposing (Authentication, FormState(..), LoginForm, initLoginForm, login, loginWithForm, viewLoginButton, viewLoginForm)
 import Browser
 import Dict exposing (Dict)
@@ -13,7 +13,7 @@ import Json.Decode as JD
 import Json.Encode as JE
 import Member exposing (Member)
 import Message exposing (Event, GetMessagesResponse, Message(..), RoomEvent, getMessages, onlyMessageEvents, viewMessageEvent)
-import Room exposing (Room, getInitialRoom, mergeNewMessages)
+import Room exposing (Room, getInitialRoom, getRoomAsGuest, mergeNewMessages)
 import Task exposing (Task)
 import Time
 
@@ -38,6 +38,7 @@ type alias Model =
 
 type alias StaticConfig =
     { defaultHomeserverUrl : String
+    , serverName : String
     , siteName : String
     , uniqueId : String
     }
@@ -51,7 +52,11 @@ init config =
       , loginForm = Nothing
       , error = Nothing
       }
-    , Task.attempt GotRoom <| getInitialRoom config
+    , Task.attempt GotRoom <|
+        getRoomAsGuest
+            { homeserverUrl = config.defaultHomeserverUrl
+            , roomAlias = makeRoomAlias config
+            }
     )
 
 
