@@ -66,6 +66,7 @@ type Msg
       -- LOGIN
     | ShowLogin
     | HideLogin
+    | EditLogin LoginForm
     | Login LoginForm
     | LoggedIn (Result Http.Error Authentication)
 
@@ -173,6 +174,11 @@ update msg model =
             , Cmd.none
             )
 
+        EditLogin form ->
+            ( { model | loginForm = Just form }
+            , Cmd.none
+            )
+
         Login form ->
             ( model
             , Task.attempt LoggedIn <|
@@ -221,7 +227,7 @@ view model =
         loginPopup =
             case model.loginForm of
                 Just loginForm ->
-                    viewLoginForm loginForm { submitMsg = Login, hideMsg = HideLogin }
+                    viewLoginForm loginForm { submitMsg = Login, hideMsg = HideLogin, editMsg = EditLogin }
 
                 Nothing ->
                     text ""

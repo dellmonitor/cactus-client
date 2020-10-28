@@ -3,7 +3,7 @@ module Authentication exposing (Authentication, LoginForm, initLoginForm, login,
 import Accessibility as Html exposing (..)
 import ApiUtils exposing (apiRequest, clientEndpoint)
 import Html.Attributes exposing (class, placeholder, type_)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
@@ -121,26 +121,43 @@ viewLoginButton msg =
 
 {-| HTML view for a login form
 -}
-viewLoginForm : LoginForm -> { submitMsg : LoginForm -> msg, hideMsg : msg } -> Html msg
-viewLoginForm loginForm { submitMsg, hideMsg } =
+viewLoginForm : LoginForm -> { editMsg : LoginForm -> msg, submitMsg : LoginForm -> msg, hideMsg : msg } -> Html msg
+viewLoginForm loginForm { editMsg, submitMsg, hideMsg } =
     let
-        username =
+        textField { name, value, msgf, attrs } =
             labelBefore
                 [ class "cactus-login-field" ]
-                (p [] [ text "Username:" ])
-                (inputText loginForm.username [ placeholder "Username" ])
+                (p [] [ text name ])
+                (inputText value <|
+                    [ placeholder name
+                    , onInput msgf
+                    ]
+                        ++ attrs
+                )
+
+        username =
+            textField
+                { name = "Username"
+                , value = loginForm.username
+                , msgf = \str -> editMsg { loginForm | username = str }
+                , attrs = []
+                }
 
         password =
-            labelBefore
-                [ class "cactus-login-field" ]
-                (p [] [ text "Password:" ])
-                (inputText loginForm.username [ placeholder "Password", type_ "password" ])
+            textField
+                { name = "Password"
+                , value = loginForm.password
+                , msgf = \str -> editMsg { loginForm | password = str }
+                , attrs = [ type_ "password" ]
+                }
 
         homeserverUrl =
-            labelBefore
-                [ class "cactus-login-field" ]
-                (p [] [ text "Homeserver Url:" ])
-                (inputText loginForm.homeserverUrl [ type_ "url" ])
+            textField
+                { name = "Homeserver Url"
+                , value = loginForm.homeserverUrl
+                , msgf = \str -> editMsg { loginForm | homeserverUrl = str }
+                , attrs = []
+                }
 
         backButton =
             button
