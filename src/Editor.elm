@@ -11,7 +11,9 @@ import Task exposing (Task)
 
 
 
--- EDITOR
+{- EDITOR
+   This module handles the comment editing and posting UI and API interaction.
+-}
 
 
 type alias Editor =

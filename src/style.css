@@ -3,6 +3,62 @@
   font-family: "Helvetica", "Arial", sans-serif;
 }
 
+.cactus-login-form {
+  /* pop-up login form */
+  display: flex;
+  flex-direction: column;
+  align-content: space-between;
+
+  padding: 2rem;
+  border-radius: 0.5em;
+  box-shadow: 0 0 1em #0005;
+
+  z-index: 1;
+  background-color: white;
+
+  position: fixed;
+  left: 50%;
+  transform: translate(-50%, 0);
+}
+
+.cactus-login-form > h3 {
+  text-align: center;
+}
+
+.cactus-login-field > * {
+  /* a text field like username, password, homeserverurl */
+  margin: 0;
+  padding: 0;
+}
+
+.cactus-login-field > p {
+  padding-top: 1rem;
+}
+
+.cactus-login-field > input {
+  font-size: 1em;
+  padding: 0.5em;
+  border-radius: 0.4em;
+}
+
+.cactus-login-buttons {
+  /* "back" and "log in" buttons in the login form */
+  display: flex;
+  align-content: stretch;
+  padding-top: 1rem;
+
+  --gap: 1em;
+  margin: calc(-1 * var(--gap)) 0 0 calc(-1 * var(--gap));
+}
+
+.cactus-login-buttons > button {
+  font-size: 1em;
+  flex: 1;
+  margin: var(--gap) 0 0 var(--gap);
+  border-radius: 0.5em;
+  background: inherit;
+}
+
 .cactus-editor {
   /* comment text field and login */
   display: flex;

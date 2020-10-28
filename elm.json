@@ -16,7 +16,8 @@
             "elm/url": "1.0.0",
             "hecrj/html-parser": "2.4.0",
             "ianmackenzie/elm-units": "2.7.0",
-            "justinmimbs/date": "3.2.1"
+            "justinmimbs/date": "3.2.1",
+            "tesk9/accessible-html": "4.0.0"
         },
         "indirect": {
             "elm/bytes": "1.0.8",

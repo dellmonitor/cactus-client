@@ -1,6 +1,9 @@
-module Authentication exposing (Authentication, login, registerGuest)
+module Authentication exposing (Authentication, LoginForm, initLoginForm, login, registerGuest, viewLoginButton, viewLoginForm)
 
+import Accessibility as Html exposing (..)
 import ApiUtils exposing (apiRequest, clientEndpoint)
+import Html.Attributes exposing (class, placeholder, type_)
+import Html.Events exposing (onClick)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
@@ -9,8 +12,8 @@ import Url.Builder
 
 
 
-{- This module supports logging in using existing accounts on arbitrary
-   Matrix homeservers using the Client-Server API.
+{- This module contains the UI and API interactions for logging in using temporary guest accounts or
+   existing accounts on arbitrary Matrix homeservers using the Client-Server API.
 -}
 
 
@@ -28,7 +31,7 @@ type AuthType
     | User
 
 
-{-| Decodes "user\_id" and "access\_token" fields into an AuthData record.
+{-| Decodes "user\_id" and "access\_token" fields into an Authentication record.
 Can be used for both /register and /login.
 -}
 decodeAuthentication : String -> AuthType -> JD.Decoder Authentication
@@ -83,4 +86,84 @@ passwordLoginJson { user, password } =
           )
         , ( "password", JE.string password )
         , ( "initial_device_display_name", JE.string "Cactus Comments" )
+        ]
+
+
+
+-- LOGIN FORM
+
+
+type alias LoginForm =
+    { username : String
+    , password : String
+    , homeserverUrl : String
+    }
+
+
+initLoginForm : LoginForm
+initLoginForm =
+    { username = ""
+    , password = ""
+    , homeserverUrl = "https://matrix.org"
+    }
+
+
+
+-- VIEW
+
+
+viewLoginButton : msg -> Html msg
+viewLoginButton msg =
+    button
+        [ onClick msg ]
+        [ p [] [ text "Log In" ] ]
+
+
+{-| HTML view for a login form
+-}
+viewLoginForm : LoginForm -> { submitMsg : LoginForm -> msg, hideMsg : msg } -> Html msg
+viewLoginForm loginForm { submitMsg, hideMsg } =
+    let
+        username =
+            labelBefore
+                [ class "cactus-login-field" ]
+                (p [] [ text "Username:" ])
+                (inputText loginForm.username [ placeholder "Username" ])
+
+        password =
+            labelBefore
+                [ class "cactus-login-field" ]
+                (p [] [ text "Password:" ])
+                (inputText loginForm.username [ placeholder "Password", type_ "password" ])
+
+        homeserverUrl =
+            labelBefore
+                [ class "cactus-login-field" ]
+                (p [] [ text "Homeserver Url:" ])
+                (inputText loginForm.homeserverUrl [ type_ "url" ])
+
+        backButton =
+            button
+                [ onClick hideMsg ]
+                [ p [] [ text "Back" ] ]
+
+        submitButton =
+            button
+                [ onClick <| submitMsg loginForm ]
+                [ p [] [ text "Log in" ] ]
+
+        buttons =
+            div
+                [ class "cactus-login-buttons" ]
+                [ backButton
+                , submitButton
+                ]
+    in
+    -- TODO: this might be a good place to put a cactus logo
+    div [ class "cactus-login-form" ]
+        [ h3 [] [ text "Log in using Matrix" ]
+        , username
+        , password
+        , homeserverUrl
+        , buttons
         ]

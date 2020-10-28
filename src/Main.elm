@@ -1,7 +1,7 @@
 module Main exposing (main)
 
 import ApiUtils exposing (apiRequest, clientEndpoint, matrixDotToUrl)
-import Authentication exposing (Authentication)
+import Authentication exposing (Authentication, LoginForm, initLoginForm, login, viewLoginButton, viewLoginForm)
 import Browser
 import Dict exposing (Dict)
 import Editor exposing (Editor, joinPutLeave, viewEditor)
@@ -31,6 +31,7 @@ type alias Model =
     { config : StaticConfig
     , editor : Editor
     , roomState : Maybe { room : Room, auth : Authentication }
+    , loginForm : Maybe LoginForm
     , error : Maybe String
     }
 
@@ -47,6 +48,7 @@ init config =
     ( { config = config
       , editor = { content = "" }
       , roomState = Nothing
+      , loginForm = Nothing
       , error = Nothing
       }
     , Task.attempt GotRoom <| getInitialRoom config
@@ -55,12 +57,17 @@ init config =
 
 type Msg
     = GotRoom (Result Http.Error ( Authentication, Room ))
-    | ViewMoreClicked Authentication Room
+    | ViewMore Authentication Room
     | GotMessages Room (Result Http.Error GetMessagesResponse)
       -- EDITOR
     | EditComment String
     | SendComment Authentication Room
     | SentComment (Result Http.Error ())
+      -- LOGIN
+    | ShowLogin
+    | HideLogin
+    | Login LoginForm
+    | LoggedIn (Result Http.Error Authentication)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -85,7 +92,7 @@ update msg model =
             , Cmd.none
             )
 
-        ViewMoreClicked auth room ->
+        ViewMore auth room ->
             -- "view more" button hit - issue request to fetch more messages
             ( model
             , Task.attempt (GotMessages room) <|
@@ -156,6 +163,44 @@ update msg model =
             , Cmd.none
             )
 
+        ShowLogin ->
+            ( { model | loginForm = Just initLoginForm }
+            , Cmd.none
+            )
+
+        HideLogin ->
+            ( { model | loginForm = Nothing }
+            , Cmd.none
+            )
+
+        Login form ->
+            ( model
+            , Task.attempt LoggedIn <|
+                login
+                    { homeserverUrl = form.homeserverUrl
+                    , user = form.username
+                    , password = form.password
+                    }
+            )
+
+        LoggedIn (Ok newAuth) ->
+            case model.roomState of
+                Just { auth, room } ->
+                    ( { model | roomState = Just { auth = newAuth, room = room } }
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model
+                      -- TODO: get messages anew
+                    , Cmd.none
+                    )
+
+        LoggedIn (Err httpErr) ->
+            ( { model | error = Just <| Debug.toString httpErr }
+            , Cmd.none
+            )
+
 
 
 -- VIEW
@@ -163,17 +208,29 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div [ class "cactus-container" ] <|
-        [ -- view errors
-          h5 [] <|
-            case model.error of
-                Nothing ->
-                    []
+    let
+        errors =
+            h5 [] <|
+                case model.error of
+                    Nothing ->
+                        []
 
-                Just errmsg ->
-                    [ text <| "ERROR: " ++ errmsg ]
-        , -- editor and comments section
-          case model.roomState of
+                    Just errmsg ->
+                        [ text <| "ERROR: " ++ errmsg ]
+
+        loginPopup =
+            case model.loginForm of
+                Just loginForm ->
+                    viewLoginForm loginForm { submitMsg = Login, hideMsg = HideLogin }
+
+                Nothing ->
+                    text ""
+    in
+    div [ class "cactus-container" ] <|
+        [ errors
+        , loginPopup
+        , viewLoginButton ShowLogin
+        , case model.roomState of
             Nothing ->
                 p [] [ text "Getting comments..." ]
 
@@ -206,5 +263,5 @@ viewRoomEvents defaultHomeserverUrl time members roomEvents =
 viewMoreButton : Authentication -> Room -> Html Msg
 viewMoreButton auth room =
     button
-        [ onClick (ViewMoreClicked auth room) ]
+        [ onClick (ViewMore auth room) ]
         [ text "View more" ]
