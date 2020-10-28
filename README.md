@@ -1,4 +1,5 @@
 
-![](./assets/cactus11.svg)
+![](./assets/readme-header.png)
 
-# Cactus Comments
+An embeddable web client that provides a federated comments section powered by the Matrix network.
+
