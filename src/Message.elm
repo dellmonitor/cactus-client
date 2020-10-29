@@ -1,14 +1,14 @@
 module Message exposing (Event, GetMessagesResponse, Message(..), RoomEvent(..), getMessages, onlyMessageEvents, timeSinceText, viewMessageEvent)
 
-import ApiUtils exposing (apiRequest, clientEndpoint, httpFromMxc, thumbnailFromMxc)
-import Date
+import Accessibility exposing (Html, a, div, img, p, text)
+import ApiUtils exposing (apiRequest, clientEndpoint, thumbnailFromMxc)
 import Dict exposing (Dict)
 import Duration
 import FormattedText exposing (FormattedText(..), decodeFormattedText, viewFormattedText)
-import Html exposing (..)
-import Html.Attributes exposing (..)
+import Html.Attributes exposing (class, href, src)
 import Http
 import Json.Decode as JD
+import Maybe.Extra
 import Member exposing (Member)
 import Task exposing (Task)
 import Time
@@ -172,36 +172,6 @@ decodeMessage =
 -- VIEW
 
 
-{-| toUtcString gives a formatted string showing the posix time given as a
-YYYY-MM-DD HH:MM:SS string.
-
-    toUtcString 0 == "1970-01-01 00:00:00 (UTC)"
-
--}
-toUtcString : Int -> String
-toUtcString timestamp =
-    let
-        time =
-            Time.millisToPosix timestamp
-
-        dateStr =
-            String.fromInt (Time.toYear Time.utc time)
-                ++ "-"
-                ++ String.fromInt (Date.monthToNumber <| Time.toMonth Time.utc time)
-                ++ "-"
-                ++ String.fromInt (Time.toDay Time.utc time)
-
-        timeStr =
-            String.fromInt (Time.toHour Time.utc time)
-                ++ ":"
-                ++ String.fromInt (Time.toMinute Time.utc time)
-                ++ ":"
-                ++ String.fromInt (Time.toSecond Time.utc time)
-                ++ " (UTC)"
-    in
-    dateStr ++ " " ++ timeStr
-
-
 {-| timeSinceText gives a natural language string that says how long ago the
 comment was posted.
 
@@ -295,21 +265,14 @@ viewAvatar homeserverUrl member =
         avatarUrl : Maybe String
         avatarUrl =
             member
-                |> Maybe.map
-                    (\m ->
-                        case m.avatarUrl of
-                            Just mxcUrl ->
-                                thumbnailFromMxc homeserverUrl mxcUrl
-
-                            Nothing ->
-                                Nothing
-                    )
-                |> Maybe.withDefault Nothing
+                |> Maybe.andThen .avatarUrl
+                |> Maybe.map (thumbnailFromMxc homeserverUrl)
+                |> Maybe.Extra.join
     in
     div [ class "cactus-comment-avatar" ] <|
         case avatarUrl of
             Just url ->
-                [ img [ src url ] [] ]
+                [ img "user avatar image" [ src url ] ]
 
             Nothing ->
                 [ p [] [ text "?" ] ]

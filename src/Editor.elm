@@ -1,9 +1,9 @@
 module Editor exposing (Editor, joinPutLeave, viewEditor)
 
+import Accessibility exposing (Html, a, button, div, labelHidden, text, textarea)
 import ApiUtils exposing (apiRequest, clientEndpoint, matrixDotToUrl)
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (..)
+import Html.Attributes exposing (class, href, type_, value)
+import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
@@ -85,16 +85,25 @@ putMessage { homeserverUrl, accessToken, roomId, txnId, body } =
 
 viewEditor : { editMsg : String -> msg, sendMsg : msg, roomAlias : String, editor : Editor } -> Html msg
 viewEditor { editMsg, sendMsg, roomAlias, editor } =
+    let
+        commentEditor =
+            labelHidden
+                "cactus-comment-editor"
+                []
+                (text "Comment Editor")
+                (textarea
+                    [ value editor.content
+                    , onInput editMsg
+                    ]
+                    []
+                )
+    in
     div
         [ class "cactus-editor" ]
         [ a
             [ href <| matrixDotToUrl roomAlias ]
             [ text "Join via another client" ]
-        , textarea
-            [ onInput editMsg
-            , value editor.content
-            ]
-            []
+        , commentEditor
         , button
             [ onClick sendMsg ]
             [ text "Send" ]

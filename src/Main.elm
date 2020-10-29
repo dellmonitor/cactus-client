@@ -1,36 +1,39 @@
 module Main exposing (main)
 
-import ApiUtils exposing (apiRequest, clientEndpoint, makeRoomAlias, matrixDotToUrl)
-import Authentication exposing (Authentication, FormState(..), LoginForm, initLoginForm, login, loginWithForm, viewLoginButton, viewLoginForm)
+import Accessibility exposing (Html, button, div, h5, p, text)
+import ApiUtils exposing (makeRoomAlias)
+import Authentication exposing (Authentication, FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginButton, viewLoginForm)
 import Browser
 import Dict exposing (Dict)
 import Editor exposing (Editor, joinPutLeave, viewEditor)
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (..)
+import Html.Attributes exposing (class)
+import Html.Events exposing (onClick)
 import Http
-import Json.Decode as JD
-import Json.Encode as JE
 import Member exposing (Member)
-import Message exposing (Event, GetMessagesResponse, Message(..), RoomEvent, getMessages, onlyMessageEvents, viewMessageEvent)
-import Room exposing (Room, getInitialRoom, getRoomAsGuest, getRoomAsUser, mergeNewMessages)
-import Task exposing (Task)
+import Message exposing (GetMessagesResponse, Message(..), RoomEvent, getMessages, onlyMessageEvents, viewMessageEvent)
+import Room exposing (Room, getInitialRoom, getRoomAsGuest, mergeNewMessages)
+import Task
 import Time
 
 
+main : Program StaticConfig Model Msg
 main =
     Browser.element
         { init = init
         , update = update
         , view = view
-        , subscriptions = \model -> Sub.none
+        , subscriptions = \_ -> Sub.none
         }
 
 
 type alias Model =
     { config : StaticConfig
     , editor : Editor
-    , roomState : Maybe { room : Room, auth : Authentication }
+    , roomState :
+        Maybe
+            { room : Room
+            , auth : Authentication
+            }
     , loginForm : Maybe LoginForm
     , error : Maybe String
     }

@@ -1,7 +1,7 @@
 module FormattedText exposing (FormattedText(..), decodeFormattedText, viewFormattedText)
 
+import Accessibility exposing (Html, div, p, text)
 import ApiUtils exposing (httpFromMxc)
-import Html exposing (..)
 import Html.Parser
 import Html.Parser.Util
 import Json.Decode as JD
@@ -71,6 +71,7 @@ decodeTextHtml =
 -}
 
 
+tagWhitelist : List String
 tagWhitelist =
     [ "font"
     , "del"
@@ -115,13 +116,13 @@ cleanHtmlNode : String -> Html.Parser.Node -> Html.Parser.Node
 cleanHtmlNode homeserverUrl node =
     -- TODO: observe max depth as recommended by C/S spec
     case node of
-        Html.Parser.Text _ ->
+        Html.Parser.Text str ->
             -- raw text gets to stay
-            node
+            Html.Parser.Text str
 
         Html.Parser.Comment str ->
             -- keep comments also
-            node
+            Html.Parser.Comment str
 
         Html.Parser.Element tag attrs children ->
             -- if tag in whitelist, clean the attributes and children

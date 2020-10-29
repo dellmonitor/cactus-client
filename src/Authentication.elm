@@ -1,6 +1,6 @@
 module Authentication exposing (Authentication, FormState(..), LoginForm, initLoginForm, login, loginWithForm, registerGuest, viewLoginButton, viewLoginForm)
 
-import Accessibility as Html exposing (..)
+import Accessibility exposing (Html, button, div, h3, inputText, labelBefore, p, text)
 import ApiUtils exposing (apiRequest, clientEndpoint)
 import Html.Attributes exposing (class, disabled, placeholder, type_)
 import Html.Events exposing (onClick, onInput)

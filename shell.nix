@@ -5,6 +5,7 @@
       elmPackages.elm-format
       elmPackages.elm-test
       elmPackages.elm-coverage
+      elmPackages.elm-analyse
       nodejs
       nodePackages.parcel-bundler
     ];
