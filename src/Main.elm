@@ -13,7 +13,7 @@ import Json.Decode as JD
 import Json.Encode as JE
 import Member exposing (Member)
 import Message exposing (Event, GetMessagesResponse, Message(..), RoomEvent, getMessages, onlyMessageEvents, viewMessageEvent)
-import Room exposing (Room, getInitialRoom, getRoomAsGuest, mergeNewMessages)
+import Room exposing (Room, getInitialRoom, getRoomAsGuest, getRoomAsUser, mergeNewMessages)
 import Task exposing (Task)
 import Time
 
@@ -73,7 +73,6 @@ type Msg
     | HideLogin
     | EditLogin LoginForm
     | Login LoginForm
-    | LoggedIn (Result Http.Error Authentication)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -88,6 +87,7 @@ update msg model =
                         { room = room
                         , auth = auth
                         }
+                , loginForm = Nothing
               }
             , Cmd.none
             )
@@ -190,30 +190,17 @@ update msg model =
                     loginWithForm form
             in
             ( { model | loginForm = Just newForm }
-            , Task.attempt LoggedIn loginTask
-            )
-
-        LoggedIn (Ok newAuth) ->
-            case model.roomState of
-                Just { auth, room } ->
-                    -- a session already exists
-                    ( { model
-                        | roomState = Just { auth = newAuth, room = room }
-                        , loginForm = Nothing
-                      }
-                    , Cmd.none
-                    )
-
-                Nothing ->
-                    -- no session
-                    ( { model | loginForm = Nothing }
-                      -- TODO: get messages for the first time
-                    , Cmd.none
-                    )
-
-        LoggedIn (Err httpErr) ->
-            ( { model | error = Just <| Debug.toString httpErr }
-            , Cmd.none
+            , Task.attempt GotRoom <|
+                (loginTask
+                    |> Task.andThen
+                        (\auth ->
+                            getInitialRoom
+                                { auth = auth
+                                , roomAlias = makeRoomAlias model.config
+                                }
+                                |> Task.map (\room -> ( auth, room ))
+                        )
+                )
             )
 
 

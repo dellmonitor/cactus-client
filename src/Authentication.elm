@@ -117,6 +117,17 @@ initLoginForm =
         }
 
 
+
+{-
+   getCredentials : LoginForm -> { username : String, password : String, homeserverUrl : String }
+   getCredentials (LoginForm form) =
+       { username = form.username
+       , password = form.password
+       , homeserverUrl = form.homeserverUrl
+       }
+-}
+
+
 isValid : { a | username : String, password : String, homeserverUrl : String } -> Bool
 isValid { username, password } =
     (username /= "") && (password /= "")

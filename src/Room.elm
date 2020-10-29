@@ -1,7 +1,7 @@
-module Room exposing (Room, getInitialRoom, getRoomAsGuest, mergeNewMessages)
+module Room exposing (Room, getInitialRoom, getRoomAsGuest, getRoomAsUser, mergeNewMessages)
 
 import ApiUtils exposing (apiRequest, clientEndpoint, serverNameFromId)
-import Authentication exposing (Authentication, registerGuest)
+import Authentication exposing (Authentication, login, registerGuest)
 import Dict exposing (Dict)
 import Http
 import Json.Decode as JD
@@ -46,11 +46,24 @@ sortByTime events =
 
 
 {-| Register a guest account on the default homeserver, then get a room using
-the guest credentials
+the guest access token.
 -}
 getRoomAsGuest : { homeserverUrl : String, roomAlias : String } -> Task Http.Error ( Authentication, Room )
 getRoomAsGuest { homeserverUrl, roomAlias } =
     registerGuest homeserverUrl
+        |> Task.andThen
+            (\auth ->
+                getInitialRoom { auth = auth, roomAlias = roomAlias }
+                    |> Task.map (\room -> ( auth, room ))
+            )
+
+
+{-| Login using password credentials on a chosen homeserver, then get a room
+using the user access token.
+-}
+getRoomAsUser : { homeserverUrl : String, roomAlias : String, user : String, password : String } -> Task Http.Error ( Authentication, Room )
+getRoomAsUser { homeserverUrl, roomAlias, user, password } =
+    login { homeserverUrl = homeserverUrl, user = user, password = password }
         |> Task.andThen
             (\auth ->
                 getInitialRoom { auth = auth, roomAlias = roomAlias }
