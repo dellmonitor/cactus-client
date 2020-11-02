@@ -1,8 +1,9 @@
 module Editor exposing (Editor, joinPutLeave, viewEditor)
 
-import Accessibility exposing (Html, a, button, div, labelHidden, text, textarea)
+import Accessibility exposing (Html, a, button, div, labelHidden, p, text, textarea)
 import ApiUtils exposing (apiRequest, clientEndpoint, matrixDotToUrl)
-import Html.Attributes exposing (class, href, type_, value)
+import Authentication exposing (AuthType(..), Authentication, authStatusString)
+import Html.Attributes exposing (class, disabled, href, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as JD
@@ -83,28 +84,87 @@ putMessage { homeserverUrl, accessToken, roomId, txnId, body } =
         }
 
 
-viewEditor : { editMsg : String -> msg, sendMsg : msg, roomAlias : String, editor : Editor } -> Html msg
-viewEditor { editMsg, sendMsg, roomAlias, editor } =
+viewEditor :
+    { showLoginMsg : msg
+    , editMsg : String -> msg
+    , sendMsg : Maybe msg
+    , auth : Maybe Authentication
+    , roomAlias : String
+    , editor : Editor
+    }
+    -> Html msg
+viewEditor { auth, showLoginMsg, editMsg, sendMsg, roomAlias, editor } =
     let
+        loginButton =
+            button
+                [ class "cactus-button"
+                , onClick showLoginMsg
+                ]
+                [ text "Log in using Matrix" ]
+
+        anotherClientLink =
+            button
+                [ class "cactus-button"
+                , href <| matrixDotToUrl roomAlias
+                ]
+                [ text "Join using a Matrix client" ]
+
         commentEditor =
             labelHidden
-                "cactus-comment-editor"
+                "Comment Editor"
                 []
                 (text "Comment Editor")
                 (textarea
-                    [ value editor.content
+                    [ class "cactus-editor-textarea"
+                    , value editor.content
                     , onInput editMsg
                     ]
                     []
                 )
+
+        sendButton =
+            viewSendButton sendMsg auth editor
+
+        authStatusStr =
+            auth
+                |> Maybe.map authStatusString
+                |> Maybe.withDefault "Trying to connect to Matrix homeserver..."
+
+        signedInText =
+            p [] [ text authStatusStr ]
     in
     div
         [ class "cactus-editor" ]
-        [ a
-            [ href <| matrixDotToUrl roomAlias ]
-            [ text "Join via another client" ]
+        [ div [ class "cactus-editor-above" ]
+            [ anotherClientLink
+            , loginButton
+            ]
         , commentEditor
-        , button
-            [ onClick sendMsg ]
-            [ text "Send" ]
+        , div [ class "cactus-editor-below" ]
+            -- TODO
+            [ signedInText
+            , sendButton
+            ]
         ]
+
+
+viewSendButton : Maybe msg -> Maybe Authentication -> Editor -> Html msg
+viewSendButton msg auth editor =
+    let
+        -- button is disabled if there is no session
+        -- or if editor is empty
+        isDisabled : Bool
+        isDisabled =
+            (auth == Nothing) || (String.length editor.content == 0)
+
+        attrs =
+            [ class "cactus-button"
+            , disabled isDisabled
+            ]
+                -- append onClick message if we can
+                ++ (msg
+                        |> Maybe.map (\m -> [ onClick m ])
+                        |> Maybe.withDefault []
+                   )
+    in
+    button attrs [ text "Post comment" ]

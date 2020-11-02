@@ -2,7 +2,7 @@ module Main exposing (main)
 
 import Accessibility exposing (Html, button, div, h5, p, text)
 import ApiUtils exposing (makeRoomAlias)
-import Authentication exposing (Authentication, FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginButton, viewLoginForm)
+import Authentication exposing (Authentication, FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
 import Browser
 import Dict exposing (Dict)
 import Editor exposing (Editor, joinPutLeave, viewEditor)
@@ -230,24 +230,28 @@ view model =
 
                 Nothing ->
                     text ""
+
+        editor =
+            viewEditor
+                { showLoginMsg = ShowLogin
+                , editMsg = EditComment
+                , sendMsg = Maybe.map (\rs -> SendComment rs.auth rs.room) model.roomState
+                , auth = Maybe.map .auth model.roomState
+                , roomAlias = makeRoomAlias model.config
+                , editor = model.editor
+                }
     in
     div [ class "cactus-container" ] <|
         [ errors
         , loginPopup
-        , viewLoginButton ShowLogin
+        , editor
         , case model.roomState of
             Nothing ->
                 p [] [ text "Getting comments..." ]
 
             Just roomState ->
                 div []
-                    [ viewEditor
-                        { editMsg = EditComment
-                        , sendMsg = SendComment roomState.auth roomState.room
-                        , roomAlias = roomState.room.roomAlias
-                        , editor = model.editor
-                        }
-                    , viewRoomEvents
+                    [ viewRoomEvents
                         model.config.defaultHomeserverUrl
                         roomState.room.time
                         roomState.room.members

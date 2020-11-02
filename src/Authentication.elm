@@ -1,8 +1,8 @@
-module Authentication exposing (Authentication, FormState(..), LoginForm, initLoginForm, login, loginWithForm, registerGuest, viewLoginButton, viewLoginForm)
+module Authentication exposing (AuthType(..), Authentication, FormState(..), LoginForm, authStatusString, initLoginForm, login, loginWithForm, registerGuest, viewLoginForm)
 
 import Accessibility exposing (Html, button, div, h3, inputText, labelBefore, p, text)
 import ApiUtils exposing (apiRequest, clientEndpoint)
-import Html.Attributes exposing (class, disabled, placeholder, type_)
+import Html.Attributes exposing (class, disabled, placeholder, required, type_)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as JD
@@ -31,6 +31,16 @@ type AuthType
     | User
 
 
+toString : AuthType -> String
+toString authType =
+    case authType of
+        Guest ->
+            "guest"
+
+        User ->
+            "user"
+
+
 {-| Decodes "user\_id" and "access\_token" fields into an Authentication record.
 Can be used for both /register and /login.
 -}
@@ -39,6 +49,13 @@ decodeAuthentication homeserverUrl authType =
     JD.map2 (Authentication homeserverUrl authType 0)
         (JD.field "user_id" JD.string)
         (JD.field "access_token" JD.string)
+
+
+{-| A natural language string, that summarizes the auth status
+-}
+authStatusString : Authentication -> String
+authStatusString auth =
+    "Signed in as " ++ toString auth.authType ++ " " ++ auth.userId
 
 
 {-| Register a guest account with the homeserver, by sending a HTTP POST to
@@ -148,13 +165,6 @@ loginWithForm (LoginForm form) =
 -- VIEW
 
 
-viewLoginButton : msg -> Html msg
-viewLoginButton msg =
-    button
-        [ onClick msg ]
-        [ p [] [ text "Log In" ] ]
-
-
 {-| HTML view for a login form
 -}
 viewLoginForm : LoginForm -> { editMsg : LoginForm -> msg, submitMsg : LoginForm -> msg, hideMsg : msg } -> Html msg
@@ -167,6 +177,7 @@ viewLoginForm (LoginForm form) { editMsg, submitMsg, hideMsg } =
                 (inputText value <|
                     [ placeholder name
                     , onInput msgf
+                    , required True
                     ]
                         ++ attrs
                 )
