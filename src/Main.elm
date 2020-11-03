@@ -8,10 +8,11 @@ import Editor exposing (Editor, joinPut, joinPutLeave, viewEditor)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Http
+import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
 import Member exposing (Member)
 import Message exposing (GetMessagesResponse, Message(..), RoomEvent, getMessages, onlyMessageEvents, viewMessageEvent)
 import Room exposing (Room, getInitialRoom, getRoomAsGuest, mergeNewMessages)
-import Session exposing (FormState(..), Kind(..), LoginForm, Session, incrementTransactionId, initLoginForm, loginWithForm, sessionKind, viewLoginForm)
+import Session exposing (Kind(..), Session, incrementTransactionId, sessionKind)
 import Task
 import Time
 
