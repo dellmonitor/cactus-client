@@ -1,7 +1,7 @@
 module Message exposing (Event, GetMessagesResponse, Message(..), RoomEvent(..), getMessages, onlyMessageEvents, timeSinceText, viewMessageEvent)
 
 import Accessibility exposing (Html, a, div, img, p, text)
-import ApiUtils exposing (apiRequest, clientEndpoint, thumbnailFromMxc)
+import ApiUtils exposing (thumbnailFromMxc)
 import Dict exposing (Dict)
 import Duration
 import FormattedText exposing (FormattedText(..), decodeFormattedText, viewFormattedText)
@@ -10,6 +10,7 @@ import Http
 import Json.Decode as JD
 import Maybe.Extra
 import Member exposing (Member)
+import Session exposing (Session, authenticatedRequest)
 import Task exposing (Task)
 import Time
 import Url.Builder
@@ -63,19 +64,17 @@ type alias GetMessagesResponse =
     }
 
 
-getMessages :
-    { homeserverUrl : String, accessToken : String, roomId : String, from : String }
-    -> Task Http.Error GetMessagesResponse
-getMessages { homeserverUrl, accessToken, roomId, from } =
-    apiRequest
+getMessages : Session -> String -> String -> Task Http.Error GetMessagesResponse
+getMessages session roomId from =
+    authenticatedRequest
+        session
         { method = "GET"
-        , url =
-            clientEndpoint homeserverUrl
-                [ "rooms", roomId, "messages" ]
-                [ Url.Builder.string "dir" "b"
-                , Url.Builder.string "from" <| from
-                ]
-        , accessToken = Just accessToken
+        , path =
+            [ "rooms", roomId, "messages" ]
+        , params =
+            [ Url.Builder.string "dir" "b"
+            , Url.Builder.string "from" from
+            ]
         , responseDecoder = decodeMessages
         , body = Http.emptyBody
         }

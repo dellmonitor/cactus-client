@@ -2,16 +2,16 @@ module Main exposing (main)
 
 import Accessibility exposing (Html, button, div, h5, p, text)
 import ApiUtils exposing (makeRoomAlias)
-import Authentication exposing (Authentication, FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
 import Browser
 import Dict exposing (Dict)
-import Editor exposing (Editor, joinPutLeave, viewEditor)
+import Editor exposing (Editor, joinPut, joinPutLeave, viewEditor)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Http
 import Member exposing (Member)
 import Message exposing (GetMessagesResponse, Message(..), RoomEvent, getMessages, onlyMessageEvents, viewMessageEvent)
 import Room exposing (Room, getInitialRoom, getRoomAsGuest, mergeNewMessages)
+import Session exposing (FormState(..), Kind(..), LoginForm, Session, incrementTransactionId, initLoginForm, loginWithForm, sessionKind, viewLoginForm)
 import Task
 import Time
 
@@ -32,7 +32,7 @@ type alias Model =
     , roomState :
         Maybe
             { room : Room
-            , auth : Authentication
+            , session : Session
             }
     , loginForm : Maybe LoginForm
     , error : Maybe String
@@ -64,12 +64,12 @@ init config =
 
 
 type Msg
-    = GotRoom (Result Http.Error ( Authentication, Room ))
-    | ViewMore Authentication Room
+    = GotRoom (Result Http.Error ( Session, Room ))
+    | ViewMore Session Room
     | GotMessages Room (Result Http.Error GetMessagesResponse)
       -- EDITOR
     | EditComment String
-    | SendComment Authentication Room
+    | SendComment Session Room
     | SentComment (Result Http.Error ())
       -- LOGIN
     | ShowLogin
@@ -89,7 +89,7 @@ update msg model =
                     Just
                         -- init both room and editor. this enables most of the ui
                         { room = room
-                        , auth = auth
+                        , session = auth
                         }
                 , loginForm = Nothing
               }
@@ -102,16 +102,11 @@ update msg model =
             , Cmd.none
             )
 
-        ViewMore auth room ->
+        ViewMore session room ->
             -- "view more" button hit - issue request to fetch more messages
             ( model
             , Task.attempt (GotMessages room) <|
-                getMessages
-                    { homeserverUrl = auth.homeserverUrl
-                    , accessToken = auth.accessToken
-                    , roomId = room.roomId
-                    , from = room.end
-                    }
+                getMessages session room.roomId room.end
             )
 
         GotMessages room (Ok newMsgs) ->
@@ -141,28 +136,41 @@ update msg model =
             , Cmd.none
             )
 
-        SendComment auth room ->
+        SendComment session room ->
             -- user hit send button
             let
                 -- increment transaction Id (idempotency measure)
-                newAuth =
-                    { auth | txnId = auth.txnId + 1 }
+                newSession =
+                    incrementTransactionId session
+
+                {- WIP:
+                   if guest:
+                     joinPutLeave |> andthen getMessages
+
+                   if user:
+                     joinPut |> andThen getMessages
+
+                -}
+                putTask =
+                    case sessionKind session of
+                        Guest ->
+                            joinPutLeave
+
+                        User ->
+                            joinPut
             in
             ( { model
                 | editor = { content = "" }
-                , roomState = Just { auth = newAuth, room = room }
+                , roomState = Just { session = newSession, room = room }
               }
             , Task.attempt SentComment <|
-                joinPutLeave
-                    { homeserverUrl = auth.homeserverUrl
-                    , accessToken = auth.accessToken
-                    , txnId = auth.txnId
-                    , roomId = room.roomId
-                    , body = model.editor.content
-                    }
+                putTask
+                    session
+                    room.roomId
+                    model.editor.content
             )
 
-        SentComment (Ok _) ->
+        SentComment (Ok ()) ->
             ( model
               -- TODO: fetch messages again
             , Cmd.none
@@ -206,12 +214,9 @@ update msg model =
             , Task.attempt GotRoom <|
                 (loginTask
                     |> Task.andThen
-                        (\auth ->
-                            getInitialRoom
-                                { auth = auth
-                                , roomAlias = makeRoomAlias model.config
-                                }
-                                |> Task.map (\room -> ( auth, room ))
+                        (\session ->
+                            getInitialRoom session (makeRoomAlias model.config)
+                                |> Task.map (\room -> ( session, room ))
                         )
                 )
             )
@@ -246,8 +251,8 @@ view model =
                 { showLoginMsg = ShowLogin
                 , logoutMsg = LogOut
                 , editMsg = EditComment
-                , sendMsg = Maybe.map (\rs -> SendComment rs.auth rs.room) model.roomState
-                , auth = Maybe.map .auth model.roomState
+                , sendMsg = Maybe.map (\rs -> SendComment rs.session rs.room) model.roomState
+                , session = Maybe.map .session model.roomState
                 , roomAlias = makeRoomAlias model.config
                 , editor = model.editor
                 }
@@ -267,7 +272,7 @@ view model =
                         roomState.room.time
                         roomState.room.members
                         roomState.room.events
-                    , viewMoreButton roomState.auth roomState.room
+                    , viewMoreButton roomState.session roomState.room
                     ]
         ]
 
@@ -280,7 +285,7 @@ viewRoomEvents defaultHomeserverUrl time members roomEvents =
             (onlyMessageEvents roomEvents)
 
 
-viewMoreButton : Authentication -> Room -> Html Msg
+viewMoreButton : Session -> Room -> Html Msg
 viewMoreButton auth room =
     div [ class "cactus-view-more" ]
         [ button

@@ -1,13 +1,13 @@
-module Editor exposing (Editor, joinPutLeave, viewEditor)
+module Editor exposing (Editor, joinPut, joinPutLeave, viewEditor)
 
 import Accessibility exposing (Html, a, button, div, labelHidden, p, text, textarea)
-import ApiUtils exposing (apiRequest, clientEndpoint, matrixDotToUrl)
-import Authentication exposing (AuthType(..), Authentication, authStatusString)
+import ApiUtils exposing (matrixDotToUrl)
 import Html.Attributes exposing (class, disabled, href, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
+import Session exposing (Kind(..), Session, authenticatedRequest, isUser, sessionStatusString, transactionId)
 import Task exposing (Task)
 
 
@@ -28,37 +28,50 @@ type alias Editor =
 3.  leave the room
 
 -}
-joinPutLeave : { homeserverUrl : String, accessToken : String, roomId : String, txnId : Int, body : String } -> Task Http.Error ()
-joinPutLeave config =
-    joinRoom config
-        |> Task.andThen (\_ -> putMessage config)
-        |> Task.andThen (\_ -> leaveRoom config)
+joinPutLeave : Session -> String -> String -> Task Http.Error ()
+joinPutLeave session roomId comment =
+    joinPut session roomId comment
+        |> Task.andThen (\_ -> leaveRoom session roomId)
 
 
-joinRoom : { a | homeserverUrl : String, accessToken : String, roomId : String } -> Task Http.Error ()
-joinRoom { homeserverUrl, accessToken, roomId } =
-    apiRequest
+{-| Chain of two requests:
+
+1.  join room
+2.  HTTP PUT a comment into the room
+
+-}
+joinPut : Session -> String -> String -> Task Http.Error ()
+joinPut session roomId comment =
+    joinRoom session roomId
+        |> Task.andThen (\_ -> putMessage session roomId comment)
+
+
+joinRoom : Session -> String -> Task Http.Error ()
+joinRoom session roomId =
+    authenticatedRequest
+        session
         { method = "POST"
-        , url = clientEndpoint homeserverUrl [ "rooms", roomId, "join" ] []
-        , accessToken = Just accessToken
+        , path = [ "rooms", roomId, "join" ]
+        , params = []
         , responseDecoder = JD.succeed ()
         , body = Http.stringBody "application/json" "{}"
         }
 
 
-leaveRoom : { a | homeserverUrl : String, accessToken : String, roomId : String } -> Task Http.Error ()
-leaveRoom { homeserverUrl, accessToken, roomId } =
-    apiRequest
+leaveRoom : Session -> String -> Task Http.Error ()
+leaveRoom session roomId =
+    authenticatedRequest
+        session
         { method = "POST"
-        , url = clientEndpoint homeserverUrl [ "rooms", roomId, "leave" ] []
-        , accessToken = Just accessToken
+        , path = [ "rooms", roomId, "leave" ]
+        , params = []
         , responseDecoder = JD.succeed ()
         , body = Http.stringBody "application/json" "{}"
         }
 
 
-putMessage : { a | homeserverUrl : String, accessToken : String, roomId : String, txnId : Int, body : String } -> Task Http.Error ()
-putMessage { homeserverUrl, accessToken, roomId, txnId, body } =
+putMessage : Session -> String -> String -> Task Http.Error ()
+putMessage session roomId comment =
     -- post a message
     let
         eventType =
@@ -66,20 +79,21 @@ putMessage { homeserverUrl, accessToken, roomId, txnId, body } =
 
         msgtype =
             "m.text"
+
+        txnId =
+            transactionId session
     in
-    apiRequest
+    authenticatedRequest
+        session
         { method = "PUT"
-        , url =
-            clientEndpoint homeserverUrl
-                [ "rooms", roomId, "send", eventType, String.fromInt txnId ]
-                []
-        , accessToken = Just accessToken
+        , path = [ "rooms", roomId, "send", eventType, String.fromInt txnId ]
+        , params = []
         , responseDecoder = JD.succeed ()
         , body =
             Http.jsonBody <|
                 JE.object
                     [ ( "msgtype", JE.string msgtype )
-                    , ( "body", JE.string body )
+                    , ( "body", JE.string comment )
                     ]
         }
 
@@ -89,12 +103,12 @@ viewEditor :
     , logoutMsg : msg
     , editMsg : String -> msg
     , sendMsg : Maybe msg
-    , auth : Maybe Authentication
+    , session : Maybe Session
     , roomAlias : String
     , editor : Editor
     }
     -> Html msg
-viewEditor { auth, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, editor } =
+viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, editor } =
     let
         anotherClientLink =
             a
@@ -115,11 +129,11 @@ viewEditor { auth, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, editor 
                 )
 
         sendButton =
-            viewSendButton sendMsg auth editor
+            viewSendButton sendMsg session editor
 
         authStatusStr =
-            auth
-                |> Maybe.map authStatusString
+            session
+                |> Maybe.map sessionStatusString
                 |> Maybe.withDefault "Connecting to Matrix server..."
 
         signedInText =
@@ -131,7 +145,7 @@ viewEditor { auth, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, editor 
             [ loginOrLogoutButton
                 { loginMsg = showLoginMsg
                 , logoutMsg = logoutMsg
-                , auth = auth
+                , session = session
                 }
             , signedInText
             ]
@@ -146,8 +160,8 @@ viewEditor { auth, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, editor 
 {-| If logged in as a non-guest user, show logout button, else show login
 button.
 -}
-loginOrLogoutButton : { loginMsg : msg, logoutMsg : msg, auth : Maybe Authentication } -> Html msg
-loginOrLogoutButton { loginMsg, logoutMsg, auth } =
+loginOrLogoutButton : { loginMsg : msg, logoutMsg : msg, session : Maybe Session } -> Html msg
+loginOrLogoutButton { loginMsg, logoutMsg, session } =
     let
         loginButton =
             button
@@ -163,9 +177,9 @@ loginOrLogoutButton { loginMsg, logoutMsg, auth } =
                 ]
                 [ text "Log out" ]
     in
-    case auth of
-        Just { authType } ->
-            if authType == User then
+    case session of
+        Just sess ->
+            if isUser sess then
                 logoutButton
 
             else
@@ -175,7 +189,7 @@ loginOrLogoutButton { loginMsg, logoutMsg, auth } =
             loginButton
 
 
-viewSendButton : Maybe msg -> Maybe Authentication -> Editor -> Html msg
+viewSendButton : Maybe msg -> Maybe Session -> Editor -> Html msg
 viewSendButton msg auth editor =
     let
         -- button is disabled if there is no session

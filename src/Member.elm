@@ -1,9 +1,9 @@
 module Member exposing (Member, getJoinedMembers)
 
-import ApiUtils exposing (apiRequest, clientEndpoint)
 import Dict exposing (Dict)
 import Http
 import Json.Decode as JD
+import Session exposing (Session, authenticatedRequest)
 import Task exposing (Task)
 
 
@@ -14,12 +14,13 @@ type alias Member =
     }
 
 
-getJoinedMembers : { homeserverUrl : String, accessToken : String, roomId : String } -> Task Http.Error (Dict String Member)
-getJoinedMembers { homeserverUrl, accessToken, roomId } =
-    apiRequest
+getJoinedMembers : Session -> String -> Task Http.Error (Dict String Member)
+getJoinedMembers session roomId =
+    authenticatedRequest
+        session
         { method = "GET"
-        , url = clientEndpoint homeserverUrl [ "rooms", roomId, "members" ] []
-        , accessToken = Just accessToken
+        , path = [ "rooms", roomId, "members" ]
+        , params = []
         , responseDecoder = decodeMemberResponse
         , body = Http.emptyBody
         }

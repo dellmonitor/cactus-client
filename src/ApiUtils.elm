@@ -1,4 +1,4 @@
-module ApiUtils exposing (apiRequest, clientEndpoint, httpFromMxc, makeRoomAlias, matrixDotToUrl, mediaEndpoint, serverNameFromId, thumbnailFromMxc)
+module ApiUtils exposing (apiRequest, clientEndpoint, httpFromMxc, makeRoomAlias, matrixDotToUrl, mediaEndpoint, serverNameFromId, thumbnailFromMxc, unauthenticatedRequest)
 
 import Http
 import Json.Decode as JD
@@ -186,4 +186,17 @@ apiRequest { method, url, accessToken, responseDecoder, body } =
         , body = body
         , resolver = Http.stringResolver <| handleJsonResponse responseDecoder
         , timeout = Nothing
+        }
+
+
+{-| Make unauthenticated requests to a Matrix API
+-}
+unauthenticatedRequest : { method : String, url : String, body : Http.Body, responseDecoder : JD.Decoder a } -> Task Http.Error a
+unauthenticatedRequest { method, url, body, responseDecoder } =
+    apiRequest
+        { method = method
+        , url = url
+        , body = body
+        , responseDecoder = responseDecoder
+        , accessToken = Nothing
         }

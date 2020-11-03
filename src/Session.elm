@@ -1,4 +1,19 @@
-module Authentication exposing (AuthType(..), Authentication, FormState(..), LoginForm, authStatusString, initLoginForm, login, loginWithForm, registerGuest, viewLoginForm)
+module Session exposing
+    ( FormState(..)
+    , Kind(..)
+    , LoginForm
+    , Session
+    , authenticatedRequest
+    , incrementTransactionId
+    , initLoginForm
+    , isUser
+    , loginWithForm
+    , registerGuest
+    , sessionKind
+    , sessionStatusString
+    , transactionId
+    , viewLoginForm
+    )
 
 import Accessibility exposing (Html, button, div, h3, inputText, labelBefore, p, text)
 import ApiUtils exposing (apiRequest, clientEndpoint)
@@ -8,7 +23,7 @@ import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import Task exposing (Task)
-import Url.Builder
+import Url.Builder exposing (QueryParameter)
 
 
 
@@ -17,21 +32,95 @@ import Url.Builder
 -}
 
 
-type alias Authentication =
+type Session
+    = Session SessionData
+
+
+type alias SessionData =
     { homeserverUrl : String
-    , authType : AuthType
+    , kind : Kind
     , txnId : Int
     , userId : String
     , accessToken : String
     }
 
 
-type AuthType
+{-| Decodes "user\_id" and "access\_token" fields into a Session record.
+Can be used for both /register and /login.
+-}
+decodeSession : String -> Kind -> JD.Decoder Session
+decodeSession homeserverUrl kind =
+    JD.map2 (SessionData homeserverUrl kind 0)
+        (JD.field "user_id" JD.string)
+        (JD.field "access_token" JD.string)
+        |> JD.map Session
+
+
+{-| A natural language string that summarizes the auth status.
+-}
+sessionStatusString : Session -> String
+sessionStatusString (Session session) =
+    "Signed in as " ++ toString session.kind ++ " " ++ session.userId
+
+
+{-| Increment the transaction id of this session.
+Should be incremented on each message sent.
+-}
+incrementTransactionId : Session -> Session
+incrementTransactionId (Session session) =
+    Session { session | txnId = session.txnId + 1 }
+
+
+{-| Get the current transaction Id
+-}
+transactionId : Session -> Int
+transactionId (Session session) =
+    session.txnId
+
+
+{-| Make authenticated requests using a Session object.
+Wraps ApiUtils.apiRequest
+-}
+authenticatedRequest :
+    Session
+    ->
+        { method : String
+        , path : List String
+        , params : List QueryParameter
+        , body : Http.Body
+        , responseDecoder : JD.Decoder a
+        }
+    -> Task Http.Error a
+authenticatedRequest (Session session) { method, path, params, body, responseDecoder } =
+    apiRequest
+        { method = method
+        , url = clientEndpoint session.homeserverUrl path params
+        , body = body
+        , accessToken = Just session.accessToken
+        , responseDecoder = responseDecoder
+        }
+
+
+
+{- KIND -}
+
+
+type Kind
     = Guest
     | User
 
 
-toString : AuthType -> String
+sessionKind : Session -> Kind
+sessionKind (Session session) =
+    session.kind
+
+
+isUser : Session -> Bool
+isUser (Session session) =
+    session.kind == User
+
+
+toString : Kind -> String
 toString authType =
     case authType of
         Guest ->
@@ -41,32 +130,15 @@ toString authType =
             "user"
 
 
-{-| Decodes "user\_id" and "access\_token" fields into an Authentication record.
-Can be used for both /register and /login.
--}
-decodeAuthentication : String -> AuthType -> JD.Decoder Authentication
-decodeAuthentication homeserverUrl authType =
-    JD.map2 (Authentication homeserverUrl authType 0)
-        (JD.field "user_id" JD.string)
-        (JD.field "access_token" JD.string)
-
-
-{-| A natural language string, that summarizes the auth status
--}
-authStatusString : Authentication -> String
-authStatusString auth =
-    "Signed in as " ++ toString auth.authType ++ " " ++ auth.userId
-
-
 {-| Register a guest account with the homeserver, by sending a HTTP POST to
 /register?kind=guest. This presumes that the homeserver has enabled guest registrations.
 -}
-registerGuest : String -> Task Http.Error Authentication
+registerGuest : String -> Task Http.Error Session
 registerGuest homeserverUrl =
     apiRequest
         { method = "POST"
         , url = clientEndpoint homeserverUrl [ "register" ] [ Url.Builder.string "kind" "guest" ]
-        , responseDecoder = decodeAuthentication homeserverUrl Guest
+        , responseDecoder = decodeSession homeserverUrl Guest
         , accessToken = Nothing
         , body = Http.stringBody "application/json" "{}"
         }
@@ -75,12 +147,12 @@ registerGuest homeserverUrl =
 {-| Login by sending a POST request to the /login endpoint
 Login type "m.login.password" and identifier type "m.id.user"
 -}
-login : { homeserverUrl : String, user : String, password : String } -> Task Http.Error Authentication
+login : { homeserverUrl : String, user : String, password : String } -> Task Http.Error Session
 login { homeserverUrl, user, password } =
     apiRequest
         { method = "POST"
         , url = clientEndpoint homeserverUrl [ "login" ] []
-        , responseDecoder = decodeAuthentication homeserverUrl User
+        , responseDecoder = decodeSession homeserverUrl User
         , accessToken = Nothing
         , body = Http.jsonBody <| passwordLoginJson { user = user, password = password }
         }
@@ -134,23 +206,12 @@ initLoginForm =
         }
 
 
-
-{-
-   getCredentials : LoginForm -> { username : String, password : String, homeserverUrl : String }
-   getCredentials (LoginForm form) =
-       { username = form.username
-       , password = form.password
-       , homeserverUrl = form.homeserverUrl
-       }
--}
-
-
 isValid : { a | username : String, password : String, homeserverUrl : String } -> Bool
 isValid { username, password } =
     (username /= "") && (password /= "")
 
 
-loginWithForm : LoginForm -> ( LoginForm, Task Http.Error Authentication )
+loginWithForm : LoginForm -> ( LoginForm, Task Http.Error Session )
 loginWithForm (LoginForm form) =
     ( LoginForm { form | state = LoggingIn }
     , login
@@ -165,7 +226,7 @@ loginWithForm (LoginForm form) =
 -- VIEW
 
 
-{-| HTML view for a login form
+{-| HTML view for a login form.
 -}
 viewLoginForm : LoginForm -> { editMsg : LoginForm -> msg, submitMsg : LoginForm -> msg, hideMsg : msg } -> Html msg
 viewLoginForm (LoginForm form) { editMsg, submitMsg, hideMsg } =

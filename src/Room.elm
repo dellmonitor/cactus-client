@@ -1,12 +1,11 @@
-module Room exposing (Room, getInitialRoom, getRoomAsGuest, getRoomAsUser, mergeNewMessages)
+module Room exposing (Room, getInitialRoom, getRoomAsGuest, mergeNewMessages)
 
-import ApiUtils exposing (apiRequest, clientEndpoint)
-import Authentication exposing (Authentication, login, registerGuest)
 import Dict exposing (Dict)
 import Http
 import Json.Decode as JD
 import Member exposing (Member, getJoinedMembers)
 import Message exposing (RoomEvent(..), getMessages)
+import Session exposing (Session, authenticatedRequest, registerGuest)
 import Task exposing (Task)
 import Time
 import Url.Builder
@@ -48,26 +47,13 @@ sortByTime events =
 {-| Register a guest account on the default homeserver, then get a room using
 the guest access token.
 -}
-getRoomAsGuest : { homeserverUrl : String, roomAlias : String } -> Task Http.Error ( Authentication, Room )
+getRoomAsGuest : { homeserverUrl : String, roomAlias : String } -> Task Http.Error ( Session, Room )
 getRoomAsGuest { homeserverUrl, roomAlias } =
     registerGuest homeserverUrl
         |> Task.andThen
-            (\auth ->
-                getInitialRoom { auth = auth, roomAlias = roomAlias }
-                    |> Task.map (\room -> ( auth, room ))
-            )
-
-
-{-| Login using password credentials on a chosen homeserver, then get a room
-using the user access token.
--}
-getRoomAsUser : { homeserverUrl : String, roomAlias : String, user : String, password : String } -> Task Http.Error ( Authentication, Room )
-getRoomAsUser { homeserverUrl, roomAlias, user, password } =
-    login { homeserverUrl = homeserverUrl, user = user, password = password }
-        |> Task.andThen
-            (\auth ->
-                getInitialRoom { auth = auth, roomAlias = roomAlias }
-                    |> Task.map (\room -> ( auth, room ))
+            (\session ->
+                getInitialRoom session roomAlias
+                    |> Task.map (\room -> ( session, room ))
             )
 
 
@@ -82,12 +68,12 @@ getRoomAsUser { homeserverUrl, roomAlias, user, password } =
 The Task eventually completes a Room record
 
 -}
-getInitialRoom : { auth : Authentication, roomAlias : String } -> Task Http.Error Room
-getInitialRoom { auth, roomAlias } =
+getInitialRoom : Session -> String -> Task Http.Error Room
+getInitialRoom session roomAlias =
     let
         -- find roomId
         addRoomId =
-            getRoomId auth.homeserverUrl roomAlias
+            getRoomId session roomAlias
                 |> Task.map
                     (\roomId ->
                         { roomAlias = roomAlias
@@ -97,11 +83,7 @@ getInitialRoom { auth, roomAlias } =
 
         -- get since token from /events
         addSinceToken data =
-            getSinceToken
-                { homeserverUrl = auth.homeserverUrl
-                , accessToken = auth.accessToken
-                , roomId = data.roomId
-                }
+            getSinceToken session data.roomId
                 |> Task.map
                     (\sinceToken ->
                         { roomId = data.roomId
@@ -113,12 +95,7 @@ getInitialRoom { auth, roomAlias } =
 
         -- get messages from /room/{roomId}/messages
         addEvents data =
-            getMessages
-                { homeserverUrl = auth.homeserverUrl
-                , accessToken = auth.accessToken
-                , roomId = data.roomId
-                , from = data.sinceToken
-                }
+            getMessages session data.roomId data.sinceToken
                 |> Task.map
                     (\events ->
                         { roomAlias = data.roomAlias
@@ -132,11 +109,7 @@ getInitialRoom { auth, roomAlias } =
 
         -- get joined members
         addMembers data =
-            getJoinedMembers
-                { homeserverUrl = auth.homeserverUrl
-                , accessToken = auth.accessToken
-                , roomId = data.roomId
-                }
+            getJoinedMembers session data.roomId
                 |> Task.map
                     (\members ->
                         { roomAlias = data.roomAlias
@@ -174,13 +147,14 @@ getInitialRoom { auth, roomAlias } =
 
 {-| Make a GET request to resolve a roomId from a given roomAlias.
 -}
-getRoomId : String -> String -> Task Http.Error String
-getRoomId homeserverUrl roomAlias =
-    apiRequest
+getRoomId : Session -> String -> Task Http.Error String
+getRoomId session roomAlias =
+    authenticatedRequest
+        session
         { method = "GET"
-        , url = clientEndpoint homeserverUrl [ "directory", "room", roomAlias ] []
+        , path = [ "directory", "room", roomAlias ]
+        , params = []
         , responseDecoder = JD.field "room_id" JD.string
-        , accessToken = Nothing
         , body = Http.emptyBody
         }
 
@@ -188,17 +162,16 @@ getRoomId homeserverUrl roomAlias =
 {-| Make a GET to events endpoint - only to extract a "since-token", which can
 be used to fetch events from another endpoint.
 -}
-getSinceToken : { homeserverUrl : String, accessToken : String, roomId : String } -> Task Http.Error String
-getSinceToken { homeserverUrl, accessToken, roomId } =
-    apiRequest
+getSinceToken : Session -> String -> Task Http.Error String
+getSinceToken session roomId =
+    authenticatedRequest
+        session
         { method = "GET"
-        , url =
-            clientEndpoint homeserverUrl
-                [ "events" ]
-                [ Url.Builder.string "room_id" roomId
-                , Url.Builder.int "timeout" 0
-                ]
-        , accessToken = Just accessToken
+        , path = [ "events" ]
+        , params =
+            [ Url.Builder.string "room_id" roomId
+            , Url.Builder.int "timeout" 0
+            ]
         , responseDecoder = JD.field "end" JD.string
         , body = Http.emptyBody
         }
