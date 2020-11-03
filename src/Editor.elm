@@ -3,7 +3,7 @@ module Editor exposing (Editor, joinPutLeave, viewEditor)
 import Accessibility exposing (Html, a, button, div, labelHidden, p, text, textarea)
 import ApiUtils exposing (apiRequest, clientEndpoint, matrixDotToUrl)
 import Authentication exposing (AuthType(..), Authentication, authStatusString)
-import Html.Attributes exposing (class, disabled, href, type_, value)
+import Html.Attributes exposing (class, disabled, href, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as JD
@@ -86,6 +86,7 @@ putMessage { homeserverUrl, accessToken, roomId, txnId, body } =
 
 viewEditor :
     { showLoginMsg : msg
+    , logoutMsg : msg
     , editMsg : String -> msg
     , sendMsg : Maybe msg
     , auth : Maybe Authentication
@@ -93,21 +94,12 @@ viewEditor :
     , editor : Editor
     }
     -> Html msg
-viewEditor { auth, showLoginMsg, editMsg, sendMsg, roomAlias, editor } =
+viewEditor { auth, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, editor } =
     let
-        loginButton =
-            button
-                [ class "cactus-button"
-                , onClick showLoginMsg
-                ]
-                [ text "Log in using Matrix" ]
-
         anotherClientLink =
-            button
-                [ class "cactus-button"
-                , href <| matrixDotToUrl roomAlias
-                ]
-                [ text "Join using a Matrix client" ]
+            a
+                [ href <| matrixDotToUrl roomAlias ]
+                [ text "Use a Matrix client" ]
 
         commentEditor =
             labelHidden
@@ -128,7 +120,7 @@ viewEditor { auth, showLoginMsg, editMsg, sendMsg, roomAlias, editor } =
         authStatusStr =
             auth
                 |> Maybe.map authStatusString
-                |> Maybe.withDefault "Trying to connect to Matrix homeserver..."
+                |> Maybe.withDefault "Connecting to Matrix server..."
 
         signedInText =
             p [] [ text authStatusStr ]
@@ -136,16 +128,51 @@ viewEditor { auth, showLoginMsg, editMsg, sendMsg, roomAlias, editor } =
     div
         [ class "cactus-editor" ]
         [ div [ class "cactus-editor-above" ]
-            [ anotherClientLink
-            , loginButton
+            [ loginOrLogoutButton
+                { loginMsg = showLoginMsg
+                , logoutMsg = logoutMsg
+                , auth = auth
+                }
+            , signedInText
             ]
         , commentEditor
         , div [ class "cactus-editor-below" ]
-            -- TODO
-            [ signedInText
+            [ anotherClientLink
             , sendButton
             ]
         ]
+
+
+{-| If logged in as a non-guest user, show logout button, else show login
+button.
+-}
+loginOrLogoutButton : { loginMsg : msg, logoutMsg : msg, auth : Maybe Authentication } -> Html msg
+loginOrLogoutButton { loginMsg, logoutMsg, auth } =
+    let
+        loginButton =
+            button
+                [ class "cactus-button"
+                , onClick loginMsg
+                ]
+                [ text "Log in" ]
+
+        logoutButton =
+            button
+                [ class "cactus-button"
+                , onClick logoutMsg
+                ]
+                [ text "Log out" ]
+    in
+    case auth of
+        Just { authType } ->
+            if authType == User then
+                logoutButton
+
+            else
+                loginButton
+
+        Nothing ->
+            loginButton
 
 
 viewSendButton : Maybe msg -> Maybe Authentication -> Editor -> Html msg
@@ -167,4 +194,4 @@ viewSendButton msg auth editor =
                         |> Maybe.withDefault []
                    )
     in
-    button attrs [ text "Post comment" ]
+    button attrs [ text "Post" ]

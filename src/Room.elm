@@ -1,6 +1,6 @@
 module Room exposing (Room, getInitialRoom, getRoomAsGuest, getRoomAsUser, mergeNewMessages)
 
-import ApiUtils exposing (apiRequest, clientEndpoint, serverNameFromId)
+import ApiUtils exposing (apiRequest, clientEndpoint)
 import Authentication exposing (Authentication, login, registerGuest)
 import Dict exposing (Dict)
 import Http

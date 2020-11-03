@@ -76,6 +76,7 @@ type Msg
     | HideLogin
     | EditLogin LoginForm
     | Login LoginForm
+    | LogOut
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -187,6 +188,15 @@ update msg model =
             , Cmd.none
             )
 
+        LogOut ->
+            ( model
+            , Task.attempt GotRoom <|
+                getRoomAsGuest
+                    { homeserverUrl = model.config.defaultHomeserverUrl
+                    , roomAlias = makeRoomAlias model.config
+                    }
+            )
+
         Login form ->
             let
                 ( newForm, loginTask ) =
@@ -234,6 +244,7 @@ view model =
         editor =
             viewEditor
                 { showLoginMsg = ShowLogin
+                , logoutMsg = LogOut
                 , editMsg = EditComment
                 , sendMsg = Maybe.map (\rs -> SendComment rs.auth rs.room) model.roomState
                 , auth = Maybe.map .auth model.roomState
@@ -271,6 +282,10 @@ viewRoomEvents defaultHomeserverUrl time members roomEvents =
 
 viewMoreButton : Authentication -> Room -> Html Msg
 viewMoreButton auth room =
-    button
-        [ onClick (ViewMore auth room) ]
-        [ text "View more" ]
+    div [ class "cactus-view-more" ]
+        [ button
+            [ class "cactus-button"
+            , onClick <| ViewMore auth room
+            ]
+            [ text "View more" ]
+        ]
