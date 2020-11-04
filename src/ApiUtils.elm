@@ -1,4 +1,4 @@
-module ApiUtils exposing (apiRequest, clientEndpoint, httpFromMxc, makeRoomAlias, matrixDotToUrl, mediaEndpoint, serverNameFromId, thumbnailFromMxc, unauthenticatedRequest)
+module ApiUtils exposing (clientEndpoint, httpFromMxc, makeRoomAlias, matrixDotToUrl, mediaEndpoint, serverNameFromId, thumbnailFromMxc)
 
 import Http
 import Json.Decode as JD
@@ -132,71 +132,3 @@ httpFromMxc homeserverUrl mxcUrl =
         (\sn mid -> mediaEndpoint homeserverUrl [ "download", sn, mid ] [])
         serverName
         mediaId
-
-
-
--- HTTP REQUESTS
-
-
-{-| handle the JSON response of a HTTP Request
-Flatten HTTP and JSON errors.
--}
-handleJsonResponse : JD.Decoder a -> Http.Response String -> Result Http.Error a
-handleJsonResponse decoder response =
-    case response of
-        Http.BadUrl_ url ->
-            Err (Http.BadUrl url)
-
-        Http.Timeout_ ->
-            Err Http.Timeout
-
-        Http.BadStatus_ { statusCode } _ ->
-            Err (Http.BadStatus statusCode)
-
-        Http.NetworkError_ ->
-            Err Http.NetworkError
-
-        Http.GoodStatus_ _ body ->
-            case JD.decodeString decoder body of
-                Err _ ->
-                    Err (Http.BadBody body)
-
-                Ok result ->
-                    Ok result
-
-
-{-| Make an optionally authenticated requests to a Matrix homeserver.
--}
-apiRequest :
-    { method : String
-    , url : String
-    , accessToken : Maybe String
-    , responseDecoder : JD.Decoder a
-    , body : Http.Body
-    }
-    -> Task Http.Error a
-apiRequest { method, url, accessToken, responseDecoder, body } =
-    Http.task
-        { method = method
-        , headers =
-            accessToken
-                |> Maybe.map (\at -> [ Http.header "Authorization" <| "Bearer " ++ at ])
-                |> Maybe.withDefault []
-        , url = url
-        , body = body
-        , resolver = Http.stringResolver <| handleJsonResponse responseDecoder
-        , timeout = Nothing
-        }
-
-
-{-| Make unauthenticated requests to a Matrix API
--}
-unauthenticatedRequest : { method : String, url : String, body : Http.Body, responseDecoder : JD.Decoder a } -> Task Http.Error a
-unauthenticatedRequest { method, url, body, responseDecoder } =
-    apiRequest
-        { method = method
-        , url = url
-        , body = body
-        , responseDecoder = responseDecoder
-        , accessToken = Nothing
-        }

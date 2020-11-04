@@ -11,7 +11,7 @@ module Session exposing
     , transactionId
     )
 
-import ApiUtils exposing (apiRequest, clientEndpoint)
+import ApiUtils exposing (clientEndpoint)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
@@ -56,6 +56,10 @@ sessionStatusString (Session session) =
     "Signed in as " ++ toString session.kind ++ " " ++ session.userId
 
 
+
+-- TRANSACTION ID
+
+
 {-| Increment the transaction id of this session.
 Should be incremented on each message sent.
 -}
@@ -71,31 +75,8 @@ transactionId (Session session) =
     session.txnId
 
 
-{-| Make authenticated requests using a Session object.
-Wraps ApiUtils.apiRequest
--}
-authenticatedRequest :
-    Session
-    ->
-        { method : String
-        , path : List String
-        , params : List QueryParameter
-        , body : Http.Body
-        , responseDecoder : JD.Decoder a
-        }
-    -> Task Http.Error a
-authenticatedRequest (Session session) { method, path, params, body, responseDecoder } =
-    apiRequest
-        { method = method
-        , url = clientEndpoint session.homeserverUrl path params
-        , body = body
-        , accessToken = Just session.accessToken
-        , responseDecoder = responseDecoder
-        }
 
-
-
-{- KIND -}
+-- KIND
 
 
 type Kind
@@ -121,6 +102,101 @@ toString authType =
 
         User ->
             "user"
+
+
+
+-- API CALLS
+
+
+{-| Make authenticated requests using a Session object.
+Wraps ApiUtils.apiRequest
+-}
+authenticatedRequest :
+    Session
+    ->
+        { method : String
+        , path : List String
+        , params : List QueryParameter
+        , body : Http.Body
+        , responseDecoder : JD.Decoder a
+        }
+    -> Task Http.Error a
+authenticatedRequest (Session session) { method, path, params, body, responseDecoder } =
+    apiRequest
+        { method = method
+        , url = clientEndpoint session.homeserverUrl path params
+        , body = body
+        , accessToken = Just session.accessToken
+        , responseDecoder = responseDecoder
+        }
+
+
+{-| Make unauthenticated requests to a Matrix API
+-}
+unauthenticatedRequest : { method : String, url : String, body : Http.Body, responseDecoder : JD.Decoder a } -> Task Http.Error a
+unauthenticatedRequest { method, url, body, responseDecoder } =
+    apiRequest
+        { method = method
+        , url = url
+        , body = body
+        , responseDecoder = responseDecoder
+        , accessToken = Nothing
+        }
+
+
+{-| Make an optionally authenticated requests to a Matrix homeserver.
+-}
+apiRequest :
+    { method : String
+    , url : String
+    , accessToken : Maybe String
+    , responseDecoder : JD.Decoder a
+    , body : Http.Body
+    }
+    -> Task Http.Error a
+apiRequest { method, url, accessToken, responseDecoder, body } =
+    Http.task
+        { method = method
+        , headers =
+            accessToken
+                |> Maybe.map (\at -> [ Http.header "Authorization" <| "Bearer " ++ at ])
+                |> Maybe.withDefault []
+        , url = url
+        , body = body
+        , resolver = Http.stringResolver <| handleJsonResponse responseDecoder
+        , timeout = Nothing
+        }
+
+
+{-| handle the JSON response of a HTTP Request
+Flatten HTTP and JSON errors.
+-}
+handleJsonResponse : JD.Decoder a -> Http.Response String -> Result Http.Error a
+handleJsonResponse decoder response =
+    case response of
+        Http.BadUrl_ url ->
+            Err (Http.BadUrl url)
+
+        Http.Timeout_ ->
+            Err Http.Timeout
+
+        Http.BadStatus_ { statusCode } _ ->
+            Err (Http.BadStatus statusCode)
+
+        Http.NetworkError_ ->
+            Err Http.NetworkError
+
+        Http.GoodStatus_ _ body ->
+            case JD.decodeString decoder body of
+                Err _ ->
+                    Err (Http.BadBody body)
+
+                Ok result ->
+                    Ok result
+
+
+
+-- AUTHENTICATION
 
 
 {-| Register a guest account with the homeserver, by sending a HTTP POST to
