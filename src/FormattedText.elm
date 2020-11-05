@@ -123,8 +123,30 @@ Transforms mxc urls to http urls, and color tags to css attributes.
 -}
 cleanHtmlNode : String -> Html.Parser.Node -> Html.Parser.Node
 cleanHtmlNode homeserverUrl node =
-    -- TODO: observe max depth as recommended by C/S spec
+    mapElement (cleanElement homeserverUrl) node
+
+
+{-| Function to be mapped over HTML tree.
+
+Clean a single element's attributes, based on the value of the tag.
+Replace the element with empty raw text, if tag not in whitelist.
+
+-}
+cleanElement : String -> Html.Parser.Node -> Html.Parser.Node
+cleanElement homeserverUrl node =
     case node of
+        Html.Parser.Element tag attrs children ->
+            -- if tag in whitelist, clean the attributes and children
+            if Set.member tag tagWhitelist then
+                Html.Parser.Element
+                    tag
+                    (cleanAttributes homeserverUrl tag attrs)
+                    children
+
+            else
+                -- element not in whitelist - remove it
+                Html.Parser.Text ""
+
         Html.Parser.Text str ->
             -- raw text gets to stay
             Html.Parser.Text str
@@ -133,17 +155,57 @@ cleanHtmlNode homeserverUrl node =
             -- keep comments also
             Html.Parser.Comment str
 
-        Html.Parser.Element tag attrs children ->
-            -- if tag in whitelist, clean the attributes and children
-            if Set.member tag tagWhitelist then
-                Html.Parser.Element
-                    tag
-                    (cleanAttributes homeserverUrl tag attrs)
-                    (List.map (cleanHtmlNode homeserverUrl) children)
 
-            else
-                -- element not in whitelist - remove it
-                Html.Parser.Text ""
+{-| Map a function over all Html.Parser.Element values in a Html.Parser.Node tree
+
+To avoid memory issues on large input sizes, this function is implemented in a continuation-passing style.
+Currently it also truncates the children of an Elment to 20, which fixes an undiscovered performance bug.
+
+-}
+mapElement : (Html.Parser.Node -> Html.Parser.Node) -> Html.Parser.Node -> Html.Parser.Node
+mapElement f root =
+    let
+        mapElementHelp : Html.Parser.Node -> (Html.Parser.Node -> ret) -> ret
+        mapElementHelp node c =
+            case node of
+                Html.Parser.Element tag attrs children ->
+                    let
+                        continuations : List ((Html.Parser.Node -> ret) -> ret)
+                        continuations =
+                            List.map mapElementHelp <|
+                                -- TODO: fix this performance bug
+                                --       somewhy it crashes on bigger input
+                                --       (when fuzz testing)
+                                List.take 20 children
+
+                        finalContinuation : List Html.Parser.Node -> ret
+                        finalContinuation chs =
+                            f (Html.Parser.Element tag attrs chs)
+                                |> c
+                    in
+                    continuationSequence continuations finalContinuation
+
+                _ ->
+                    -- dont do anything to comments and text
+                    c node
+    in
+    mapElementHelp root identity
+
+
+continuationSequence : List ((a -> ret) -> ret) -> (List a -> ret) -> ret
+continuationSequence recursions finalContinuation =
+    case recursions of
+        [] ->
+            finalContinuation []
+
+        recurse :: recurses ->
+            recurse
+                (\r ->
+                    continuationSequence recurses
+                        (\rs ->
+                            r :: rs |> finalContinuation
+                        )
+                )
 
 
 cleanAttributes : String -> String -> List ( String, String ) -> List ( String, String )

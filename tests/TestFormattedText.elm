@@ -101,8 +101,7 @@ testTagWhitelist =
                     resultTags =
                         allElementTags result
                 in
-                -- results contain the valid input tags
-                -- and nothing else
+                -- result contains only the valid input tags
                 Expect.equal resultTags validInputTags
             )
         ]
