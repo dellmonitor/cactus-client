@@ -1,10 +1,12 @@
-module FormattedText exposing (FormattedText(..), decodeFormattedText, viewFormattedText)
+module FormattedText exposing (FormattedText(..), cleanHtmlNode, decodeFormattedText, viewFormattedText)
 
 import Accessibility exposing (Html, div, p, text)
 import ApiUtils exposing (httpFromMxc)
 import Html.Parser
 import Html.Parser.Util
 import Json.Decode as JD
+import Set exposing (Set)
+import Tuple
 
 
 
@@ -71,47 +73,54 @@ decodeTextHtml =
 -}
 
 
-tagWhitelist : List String
+tagWhitelist : Set String
 tagWhitelist =
-    [ "font"
-    , "del"
-    , "h1"
-    , "h2"
-    , "h3"
-    , "h4"
-    , "h5"
-    , "h6"
-    , "blockquote"
-    , "p"
-    , "a"
-    , "ul"
-    , "ol"
-    , "sup"
-    , "sub"
-    , "li"
-    , "b"
-    , "i"
-    , "u"
-    , "strong"
-    , "em"
-    , "strike"
-    , "code"
-    , "hr"
-    , "br"
-    , "div"
-    , "table"
-    , "thead"
-    , "tbody"
-    , "tr"
-    , "th"
-    , "td"
-    , "caption"
-    , "pre"
-    , "span"
-    , "img"
-    ]
+    Set.fromList
+        [ "font"
+        , "del"
+        , "h1"
+        , "h2"
+        , "h3"
+        , "h4"
+        , "h5"
+        , "h6"
+        , "blockquote"
+        , "p"
+        , "a"
+        , "ul"
+        , "ol"
+        , "sup"
+        , "sub"
+        , "li"
+        , "b"
+        , "i"
+        , "u"
+        , "strong"
+        , "em"
+        , "strike"
+        , "code"
+        , "hr"
+        , "br"
+        , "div"
+        , "table"
+        , "thead"
+        , "tbody"
+        , "tr"
+        , "th"
+        , "td"
+        , "caption"
+        , "pre"
+        , "span"
+        , "img"
+        ]
 
 
+{-| Clean and transform parsed HTML.
+
+Removes tags and attributes not in whitelist.
+Transforms mxc urls to http urls, and color tags to css attributes.
+
+-}
 cleanHtmlNode : String -> Html.Parser.Node -> Html.Parser.Node
 cleanHtmlNode homeserverUrl node =
     -- TODO: observe max depth as recommended by C/S spec
@@ -126,7 +135,7 @@ cleanHtmlNode homeserverUrl node =
 
         Html.Parser.Element tag attrs children ->
             -- if tag in whitelist, clean the attributes and children
-            if List.member tag tagWhitelist then
+            if Set.member tag tagWhitelist then
                 Html.Parser.Element
                     tag
                     (cleanAttributes homeserverUrl tag attrs)
@@ -156,10 +165,18 @@ cleanAttributes homeserverUrl tag attrs =
             imgAttributes homeserverUrl attrs
 
         "ol" ->
-            []
+            -- only keep "start"
+            List.filter
+                (Tuple.first >> (==) "start")
+                attrs
 
         "code" ->
-            []
+            List.filter
+                (\( attr, val ) ->
+                    (attr == "class")
+                        && (String.left 9 val == "language-")
+                )
+                attrs
 
         _ ->
             []
@@ -168,7 +185,8 @@ cleanAttributes homeserverUrl tag attrs =
 {-| Keep only the color attributes allowed by the client/server api spec
 and translate the color attributes to inline css
 
-    colorAttributes [("data-mx-color", "#ffc0de), ("foo", "bar"), ("data-mx-bg-color", "#c0deff")] == [("style", "color: #ffc0de), ("style", "background: #c0deff")]
+    colorAttributes [("data-mx-color", "#ffc0de), ("foo", "bar"), ("data-mx-bg-color", "#c0deff")]
+    == [("style", "color: #ffc0de), ("style", "background: #c0deff")]
 
 -}
 colorAttributes : List ( String, String ) -> List ( String, String )
