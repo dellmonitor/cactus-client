@@ -7,12 +7,6 @@ import Test exposing (..)
 import Time
 
 
-suite : Test
-suite =
-    describe "The Message Module"
-        [ testTimeSinceText ]
-
-
 testTimeSinceText : Test
 testTimeSinceText =
     describe "Messages.timeSinceText"

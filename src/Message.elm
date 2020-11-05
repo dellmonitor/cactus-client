@@ -1,4 +1,13 @@
-module Message exposing (Event, GetMessagesResponse, Message(..), RoomEvent(..), getMessages, onlyMessageEvents, timeSinceText, viewMessageEvent)
+module Message exposing
+    ( Event
+    , GetMessagesResponse
+    , Message(..)
+    , RoomEvent(..)
+    , getMessages
+    , onlyMessageEvents
+    , timeSinceText
+    , viewMessageEvent
+    )
 
 import Accessibility exposing (Html, a, div, img, p, text)
 import ApiUtils exposing (thumbnailFromMxc)

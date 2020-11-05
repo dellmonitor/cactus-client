@@ -128,8 +128,6 @@ viewLoginForm (LoginForm form) { editMsg, submitMsg, hideMsg } =
                 , submitButton
                 ]
     in
-    -- TODO: this might be a good place to put a cactus logo
-    --       and/or a [Matrix] logo
     div [ class "cactus-login-form" ]
         [ h3 [] [ text "Log in using Matrix" ]
         , username

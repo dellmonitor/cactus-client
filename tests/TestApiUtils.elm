@@ -6,18 +6,6 @@ import Test exposing (..)
 import Url.Builder
 
 
-suite : Test
-suite =
-    describe "Test ApiUtils module"
-        [ testMakeRoomAlias
-        , testServerNameFromId
-        , testClientEndpoint
-        , testMediaEndpoint
-        , testMatrixDotToUrl
-        , testThumbnailFromMxc
-        ]
-
-
 testMakeRoomAlias : Test
 testMakeRoomAlias =
     describe "Test makeRoomAlias"
