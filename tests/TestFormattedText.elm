@@ -3,6 +3,7 @@ module TestFormattedText exposing (..)
 import Expect exposing (Expectation)
 import FormattedText exposing (FormattedText(..), cleanHtmlNode, viewFormattedText)
 import Fuzz exposing (Fuzzer)
+import Hex
 import Html exposing (p)
 import Html.Attributes exposing (height, src, width)
 import Html.Parser
@@ -67,6 +68,102 @@ testViewFormattedText =
                 , \_ -> Query.has [ tag "img", attribute (width 200), attribute (height 200) ] fmtHtml
                 ]
         ]
+
+
+
+-- IMG COLOR TAGs
+
+
+badDataMxTest : String -> String -> Test
+badDataMxTest attr cssprop =
+    fuzz Fuzz.string
+        ("Bad " ++ attr)
+        (\str ->
+            let
+                dirtyImg =
+                    Html [ Html.Parser.Element "font" [ ( attr, str ) ] [] ]
+            in
+            viewFormattedText "https://my.homeserver.tld" dirtyImg
+                |> Query.fromHtml
+                |> Expect.all
+                    [ Query.hasNot [ style cssprop str ]
+                    , Query.has [ tag "font" ]
+                    ]
+        )
+
+
+goodDataMxTest : String -> String -> Test
+goodDataMxTest attr cssprop =
+    let
+        -- make two-char hex byte
+        ffFuzzer =
+            Fuzz.int
+                |> Fuzz.map (modBy 256 >> Hex.toString)
+                |> Fuzz.map
+                    (\a ->
+                        if String.length a == 1 then
+                            "0" ++ a
+
+                        else
+                            a
+                    )
+
+        -- fuzz valid hex colors
+        hexColorFuzzer =
+            Fuzz.map3
+                (\r g b ->
+                    r ++ g ++ b
+                )
+                ffFuzzer
+                ffFuzzer
+                ffFuzzer
+                |> Fuzz.map (\str -> "#" ++ str)
+    in
+    fuzz hexColorFuzzer
+        ("Good " ++ attr)
+        (\str ->
+            let
+                dirtyImg =
+                    Html.Parser.Element "font" [ ( attr, str ) ] []
+
+                findStyle node =
+                    case node of
+                        Html.Parser.Element tag attrs children ->
+                            if List.member ( "style", cssprop ++ ":" ++ str ) attrs && tag == "font" then
+                                Expect.pass
+
+                            else
+                                List.map findStyle children
+                                    |> (\exps ->
+                                            if List.member Expect.pass exps then
+                                                Expect.pass
+
+                                            else
+                                                Expect.fail "not found here"
+                                       )
+
+                        _ ->
+                            Expect.fail "not found here"
+            in
+            cleanHtmlNode "https://lol.com" dirtyImg
+                |> findStyle
+        )
+
+
+badDataMxColorTest =
+    badDataMxTest "data-mx-color" "color"
+
+
+goodDataMxColorTest =
+    goodDataMxTest "data-mx-color" "color"
+
+
+badDataMxBgColorTest =
+    badDataMxTest "data-mx-bg-color" "background"
+
+
+goodDataMxBgColorTest =
+    goodDataMxTest "data-mx-bg-color" "background"
 
 
 

@@ -5,6 +5,7 @@ import ApiUtils exposing (httpFromMxc)
 import Html.Parser
 import Html.Parser.Util
 import Json.Decode as JD
+import Parser exposing ((|.), (|=), Parser)
 import Set exposing (Set)
 import Tuple
 
@@ -12,7 +13,7 @@ import Tuple
 
 {-
    This module supports message event bodies that optionally have the `formatted_body` and `format` fields.
-   Currently the only supported format is org.matrix.custom.html
+   Currently the only supported format is `org.matrix.custom.html` (as per the Matrix spec).
    The main responsibility of this module is to parse HTML to avoid XSS.
 -}
 
@@ -123,31 +124,8 @@ Transforms mxc urls to http urls, and color tags to css attributes.
 -}
 cleanHtmlNode : String -> Html.Parser.Node -> Html.Parser.Node
 cleanHtmlNode homeserverUrl node =
-    mapElement (cleanElement homeserverUrl) node
-
-
-{-| Function to be mapped over HTML tree.
-
-Filter and tansform a single element's attributes, based on the value of the tag.
-Replace the element with div, if original tag not in whitelist.
-
--}
-cleanElement : String -> Html.Parser.Node -> Html.Parser.Node
-cleanElement homeserverUrl node =
+    -- TODO: observe max depth as recommended by C/S spec
     case node of
-        Html.Parser.Element tag attrs children ->
-            -- if tag in whitelist, clean the attributes and children
-            if Set.member tag tagWhitelist then
-                Html.Parser.Element
-                    tag
-                    (cleanAttributes homeserverUrl tag attrs)
-                    children
-
-            else
-                -- element not in whitelist, replace tag and remove attributes
-                -- so that we can keep the children
-                Html.Parser.Element "div" [] children
-
         Html.Parser.Text str ->
             -- raw text gets to stay
             Html.Parser.Text str
@@ -156,53 +134,19 @@ cleanElement homeserverUrl node =
             -- keep comments also
             Html.Parser.Comment str
 
+        Html.Parser.Element tag attrs children ->
+            (if Set.member tag tagWhitelist then
+                -- tag in whitelist - process
+                Html.Parser.Element tag (cleanAttributes homeserverUrl tag attrs)
 
-{-| Map a function over all Html.Parser.Element values in a Html.Parser.Node tree
-
-To avoid memory issues on large input sizes, this function is implemented in a continuation-passing style.
-Currently it also truncates the children of an Elment to 20, which fixes an undiscovered performance bug.
-
--}
-mapElement : (Html.Parser.Node -> Html.Parser.Node) -> Html.Parser.Node -> Html.Parser.Node
-mapElement f root =
-    let
-        mapElementHelp : Html.Parser.Node -> (Html.Parser.Node -> ret) -> ret
-        mapElementHelp node c =
-            case node of
-                Html.Parser.Element tag attrs children ->
-                    let
-                        continuations : List ((Html.Parser.Node -> ret) -> ret)
-                        continuations =
-                            List.map mapElementHelp children
-
-                        finalContinuation : List Html.Parser.Node -> ret
-                        finalContinuation chs =
-                            f (Html.Parser.Element tag attrs chs)
-                                |> c
-                    in
-                    continuationSequence continuations finalContinuation
-
-                _ ->
-                    -- dont do anything to comments and text
-                    c node
-    in
-    mapElementHelp root identity
-
-
-continuationSequence : List ((a -> ret) -> ret) -> (List a -> ret) -> ret
-continuationSequence recursions finalContinuation =
-    case recursions of
-        [] ->
-            finalContinuation []
-
-        recurse :: recurses ->
-            recurse
-                (\r ->
-                    continuationSequence recurses
-                        (\rs ->
-                            r :: rs |> finalContinuation
-                        )
-                )
+             else
+                -- element not in whitelist.
+                -- remove attributes and replace with div
+                Html.Parser.Element "div" []
+            )
+            <|
+                -- keep child elements in both cases
+                List.map (cleanHtmlNode homeserverUrl) children
 
 
 cleanAttributes : String -> String -> List ( String, String ) -> List ( String, String )
@@ -225,9 +169,7 @@ cleanAttributes homeserverUrl tag attrs =
 
         "ol" ->
             -- only keep "start"
-            List.filter
-                (Tuple.first >> (==) "start")
-                attrs
+            List.filter (Tuple.first >> (==) "start") attrs
 
         "code" ->
             List.filter
@@ -241,10 +183,31 @@ cleanAttributes homeserverUrl tag attrs =
             []
 
 
+{-| Parse String as 7-character hex color code.
+
+e.g. "#ff0000"
+
+-}
+parseHexColor : Parser String
+parseHexColor =
+    Parser.symbol "#"
+        |. Parser.chompWhile Char.isHexDigit
+        |. Parser.end
+        |> Parser.getChompedString
+        |> Parser.andThen
+            (\hexcolor ->
+                if String.length hexcolor == 7 then
+                    Parser.succeed hexcolor
+
+                else
+                    Parser.problem "Hex color code should have 7 characters."
+            )
+
+
 {-| Keep only the color attributes allowed by the client/server api spec
 and translate the color attributes to inline css
 
-    colorAttributes [("data-mx-color", "#ffc0de), ("foo", "bar"), ("data-mx-bg-color", "#c0deff")]
+    colorAttributes [("data-mx-color", "#ffc0de"), ("foo", "bar"), ("data-mx-bg-color", "#c0deff")]
     == [("style", "color: #ffc0de), ("style", "background: #c0deff")]
 
 -}
@@ -253,15 +216,21 @@ colorAttributes attrs =
     List.foldl
         (\attr list ->
             case attr of
-                ( "data-mx-color", colorStr ) ->
-                    -- XXX: this is vulnurable to css injection
-                    -- TODO: fix this shit
-                    ( "style", "color: " ++ colorStr ) :: list
+                ( "data-mx-color", value ) ->
+                    case Parser.run parseHexColor value of
+                        Ok hexColor ->
+                            ( "style", "color:" ++ hexColor ) :: list
 
-                ( "data-mx-bg-color", colorStr ) ->
-                    -- XXX: this is vulnurable to css injection
-                    -- TODO: fix this shit
-                    ( "style", "background: " ++ colorStr ) :: list
+                        Err _ ->
+                            list
+
+                ( "data-mx-bg-color", value ) ->
+                    case Parser.run parseHexColor value of
+                        Ok hexColor ->
+                            ( "style", "background:" ++ hexColor ) :: list
+
+                        Err _ ->
+                            list
 
                 _ ->
                     -- discard all other attributes
