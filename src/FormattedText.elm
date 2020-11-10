@@ -128,8 +128,8 @@ cleanHtmlNode homeserverUrl node =
 
 {-| Function to be mapped over HTML tree.
 
-Clean a single element's attributes, based on the value of the tag.
-Replace the element with empty raw text, if tag not in whitelist.
+Filter and tansform a single element's attributes, based on the value of the tag.
+Replace the element with div, if original tag not in whitelist.
 
 -}
 cleanElement : String -> Html.Parser.Node -> Html.Parser.Node
@@ -144,8 +144,9 @@ cleanElement homeserverUrl node =
                     children
 
             else
-                -- element not in whitelist - remove it
-                Html.Parser.Text ""
+                -- element not in whitelist, replace tag and remove attributes
+                -- so that we can keep the children
+                Html.Parser.Element "div" [] children
 
         Html.Parser.Text str ->
             -- raw text gets to stay
@@ -172,11 +173,7 @@ mapElement f root =
                     let
                         continuations : List ((Html.Parser.Node -> ret) -> ret)
                         continuations =
-                            List.map mapElementHelp <|
-                                -- TODO: fix this performance bug
-                                --       somewhy it crashes on bigger input
-                                --       (when fuzz testing)
-                                List.take 20 children
+                            List.map mapElementHelp children
 
                         finalContinuation : List Html.Parser.Node -> ret
                         finalContinuation chs =

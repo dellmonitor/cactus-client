@@ -81,28 +81,15 @@ tagWhitelist =
 testTagWhitelist : Test
 testTagWhitelist =
     describe "Test html sanitization"
-        [ fuzz (htmlNodeFuzzer 3)
+        [ fuzz (Fuzz.oneOf [ nestedElementFuzzer 100, wideElementFuzzer ])
             "Check that cleanHtmlNode keeps all tags in whitelist"
             (\input ->
-                let
-                    inputTags : Set String
-                    inputTags =
-                        allElementTags input
-
-                    validInputTags : Set String
-                    validInputTags =
-                        Set.intersect inputTags tagWhitelist
-
-                    result : Html.Parser.Node
-                    result =
-                        cleanHtmlNode "https://cactus.chat" input
-
-                    resultTags : Set String
-                    resultTags =
-                        allElementTags result
-                in
-                -- result contains only the valid input tags
-                Expect.equal resultTags validInputTags
+                -- result contains all the valid input tags
+                Expect.equal
+                    -- valid tags from input + div
+                    (allElementTags input |> Set.intersect tagWhitelist |> Set.insert "div")
+                    -- all tags from output + div
+                    (cleanHtmlNode "https://cactus.chat" input |> allElementTags |> Set.insert "div")
             )
         ]
 
@@ -112,8 +99,8 @@ allElementTags html =
     case html of
         Html.Parser.Element tag _ children ->
             List.foldl
-                (\ch set -> allElementTags ch |> Set.union set)
-                Set.empty
+                (\ch set -> Set.union set <| allElementTags ch)
+                (Set.singleton tag)
                 children
 
         Html.Parser.Text _ ->
@@ -127,9 +114,32 @@ allElementTags html =
 -- FUZZING
 
 
-htmlNodeFuzzer : Int -> Fuzzer Html.Parser.Node
-htmlNodeFuzzer depth =
-    Fuzz.oneOf [ commentFuzzer, textFuzzer, elementFuzzer depth ]
+nestedElementFuzzer : Int -> Fuzzer Html.Parser.Node
+nestedElementFuzzer depth =
+    Fuzz.map3 Html.Parser.Element
+        (Fuzz.oneOf [ shortStringFuzzer, validTagFuzzer ])
+        (Fuzz.list attributeFuzzer)
+        (Fuzz.map List.singleton <|
+            if depth > 0 then
+                nestedElementFuzzer (depth - 1)
+
+            else
+                Fuzz.oneOf [ textFuzzer, commentFuzzer ]
+        )
+
+
+wideElementFuzzer : Fuzzer Html.Parser.Node
+wideElementFuzzer =
+    Fuzz.map (Html.Parser.Element "div" []) <|
+        Fuzz.list childlessElementFuzzer
+
+
+childlessElementFuzzer : Fuzzer Html.Parser.Node
+childlessElementFuzzer =
+    Fuzz.map2 Html.Parser.Element
+        (Fuzz.oneOf [ shortStringFuzzer, validTagFuzzer ])
+        (Fuzz.list attributeFuzzer)
+        |> Fuzz.map (\a -> a [])
 
 
 commentFuzzer : Fuzzer Html.Parser.Node
@@ -142,22 +152,31 @@ textFuzzer =
     Fuzz.map Html.Parser.Text shortStringFuzzer
 
 
-elementFuzzer : Int -> Fuzzer Html.Parser.Node
-elementFuzzer depth =
-    Fuzz.map3 Html.Parser.Element
-        (Fuzz.oneOf [ validTagFuzzer, shortStringFuzzer ])
-        (Fuzz.constant [])
-        (if depth > 0 then
-            Fuzz.list <| htmlNodeFuzzer (depth - 1)
-
-         else
-            Fuzz.list <| Fuzz.oneOf [ textFuzzer, commentFuzzer ]
-        )
-
-
 attributeFuzzer : Fuzzer ( String, String )
 attributeFuzzer =
+    Fuzz.oneOf [ invalidAttributeFuzzer, validAttributeFuzzer ]
+
+
+invalidAttributeFuzzer : Fuzzer ( String, String )
+invalidAttributeFuzzer =
     Fuzz.map2 Tuple.pair shortStringFuzzer shortStringFuzzer
+
+
+validAttributeFuzzer : Fuzzer ( String, String )
+validAttributeFuzzer =
+    let
+        attr =
+            Fuzz.oneOf <|
+                List.map Fuzz.constant
+                    [ "href"
+                    , "src"
+                    , "data-mx-color"
+                    , "data-mx-bg-color"
+                    ]
+    in
+    Fuzz.map2 Tuple.pair
+        attr
+        shortStringFuzzer
 
 
 validTagFuzzer : Fuzzer String
