@@ -47,7 +47,7 @@ sortByTime events =
 {-| Register a guest account on the default homeserver, then get a room using
 the guest access token.
 -}
-getRoomAsGuest : { homeserverUrl : String, roomAlias : String } -> Task Http.Error ( Session, Room )
+getRoomAsGuest : { homeserverUrl : String, roomAlias : String } -> Task Session.Error ( Session, Room )
 getRoomAsGuest { homeserverUrl, roomAlias } =
     registerGuest homeserverUrl
         |> Task.andThen
@@ -68,7 +68,7 @@ getRoomAsGuest { homeserverUrl, roomAlias } =
 The Task eventually completes a Room record
 
 -}
-getInitialRoom : Session -> String -> Task Http.Error Room
+getInitialRoom : Session -> String -> Task Session.Error Room
 getInitialRoom session roomAlias =
     let
         -- find roomId
@@ -147,7 +147,7 @@ getInitialRoom session roomAlias =
 
 {-| Make a GET request to resolve a roomId from a given roomAlias.
 -}
-getRoomId : Session -> String -> Task Http.Error String
+getRoomId : Session -> String -> Task Session.Error String
 getRoomId session roomAlias =
     authenticatedRequest
         session
@@ -162,7 +162,7 @@ getRoomId session roomAlias =
 {-| Make a GET to events endpoint - only to extract a "since-token", which can
 be used to fetch events from another endpoint.
 -}
-getSinceToken : Session -> String -> Task Http.Error String
+getSinceToken : Session -> String -> Task Session.Error String
 getSinceToken session roomId =
     authenticatedRequest
         session

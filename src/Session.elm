@@ -1,5 +1,6 @@
 module Session exposing
-    ( Kind(..)
+    ( Error(..)
+    , Kind(..)
     , Session
     , authenticatedRequest
     , incrementTransactionId
@@ -15,6 +16,7 @@ import ApiUtils exposing (clientEndpoint)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
+import Process
 import Task exposing (Task)
 import Url.Builder exposing (QueryParameter)
 
@@ -120,7 +122,7 @@ authenticatedRequest :
         , body : Http.Body
         , responseDecoder : JD.Decoder a
         }
-    -> Task Http.Error a
+    -> Task Error a
 authenticatedRequest (Session session) { method, path, params, body, responseDecoder } =
     apiRequest
         { method = method
@@ -133,7 +135,7 @@ authenticatedRequest (Session session) { method, path, params, body, responseDec
 
 {-| Make unauthenticated requests to a Matrix API
 -}
-unauthenticatedRequest : { method : String, url : String, body : Http.Body, responseDecoder : JD.Decoder a } -> Task Http.Error a
+unauthenticatedRequest : { method : String, url : String, body : Http.Body, responseDecoder : JD.Decoder a } -> Task Error a
 unauthenticatedRequest { method, url, body, responseDecoder } =
     apiRequest
         { method = method
@@ -145,6 +147,7 @@ unauthenticatedRequest { method, url, body, responseDecoder } =
 
 
 {-| Make an optionally authenticated requests to a Matrix homeserver.
+Retry on network failure.
 -}
 apiRequest :
     { method : String
@@ -153,46 +156,104 @@ apiRequest :
     , responseDecoder : JD.Decoder a
     , body : Http.Body
     }
-    -> Task Http.Error a
+    -> Task Error a
 apiRequest { method, url, accessToken, responseDecoder, body } =
-    Http.task
-        { method = method
-        , headers =
-            accessToken
-                |> Maybe.map (\at -> [ Http.header "Authorization" <| "Bearer " ++ at ])
-                |> Maybe.withDefault []
-        , url = url
-        , body = body
-        , resolver = Http.stringResolver <| handleJsonResponse responseDecoder
-        , timeout = Nothing
-        }
+    let
+        request : Task Error_ a
+        request =
+            Http.task
+                { method = method
+                , headers =
+                    accessToken
+                        |> Maybe.map (\at -> [ Http.header "Authorization" <| "Bearer " ++ at ])
+                        |> Maybe.withDefault []
+                , url = url
+                , body = body
+                , resolver = Http.stringResolver <| handleJsonResponse responseDecoder
+                , timeout = Nothing
+                }
+    in
+    request
+        |> Task.onError (onError request)
+
+
+onError : Task Error_ a -> Error_ -> Task Error a
+onError request error =
+    case error of
+        UnhandledError errcode err ->
+            Task.fail <| Error errcode err
+
+        RetryAfterMs ms ->
+            Process.sleep (toFloat ms)
+                |> Task.andThen
+                    (\() ->
+                        request
+                            |> Task.onError (onError request)
+                    )
+
+
+type Error
+    = Error String String
+
+
+type Error_
+    = UnhandledError String String
+    | RetryAfterMs Int
+
+
+retryConstant : Int
+retryConstant =
+    30
 
 
 {-| handle the JSON response of a HTTP Request
 Flatten HTTP and JSON errors.
+Parse Matrix "standard error responses".
 -}
-handleJsonResponse : JD.Decoder a -> Http.Response String -> Result Http.Error a
+handleJsonResponse : JD.Decoder a -> Http.Response String -> Result Error_ a
 handleJsonResponse decoder response =
     case response of
         Http.BadUrl_ url ->
-            Err (Http.BadUrl url)
+            Err <| UnhandledError "Bad url" url
 
         Http.Timeout_ ->
-            Err Http.Timeout
-
-        Http.BadStatus_ { statusCode } _ ->
-            Err (Http.BadStatus statusCode)
+            Err <| RetryAfterMs retryConstant
 
         Http.NetworkError_ ->
-            Err Http.NetworkError
+            Err <| RetryAfterMs retryConstant
+
+        Http.BadStatus_ metadata body ->
+            Err <|
+                (JD.decodeString decodeMatrixError body
+                    |> Result.withDefault (UnhandledError "Could not decode error" body)
+                )
 
         Http.GoodStatus_ _ body ->
             case JD.decodeString decoder body of
                 Err _ ->
-                    Err (Http.BadBody body)
+                    Err <| UnhandledError "Could not decode response" body
 
                 Ok result ->
                     Ok result
+
+
+decodeMatrixError : JD.Decoder Error_
+decodeMatrixError =
+    JD.map2 Tuple.pair
+        (JD.field "errcode" JD.string)
+        (JD.field "error" JD.string)
+        |> JD.andThen
+            (\( errcode, error ) ->
+                case errcode of
+                    "M_LIMIT_EXCEEDED" ->
+                        JD.oneOf
+                            [ JD.map RetryAfterMs <| JD.field "retry_after_ms" JD.int
+                            , JD.succeed <| UnhandledError errcode error
+                            ]
+
+                    _ ->
+                        JD.succeed <| UnhandledError errcode error
+            )
 
 
 
@@ -202,13 +263,12 @@ handleJsonResponse decoder response =
 {-| Register a guest account with the homeserver, by sending a HTTP POST to
 /register?kind=guest. This presumes that the homeserver has enabled guest registrations.
 -}
-registerGuest : String -> Task Http.Error Session
+registerGuest : String -> Task Error Session
 registerGuest homeserverUrl =
-    apiRequest
+    unauthenticatedRequest
         { method = "POST"
         , url = clientEndpoint homeserverUrl [ "register" ] [ Url.Builder.string "kind" "guest" ]
         , responseDecoder = decodeSession homeserverUrl Guest
-        , accessToken = Nothing
         , body = Http.stringBody "application/json" "{}"
         }
 
@@ -216,13 +276,12 @@ registerGuest homeserverUrl =
 {-| Login by sending a POST request to the /login endpoint
 Login type "m.login.password" and identifier type "m.id.user"
 -}
-login : { homeserverUrl : String, user : String, password : String } -> Task Http.Error Session
+login : { homeserverUrl : String, user : String, password : String } -> Task Error Session
 login { homeserverUrl, user, password } =
-    apiRequest
+    unauthenticatedRequest
         { method = "POST"
         , url = clientEndpoint homeserverUrl [ "login" ] []
         , responseDecoder = decodeSession homeserverUrl User
-        , accessToken = Nothing
         , body = Http.jsonBody <| passwordLoginJson { user = user, password = password }
         }
 

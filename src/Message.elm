@@ -73,7 +73,7 @@ type alias GetMessagesResponse =
     }
 
 
-getMessages : Session -> String -> String -> Task Http.Error GetMessagesResponse
+getMessages : Session -> String -> String -> Task Session.Error GetMessagesResponse
 getMessages session roomId from =
     authenticatedRequest
         session

@@ -28,7 +28,7 @@ type alias Editor =
 3.  leave the room
 
 -}
-joinPutLeave : Session -> String -> String -> Task Http.Error ()
+joinPutLeave : Session -> String -> String -> Task Session.Error ()
 joinPutLeave session roomId comment =
     joinPut session roomId comment
         |> Task.andThen (\_ -> leaveRoom session roomId)
@@ -40,13 +40,13 @@ joinPutLeave session roomId comment =
 2.  HTTP PUT a comment into the room
 
 -}
-joinPut : Session -> String -> String -> Task Http.Error ()
+joinPut : Session -> String -> String -> Task Session.Error ()
 joinPut session roomId comment =
     joinRoom session roomId
         |> Task.andThen (\_ -> putMessage session roomId comment)
 
 
-joinRoom : Session -> String -> Task Http.Error ()
+joinRoom : Session -> String -> Task Session.Error ()
 joinRoom session roomId =
     authenticatedRequest
         session
@@ -58,7 +58,7 @@ joinRoom session roomId =
         }
 
 
-leaveRoom : Session -> String -> Task Http.Error ()
+leaveRoom : Session -> String -> Task Session.Error ()
 leaveRoom session roomId =
     authenticatedRequest
         session
@@ -70,7 +70,7 @@ leaveRoom session roomId =
         }
 
 
-putMessage : Session -> String -> String -> Task Http.Error ()
+putMessage : Session -> String -> String -> Task Session.Error ()
 putMessage session roomId comment =
     -- post a message
     let

@@ -65,13 +65,13 @@ init config =
 
 
 type Msg
-    = GotRoom (Result Http.Error ( Session, Room ))
+    = GotRoom (Result Session.Error ( Session, Room ))
     | ViewMore Session Room
-    | GotMessages Room (Result Http.Error GetMessagesResponse)
+    | GotMessages Room (Result Session.Error GetMessagesResponse)
       -- EDITOR
     | EditComment String
     | SendComment Session Room
-    | SentComment (Result Http.Error ())
+    | SentComment (Result Session.Error ())
       -- LOGIN
     | ShowLogin
     | HideLogin
@@ -97,9 +97,9 @@ update msg model =
             , Cmd.none
             )
 
-        GotRoom (Err err) ->
+        GotRoom (Err (Session.Error code error)) ->
             -- error while setting up initial room
-            ( { model | error = Just <| Debug.toString err }
+            ( { model | error = Just <| code ++ error }
             , Cmd.none
             )
 
@@ -125,9 +125,9 @@ update msg model =
             , Cmd.none
             )
 
-        GotMessages _ (Err httpErr) ->
+        GotMessages _ (Err (Session.Error code error)) ->
             -- http error while getting more comments
-            ( { model | error = Just <| Debug.toString httpErr }
+            ( { model | error = Just <| code ++ error }
             , Cmd.none
             )
 

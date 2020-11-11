@@ -41,7 +41,7 @@ isValid { username, password } =
     (username /= "") && (password /= "")
 
 
-loginWithForm : LoginForm -> ( LoginForm, Task Http.Error Session )
+loginWithForm : LoginForm -> ( LoginForm, Task Session.Error Session )
 loginWithForm (LoginForm form) =
     ( LoginForm { form | state = LoggingIn }
     , login

@@ -14,7 +14,7 @@ type alias Member =
     }
 
 
-getJoinedMembers : Session -> String -> Task Http.Error (Dict String Member)
+getJoinedMembers : Session -> String -> Task Session.Error (Dict String Member)
 getJoinedMembers session roomId =
     authenticatedRequest
         session
