@@ -177,8 +177,8 @@ update msg model =
             , Cmd.none
             )
 
-        SentComment (Err httpErr) ->
-            ( { model | error = Just <| Debug.toString httpErr }
+        SentComment (Err (Session.Error code error)) ->
+            ( { model | error = Just <| code ++ error }
             , Cmd.none
             )
 

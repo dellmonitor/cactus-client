@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "parcel -p 8080 ./examples/dev.html",
-    "build": "parcel build --no-minify ./src/main.js"
+    "build": "parcel build ./src/main.js"
   },
   "author": "Asbjørn Olling",
   "license": "MIT",
