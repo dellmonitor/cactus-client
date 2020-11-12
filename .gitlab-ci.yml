@@ -26,9 +26,10 @@ js:
       - ./dist/main.js
 
 ipfs:
+  image: alpine:3.7
   stage: ipfs
   script:
-    - apt update -y && apt install -y httpie
+    - apk add httpie
     - http \
         --form \
         post \
