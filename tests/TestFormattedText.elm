@@ -261,6 +261,7 @@ invalidAttributeFuzzer =
 
 validAttributeFuzzer : Fuzzer ( String, String )
 validAttributeFuzzer =
+    -- these attributes are valid only on specific tags
     let
         attr =
             Fuzz.oneOf <|
@@ -269,6 +270,8 @@ validAttributeFuzzer =
                     , "src"
                     , "data-mx-color"
                     , "data-mx-bg-color"
+                    , "alt"
+                    , "title"
                     ]
     in
     Fuzz.map2 Tuple.pair

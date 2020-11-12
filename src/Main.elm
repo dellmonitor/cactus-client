@@ -8,16 +8,17 @@ import Editor exposing (Editor, joinPut, joinPutLeave, viewEditor)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Http
+import Json.Decode as JD
 import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
 import Member exposing (Member)
 import Message exposing (GetMessagesResponse, Message(..), RoomEvent, getMessages, onlyMessageEvents, viewMessageEvent)
 import Room exposing (Room, getInitialRoom, getRoomAsGuest, mergeNewMessages)
-import Session exposing (Kind(..), Session, incrementTransactionId, sessionKind)
+import Session exposing (Kind(..), Session, decodeStoredSession, incrementTransactionId, sessionKind)
 import Task
 import Time
 
 
-main : Program StaticConfig Model Msg
+main : Program Flags Model Msg
 main =
     Browser.element
         { init = init
@@ -40,16 +41,35 @@ type alias Model =
     }
 
 
-type alias StaticConfig =
+type alias Flags =
     { defaultHomeserverUrl : String
     , serverName : String
     , siteName : String
     , uniqueId : String
+    , storedSession : JD.Value
     }
 
 
-init : StaticConfig -> ( Model, Cmd Msg )
-init config =
+parseFlags : Flags -> ( StaticConfig, Maybe Session )
+parseFlags flags =
+    ( StaticConfig flags.defaultHomeserverUrl <| makeRoomAlias flags
+    , JD.decodeValue decodeStoredSession flags.storedSession
+        |> Result.toMaybe
+    )
+
+
+type alias StaticConfig =
+    { defaultHomeserverUrl : String
+    , roomAlias : String
+    }
+
+
+init : Flags -> ( Model, Cmd Msg )
+init flags =
+    let
+        ( config, session ) =
+            parseFlags flags
+    in
     ( { config = config
       , editor = { content = "" }
       , roomState = Nothing
@@ -59,7 +79,7 @@ init config =
     , Task.attempt GotRoom <|
         getRoomAsGuest
             { homeserverUrl = config.defaultHomeserverUrl
-            , roomAlias = makeRoomAlias config
+            , roomAlias = config.roomAlias
             }
     )
 
@@ -202,7 +222,7 @@ update msg model =
             , Task.attempt GotRoom <|
                 getRoomAsGuest
                     { homeserverUrl = model.config.defaultHomeserverUrl
-                    , roomAlias = makeRoomAlias model.config
+                    , roomAlias = model.config.roomAlias
                     }
             )
 
@@ -216,7 +236,7 @@ update msg model =
                 (loginTask
                     |> Task.andThen
                         (\session ->
-                            getInitialRoom session (makeRoomAlias model.config)
+                            getInitialRoom session model.config.roomAlias
                                 |> Task.map (\room -> ( session, room ))
                         )
                 )
@@ -254,7 +274,7 @@ view model =
                 , editMsg = EditComment
                 , sendMsg = Maybe.map (\rs -> SendComment rs.session rs.room) model.roomState
                 , session = Maybe.map .session model.roomState
-                , roomAlias = makeRoomAlias model.config
+                , roomAlias = model.config.roomAlias
                 , editor = model.editor
                 }
     in

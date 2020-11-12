@@ -1,12 +1,14 @@
-module Session exposing
+port module Session exposing
     ( Error(..)
     , Kind(..)
     , Session
     , authenticatedRequest
+    , decodeStoredSession
     , incrementTransactionId
     , isUser
     , login
     , registerGuest
+    , saveSessionCmd
     , sessionKind
     , sessionStatusString
     , transactionId
@@ -106,6 +108,23 @@ toString authType =
             "user"
 
 
+decodeKind : JD.Decoder Kind
+decodeKind =
+    JD.string
+        |> JD.andThen
+            (\kind ->
+                case kind of
+                    "guest" ->
+                        JD.succeed Guest
+
+                    "user" ->
+                        JD.succeed User
+
+                    _ ->
+                        JD.fail <| kind ++ " is not a valid Session.Kind"
+            )
+
+
 
 -- API CALLS
 
@@ -173,8 +192,20 @@ apiRequest { method, url, accessToken, responseDecoder, body } =
                 , timeout = Nothing
                 }
     in
-    request
-        |> Task.onError (onError request)
+    request |> Task.onError (onError request)
+
+
+
+-- ERRORS
+
+
+type Error
+    = Error String String
+
+
+type Error_
+    = UnhandledError String String
+    | RetryAfterMs Int
 
 
 onError : Task Error_ a -> Error_ -> Task Error a
@@ -190,15 +221,6 @@ onError request error =
                         request
                             |> Task.onError (onError request)
                     )
-
-
-type Error
-    = Error String String
-
-
-type Error_
-    = UnhandledError String String
-    | RetryAfterMs Int
 
 
 retryConstant : Int
@@ -304,3 +326,40 @@ passwordLoginJson { user, password } =
         , ( "password", JE.string password )
         , ( "initial_device_display_name", JE.string "Cactus Comments" )
         ]
+
+
+
+-- PERSISTENCE
+
+
+port saveSession : JE.Value -> Cmd msg
+
+
+port getSession : (JE.Value -> msg) -> Sub msg
+
+
+saveSessionCmd : Session -> Cmd msg
+saveSessionCmd session =
+    encodeStoredSession session |> saveSession
+
+
+encodeStoredSession : Session -> JE.Value
+encodeStoredSession (Session { homeserverUrl, kind, txnId, userId, accessToken }) =
+    JE.object
+        [ ( "homeserverUrl", JE.string homeserverUrl )
+        , ( "kind", JE.string <| toString kind )
+        , ( "txnId", JE.int txnId )
+        , ( "userId", JE.string userId )
+        , ( "accessToken", JE.string accessToken )
+        ]
+
+
+decodeStoredSession : JD.Decoder Session
+decodeStoredSession =
+    JD.map Session <|
+        JD.map5 SessionData
+            (JD.field "homeserverUrl" JD.string)
+            (JD.field "kind" decodeKind)
+            (JD.field "txnId" JD.int)
+            (JD.field "userId" JD.string)
+            (JD.field "accessToken" JD.string)
