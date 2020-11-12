@@ -41,17 +41,11 @@ initComments({
 Note that the following requirements apply:
 
 - `node` must be a HTML element present on the page.
-
 - `defaultHomeserverUrl` must be a full url (schema, port and all) with *no trailing slash*.
-
-- The Matrix server at `defaultHomeserverUrl` must have guest registration enabled (enable in Synapse's `homeserver.yaml`).
-
-- `serverName` must be the server name (domain part) of a Matrix server running the [Cactus Appservice](gitlab.com/cactus-comments/cactus-appservice).
-
+- `defaultHomeserverUrl` must point to a Matrix server with guest registration enabled (enable in Synapse's `homeserver.yaml`).
+- `serverName` must be the server name (domain part) of a Matrix server running the [Cactus Appservice](https://gitlab.com/cactus-comments/cactus-appservice).
 - `serverName` may be a different Matrix server than `defaultHomeserverUrl` - but does not have to be.
-
-- `siteName` should be the name that you register with the [Cactus Appservice](gitlab.com/cactus-comments/cactus-appservice).
-
+- `siteName` should be the name that you register with the [Cactus Appservice](https://gitlab.com/cactus-comments/cactus-appservice).
 - `commentSectionId` should be a unique string that identifies this comment section. You probably want to change this on every page.
 
 In a typical installation, you will want to set everything except

@@ -8,9 +8,9 @@ port module Session exposing
     , isUser
     , login
     , registerGuest
-    , saveSessionCmd
     , sessionKind
     , sessionStatusString
+    , storeSessionCmd
     , transactionId
     )
 
@@ -332,18 +332,15 @@ passwordLoginJson { user, password } =
 -- PERSISTENCE
 
 
-port saveSession : JE.Value -> Cmd msg
+port storeSession : String -> Cmd msg
 
 
-port getSession : (JE.Value -> msg) -> Sub msg
+storeSessionCmd : Session -> Cmd msg
+storeSessionCmd session =
+    encodeStoredSession session |> storeSession
 
 
-saveSessionCmd : Session -> Cmd msg
-saveSessionCmd session =
-    encodeStoredSession session |> saveSession
-
-
-encodeStoredSession : Session -> JE.Value
+encodeStoredSession : Session -> String
 encodeStoredSession (Session { homeserverUrl, kind, txnId, userId, accessToken }) =
     JE.object
         [ ( "homeserverUrl", JE.string homeserverUrl )
@@ -352,6 +349,7 @@ encodeStoredSession (Session { homeserverUrl, kind, txnId, userId, accessToken }
         , ( "userId", JE.string userId )
         , ( "accessToken", JE.string accessToken )
         ]
+        |> JE.encode 0
 
 
 decodeStoredSession : JD.Decoder Session

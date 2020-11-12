@@ -12,8 +12,8 @@ import Json.Decode as JD
 import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
 import Member exposing (Member)
 import Message exposing (GetMessagesResponse, Message(..), RoomEvent, getMessages, onlyMessageEvents, viewMessageEvent)
-import Room exposing (Room, getInitialRoom, getRoomAsGuest, mergeNewMessages)
-import Session exposing (Kind(..), Session, decodeStoredSession, incrementTransactionId, sessionKind)
+import Room exposing (Room, getInitialRoom, mergeNewMessages)
+import Session exposing (Kind(..), Session, decodeStoredSession, incrementTransactionId, registerGuest, sessionKind, storeSessionCmd)
 import Task
 import Time
 
@@ -31,11 +31,8 @@ main =
 type alias Model =
     { config : StaticConfig
     , editor : Editor
-    , roomState :
-        Maybe
-            { room : Room
-            , session : Session
-            }
+    , session : Maybe Session
+    , room : Maybe Room
     , loginForm : Maybe LoginForm
     , error : Maybe String
     }
@@ -45,15 +42,15 @@ type alias Flags =
     { defaultHomeserverUrl : String
     , serverName : String
     , siteName : String
-    , uniqueId : String
-    , storedSession : JD.Value
+    , commentSectionId : String
+    , storedSession : String
     }
 
 
 parseFlags : Flags -> ( StaticConfig, Maybe Session )
 parseFlags flags =
     ( StaticConfig flags.defaultHomeserverUrl <| makeRoomAlias flags
-    , JD.decodeValue decodeStoredSession flags.storedSession
+    , JD.decodeString decodeStoredSession flags.storedSession
         |> Result.toMaybe
     )
 
@@ -72,15 +69,24 @@ init flags =
     in
     ( { config = config
       , editor = { content = "" }
-      , roomState = Nothing
+      , session = session
+      , room = Nothing
       , loginForm = Nothing
       , error = Nothing
       }
     , Task.attempt GotRoom <|
-        getRoomAsGuest
-            { homeserverUrl = config.defaultHomeserverUrl
-            , roomAlias = config.roomAlias
-            }
+        case session of
+            Nothing ->
+                registerGuest config.defaultHomeserverUrl
+                    |> Task.andThen
+                        (\sess ->
+                            getInitialRoom sess config.roomAlias
+                                |> Task.map (Tuple.pair sess)
+                        )
+
+            Just sess ->
+                getInitialRoom sess config.roomAlias
+                    |> Task.map (Tuple.pair sess)
     )
 
 
@@ -103,18 +109,14 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        GotRoom (Ok ( auth, room )) ->
+        GotRoom (Ok ( session, room )) ->
             -- got initial room, when loading page first ime
             ( { model
-                | roomState =
-                    Just
-                        -- init both room and editor. this enables most of the ui
-                        { room = room
-                        , session = auth
-                        }
+                | session = Just session
+                , room = Just room
                 , loginForm = Nothing
               }
-            , Cmd.none
+            , storeSessionCmd session
             )
 
         GotRoom (Err (Session.Error code error)) ->
@@ -135,13 +137,8 @@ update msg model =
             let
                 newRoom =
                     mergeNewMessages room newMsgs
-
-                newRoomState =
-                    Maybe.map
-                        (\rs -> { rs | room = newRoom })
-                        model.roomState
             in
-            ( { model | roomState = newRoomState }
+            ( { model | room = Just newRoom }
             , Cmd.none
             )
 
@@ -182,7 +179,8 @@ update msg model =
             in
             ( { model
                 | editor = { content = "" }
-                , roomState = Just { session = newSession, room = room }
+                , session = Just session
+                , room = Just room
               }
             , Task.attempt SentComment <|
                 putTask
@@ -220,10 +218,13 @@ update msg model =
         LogOut ->
             ( model
             , Task.attempt GotRoom <|
-                getRoomAsGuest
-                    { homeserverUrl = model.config.defaultHomeserverUrl
-                    , roomAlias = model.config.roomAlias
-                    }
+                (registerGuest model.config.defaultHomeserverUrl
+                    |> Task.andThen
+                        (\sess ->
+                            getInitialRoom sess model.config.roomAlias
+                                |> Task.map (Tuple.pair sess)
+                        )
+                )
             )
 
         Login form ->
@@ -272,8 +273,8 @@ view model =
                 { showLoginMsg = ShowLogin
                 , logoutMsg = LogOut
                 , editMsg = EditComment
-                , sendMsg = Maybe.map (\rs -> SendComment rs.session rs.room) model.roomState
-                , session = Maybe.map .session model.roomState
+                , sendMsg = Maybe.map2 SendComment model.session model.room
+                , session = model.session
                 , roomAlias = model.config.roomAlias
                 , editor = model.editor
                 }
@@ -282,19 +283,19 @@ view model =
         [ errors
         , loginPopup
         , editor
-        , case model.roomState of
-            Nothing ->
-                p [] [ text "Getting comments..." ]
-
-            Just roomState ->
+        , case ( model.room, model.session ) of
+            ( Just room, Just session ) ->
                 div []
                     [ viewRoomEvents
                         model.config.defaultHomeserverUrl
-                        roomState.room.time
-                        roomState.room.members
-                        roomState.room.events
-                    , viewMoreButton roomState.session roomState.room
+                        room.time
+                        room.members
+                        room.events
+                    , viewMoreButton session room
                     ]
+
+            _ ->
+                p [] [ text "Getting comments..." ]
         ]
 
 

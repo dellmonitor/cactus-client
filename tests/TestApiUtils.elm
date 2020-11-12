@@ -11,11 +11,11 @@ testMakeRoomAlias =
     describe "Test makeRoomAlias"
         [ test "makeRoomAlias with realistic values" <|
             \_ ->
-                makeRoomAlias { siteName = "myblog", uniqueId = "october-blogpost", serverName = "matrix.example.com" }
+                makeRoomAlias { siteName = "myblog", commentSectionId = "october-blogpost", serverName = "matrix.example.com" }
                     |> Expect.equal "#comments_myblog_october-blogpost:matrix.example.com"
         , test "makeRoomAlias with other values..." <|
             \_ ->
-                makeRoomAlias { siteName = "a", uniqueId = "b", serverName = "c" }
+                makeRoomAlias { siteName = "a", commentSectionId = "b", serverName = "c" }
                     |> Expect.equal "#comments_a_b:c"
         ]
 
