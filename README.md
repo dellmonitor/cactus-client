@@ -31,7 +31,7 @@ Initialize the comments section with a JS snippet that looks something like this
 
 ```javascript
 initComments({
-  node: document.getElementById("comment-section"),
+  node: document.getElementById("comment-section"),  // HTML element to make comments section in
   defaultHomeserverUrl: "https://cactus.chat:8448",  // full url of the Matrix server to use as guest
   serverName: "cactus.chat",            // server name of the Matrix server w/ Cactus Appservice
   siteName: "MyBlog",                   // name of your website. used for moderation namespacing 
