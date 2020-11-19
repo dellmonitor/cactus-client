@@ -43,14 +43,14 @@ type alias Flags =
     , serverName : String
     , siteName : String
     , commentSectionId : String
-    , storedSession : String
+    , storedSession : JD.Value
     }
 
 
 parseFlags : Flags -> ( StaticConfig, Maybe Session )
 parseFlags flags =
     ( StaticConfig flags.defaultHomeserverUrl <| makeRoomAlias flags
-    , JD.decodeString decodeStoredSession flags.storedSession
+    , JD.decodeValue decodeStoredSession flags.storedSession
         |> Result.toMaybe
     )
 

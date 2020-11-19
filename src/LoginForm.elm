@@ -102,7 +102,7 @@ viewLoginForm (LoginForm form) { editMsg, submitMsg, hideMsg } =
                 [ class "cactus-button"
                 , onClick hideMsg
                 ]
-                [ p [] [ text "Back" ] ]
+                [ text "Back" ]
 
         submitButton =
             button
@@ -110,15 +110,13 @@ viewLoginForm (LoginForm form) { editMsg, submitMsg, hideMsg } =
                 , onClick <| submitMsg (LoginForm form)
                 , disabled <| not (isValid form && form.state == Ready)
                 ]
-                [ p []
-                    [ text <|
-                        case form.state of
-                            Ready ->
-                                "Log in"
+                [ text <|
+                    case form.state of
+                        Ready ->
+                            "Log in"
 
-                            LoggingIn ->
-                                "Logging in..."
-                    ]
+                        LoggingIn ->
+                            "Logging in..."
                 ]
 
         buttons =

@@ -10,7 +10,7 @@ function initComments({node, defaultHomeserverUrl, serverName, siteName, comment
       serverName: serverName,
       siteName: siteName,
       commentSectionId: commentSectionId,
-      storedSession: localStorage.getItem("cactus-session") 
+      storedSession: JSON.parse(localStorage.getItem("cactus-session"))
     }
   });
 

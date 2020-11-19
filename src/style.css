@@ -1,6 +1,5 @@
 .cactus-container {
   /* everything */
-  font-family: "Helvetica", "Arial", sans-serif;
 }
 
 
@@ -13,8 +12,8 @@
   font-weight: bold;
   border-radius: 0.4em;
   border: 2em;
-  padding-left: 1em;
-  padding-right: 1em;
+  padding: 0.6em 1em 0.6em 1em;
+  margin: 0;
 }
 
 div.cactus-view-more {
@@ -63,19 +62,20 @@ div.cactus-view-more {
  */
 .cactus-login-form {
   /* pop-up login form */
+  padding: 2rem;
+  border-radius: 0.5em;
+  background-color: white;
+  box-shadow: 0 0 1em #0005;
+  z-index: 1;
+
   display: flex;
   flex-direction: column;
   align-content: space-between;
 
-  padding: 2rem;
-  border-radius: 0.5em;
-  box-shadow: 0 0 1em #0005;
-
-  z-index: 1;
-  background-color: white;
-
+  /* place statically in viewport */
   position: fixed;
   left: 50%;
+  top: 10%;
   transform: translate(-50%, 0);
 }
 
@@ -83,27 +83,26 @@ div.cactus-view-more {
   text-align: center;
 }
 
-.cactus-login-field > * {
-  /* a text field like username, password, homeserverurl */
-  margin: 0;
-  padding: 0;
+.cactus-login-field {
+  padding-top: 0.5em;
 }
 
 .cactus-login-field > p {
-  padding-top: 1rem;
+  margin: 0;
 }
 
 .cactus-login-field > input {
   font-size: 1em;
   padding: 0.5em;
   border-radius: 0.4em;
+  width: 100%;
 }
 
 .cactus-login-buttons {
   /* "back" and "log in" buttons in the login form */
   display: flex;
   align-content: stretch;
-  padding-top: 1rem;
+  padding-top: 1em;
 
   --gap: 1em;
   margin: calc(-1 * var(--gap)) 0 0 calc(-1 * var(--gap));
@@ -113,7 +112,7 @@ div.cactus-view-more {
   /* font-size: 1em; */
   flex: 1;
   margin: var(--gap) 0 0 var(--gap);
-  padding: 0;
+  padding: 0.6em 0 0.6em 0;
 
   /*
   background: inherit;
