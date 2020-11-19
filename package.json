@@ -1,14 +1,14 @@
 {
-  "name": "comment-octopus-client",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "cactus-client",
+  "version": "0.1.0",
+  "description": "Web comments using Matrix",
+  "main": "./src/cactus.js",
   "directories": {
     "example": "examples"
   },
   "scripts": {
     "dev": "parcel -p 8080 ./examples/dev.html",
-    "build": "parcel build ./src/main.js"
+    "build": "parcel build ./src/cactus.js"
   },
   "author": "Asbjørn Olling",
   "license": "MIT",
