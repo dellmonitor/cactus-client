@@ -141,18 +141,18 @@ viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, edit
     in
     div
         [ class "cactus-editor" ]
-        [ div [ class "cactus-editor-above" ]
-            [ loginOrLogoutButton
-                { loginMsg = showLoginMsg
-                , logoutMsg = logoutMsg
-                , session = session
-                }
-            , signedInText
-            ]
+        [ div [ class "cactus-editor-above" ] [ signedInText ]
         , commentEditor
         , div [ class "cactus-editor-below" ]
             [ anotherClientLink
-            , sendButton
+            , div []
+                [ loginOrLogoutButton
+                    { loginMsg = showLoginMsg
+                    , logoutMsg = logoutMsg
+                    , session = session
+                    }
+                , sendButton
+                ]
             ]
         ]
 
@@ -166,6 +166,7 @@ loginOrLogoutButton { loginMsg, logoutMsg, session } =
         loginButton =
             button
                 [ class "cactus-button"
+                , class "cactus-login-button"
                 , onClick loginMsg
                 ]
                 [ text "Log in" ]
@@ -173,6 +174,7 @@ loginOrLogoutButton { loginMsg, logoutMsg, session } =
         logoutButton =
             button
                 [ class "cactus-button"
+                , class "cactus-logout-button"
                 , onClick logoutMsg
                 ]
                 [ text "Log out" ]
@@ -200,6 +202,7 @@ viewSendButton msg auth editor =
 
         attrs =
             [ class "cactus-button"
+            , class "cactus-send-button"
             , disabled isDisabled
             ]
                 -- append onClick message if we can

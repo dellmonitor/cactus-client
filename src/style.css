@@ -56,6 +56,14 @@ div.cactus-view-more {
   font-weight: bold;
 }
 
+.cactus-login-button {
+}
+.cactus-logout-button {
+}
+.cactus-send-button {
+  margin-left: 1em;
+}
+
 
 /*
  * LOGIN FORM
