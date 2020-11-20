@@ -8,9 +8,9 @@ VERSION=json.load(open("package.json"))["version"]
 
 files = [
         ("file", (f"cactus-{VERSION}/{VERSION}/cactus.js",     open('dist/cactus.js'),     'text/javascript')),
-        ("file", (f"cactus-{VERSION}/{VERSION}/cactus.js.map", open('dist/cactus.js.map'), 'application/json')),
         ("file", (f"cactus-{VERSION}/{VERSION}/style.css",     open('dist/style.css'),     'text/css')),
-        ("file", (f"cactus-{VERSION}/{VERSION}/style.css.map", open('dist/style.js.map'),  'application/json'))
+        ("file", (f"cactus-{VERSION}/{VERSION}/cactus.js.map", open('dist/cactus.js.map'), 'application/json')),
+        ("file", (f"cactus-{VERSION}/{VERSION}/style.css.map", open('dist/style.css.map'), 'application/json'))
 ]
 
 print(f"Uploading {VERSION}: {len(files)} files...")
