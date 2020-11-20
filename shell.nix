@@ -8,5 +8,7 @@
       elmPackages.elm-analyse
       nodejs
       nodePackages.parcel-bundler
+      python39
+      python39Packages.requests
     ];
 }
