@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "parcel -p 8080 ./examples/dev.html",
-    "build": "parcel build ./src/cactus.js"
+    "build": "parcel build ./src/cactus.js ./src/style.css"
   },
   "author": "Asbjørn Olling",
   "license": "MIT",
