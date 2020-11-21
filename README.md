@@ -2,7 +2,7 @@
 
 An embeddable web client for federated comments using the Matrix network.
 
-[![pipeline status](https://gitlab.com/cactus-comments/cactus-client/badges/master/pipeline.svg)](https://gitlab.com/cactus-comments/cactus-client/-/commits/master)
+[![pipeline status](https://gitlab.com/cactus-comments/cactus-client/badges/main/pipeline.svg)](https://gitlab.com/cactus-comments/cactus-client/-/commits/main)
 [![](https://img.shields.io/badge/chat-%23cactus%3Aolli.ng-informational)](https://matrix.to/#/%23cactus:olli.ng)
 
 
