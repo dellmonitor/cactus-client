@@ -6,23 +6,51 @@ An embeddable web client for federated comments using the Matrix network.
 [![](https://img.shields.io/badge/chat-%23cactus%3Aolli.ng-informational)](https://matrix.to/#/%23cactus:olli.ng)
 
 
-# Usage
+# Quick Start
 
-## Include JS
-
-Include the client JS file somwhere in your HTML page / template:
+Here is a minimal HTML page with Cactus Comments:
 
 ```html
-<script type="text/javascript" src="https://gateway.pinata.cloud/ipfs/Qmbnyp39DR96qQJ2E3H2Ms2Y5DSLgaCDq4xGTASdf4MiHg"></script>
+<script type="text/javascript" src="https://gateway.pinata.cloud/ipfs/QmTPXPLwHvHh1SpSsqFh8BnAXMauGAEoNHEeafiB3uHSxq/0.1.0/cactus.js"></script>
+<link rel="stylesheet" href="https://gateway.pinata.cloud/ipfs/QmTPXPLwHvHh1SpSsqFh8BnAXMauGAEoNHEeafiB3uHSxq/0.1.0/style.css"></script>
+<div id="comment-section">Loading Comments...</div>
+<script>
+  initComments({
+    node: document.getElementById("comment-section"),
+    defaultHomeserverUrl: "https://cactus.chat:8448",
+    serverName: "cactus.chat",
+    siteName: "ExamplePage",
+    commentSectionId: "ExampleSection"
+  })
+</script>
 ```
-(This link is not continously updated, and may be out of date as you read this.)
 
 
-## Include CSS
+# Usage
 
-You also need to include a stylesheet. We do not host the stylesheet anywhere,
-so you will need to download it from this repo `src/style.css` and add it to
-your website.
+There are two components to Cactus Comments: 
+
+- The embeddable web client (this repo)
+- The server-side appservice ([found here](https://gitlab.com/cactus-comments/cactus-appservice))
+
+This guide will only show you how to set up the web client.
+
+Go to [the appservice repository](https://gitlab.com/cactus-comments/cactus-appservice) for instructions
+on setting up the appservice.
+
+
+## Get JS and CSS from IPFS
+
+To get the v0.1.0 web client and default stylesheet from
+[pinata.cloud](https://pinata.cloud)'s IPFS gateway, include this HTML:
+
+```html
+<script type="text/javascript" src="https://gateway.pinata.cloud/ipfs/QmTPXPLwHvHh1SpSsqFh8BnAXMauGAEoNHEeafiB3uHSxq/0.1.0/cactus.js"></script>
+<link rel="stylesheet" href="https://gateway.pinata.cloud/ipfs/QmTPXPLwHvHh1SpSsqFh8BnAXMauGAEoNHEeafiB3uHSxq/0.1.0/style.css"></script>
+```
+
+These files are pinned to IPFS, so you can also get them from
+[a number of others IPFS gateways](https://ipfs.github.io/public-gateway-checker/), if you wish.
 
 
 ## Initialize comments
