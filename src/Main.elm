@@ -161,7 +161,7 @@ update msg model =
                 newSession =
                     incrementTransactionId session
 
-                {- WIP:
+                {- TODO:
                    if guest:
                      joinPutLeave |> andthen getMessages
 
@@ -179,14 +179,19 @@ update msg model =
             in
             ( { model
                 | editor = { content = "" }
-                , session = Just session
+                , session = Just newSession
                 , room = Just room
               }
-            , Task.attempt SentComment <|
-                putTask
-                    session
-                    room.roomId
-                    model.editor.content
+            , Cmd.batch
+                [ Task.attempt SentComment <|
+                    putTask
+                        session
+                        room.roomId
+                        model.editor.content
+
+                -- store session with updated txnId
+                , storeSessionCmd newSession
+                ]
             )
 
         SentComment (Ok ()) ->
