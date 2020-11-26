@@ -3,6 +3,7 @@ module Message exposing
     , GetMessagesResponse
     , Message(..)
     , RoomEvent(..)
+    , decodeMessages
     , getMessages
     , onlyMessageEvents
     , timeSinceText

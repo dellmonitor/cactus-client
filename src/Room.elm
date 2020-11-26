@@ -4,7 +4,7 @@ import Dict exposing (Dict)
 import Http
 import Json.Decode as JD
 import Member exposing (Member, getJoinedMembers)
-import Message exposing (RoomEvent(..), getMessages)
+import Message exposing (RoomEvent(..), decodeMessages, getMessages)
 import Session exposing (Session, authenticatedRequest, registerGuest)
 import Task exposing (Task)
 import Time
@@ -57,13 +57,12 @@ getRoomAsGuest { homeserverUrl, roomAlias } =
             )
 
 
-{-| This (admittedly huge) call chains 4 API requests to set up the room:
+{-| This call chains 3 API requests to set up the room:
 
 1.  Look up roomId using roomAlias
-2.  Get a token to sync events from
-3.  Get message events from sync token
-4.  Get current room members
-5.  (Get current time)
+2.  Get message events and pagination tokens
+3.  Get current room members
+4.  (Get current time)
 
 The Task eventually completes a Room record
 
@@ -81,21 +80,9 @@ getInitialRoom session roomAlias =
                         }
                     )
 
-        -- get since token from /events
-        addSinceToken data =
-            getSinceToken session data.roomId
-                |> Task.map
-                    (\sinceToken ->
-                        { roomId = data.roomId
-                        , roomAlias = data.roomAlias
-                        , --
-                          sinceToken = sinceToken
-                        }
-                    )
-
         -- get messages from /room/{roomId}/messages
         addEvents data =
-            getMessages session data.roomId data.sinceToken
+            getInitialSync session data.roomId
                 |> Task.map
                     (\events ->
                         { roomAlias = data.roomAlias
@@ -139,7 +126,6 @@ getInitialRoom session roomAlias =
                     )
     in
     addRoomId
-        |> Task.andThen addSinceToken
         |> Task.andThen addEvents
         |> Task.andThen addMembers
         |> Task.andThen addTime
@@ -159,19 +145,15 @@ getRoomId session roomAlias =
         }
 
 
-{-| Make a GET to events endpoint - only to extract a "since-token", which can
-be used to fetch events from another endpoint.
+{-| Get initial room events and sync tokens to get further messages
 -}
-getSinceToken : Session -> String -> Task Session.Error String
-getSinceToken session roomId =
+getInitialSync : Session -> String -> Task Session.Error { chunk : List RoomEvent, start : String, end : String }
+getInitialSync session roomId =
     authenticatedRequest
         session
         { method = "GET"
-        , path = [ "events" ]
-        , params =
-            [ Url.Builder.string "room_id" roomId
-            , Url.Builder.int "timeout" 0
-            ]
-        , responseDecoder = JD.field "end" JD.string
+        , path = [ "rooms", roomId, "initialSync" ]
+        , params = []
+        , responseDecoder = JD.field "messages" decodeMessages
         , body = Http.emptyBody
         }
