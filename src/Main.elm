@@ -11,8 +11,8 @@ import Http
 import Json.Decode as JD
 import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
 import Member exposing (Member)
-import Message exposing (GetMessagesResponse, Message(..), RoomEvent, getMessages, onlyMessageEvents, viewMessageEvent)
-import Room exposing (Room, getInitialRoom, mergeNewMessages)
+import Message exposing (GetMessagesResponse, Message(..), RoomEvent, messageEvents, viewMessageEvent)
+import Room exposing (Room, commentCount, getInitialRoom, getMoreMessages, mergeNewMessages)
 import Session exposing (Kind(..), Session, decodeStoredSession, incrementTransactionId, registerGuest, sessionKind, storeSessionCmd)
 import Task
 import Time
@@ -34,6 +34,7 @@ type alias Model =
     , session : Maybe Session
     , room : Maybe Room
     , loginForm : Maybe LoginForm
+    , showComments : Int
     , error : Maybe String
     }
 
@@ -49,7 +50,8 @@ type alias Flags =
 
 parseFlags : Flags -> ( StaticConfig, Maybe Session )
 parseFlags flags =
-    ( StaticConfig flags.defaultHomeserverUrl <| makeRoomAlias flags
+    -- TODO: remove magic 5
+    ( StaticConfig flags.defaultHomeserverUrl (makeRoomAlias flags) 5
     , JD.decodeValue decodeStoredSession flags.storedSession
         |> Result.toMaybe
     )
@@ -58,6 +60,7 @@ parseFlags flags =
 type alias StaticConfig =
     { defaultHomeserverUrl : String
     , roomAlias : String
+    , pageSize : Int
     }
 
 
@@ -72,18 +75,19 @@ init flags =
       , session = session
       , room = Nothing
       , loginForm = Nothing
+      , showComments = config.pageSize
       , error = Nothing
       }
-    , Task.attempt GotRoom <|
+    , -- first GET to the matrix room
+      Task.attempt GotRoom <|
         case session of
+            -- register guest if no localstorage session was found
             Nothing ->
                 registerGuest config.defaultHomeserverUrl
                     |> Task.andThen
-                        (\sess ->
-                            getInitialRoom sess config.roomAlias
-                                |> Task.map (Tuple.pair sess)
-                        )
+                        (\sess -> getInitialRoom sess config.roomAlias |> Task.map (Tuple.pair sess))
 
+            -- use stored session
             Just sess ->
                 getInitialRoom sess config.roomAlias
                     |> Task.map (Tuple.pair sess)
@@ -93,7 +97,7 @@ init flags =
 type Msg
     = GotRoom (Result Session.Error ( Session, Room ))
     | ViewMore Session Room
-    | GotMessages Room (Result Session.Error GetMessagesResponse)
+    | GotMessages Session Room (Result Session.Error GetMessagesResponse)
       -- EDITOR
     | EditComment String
     | SendComment Session Room
@@ -108,6 +112,15 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        {- Get more comments if needed -}
+        fillComments session room =
+            if commentCount room < model.showComments then
+                getMoreMessages (GotMessages session room) session room
+
+            else
+                Cmd.none
+    in
     case msg of
         GotRoom (Ok ( session, room )) ->
             -- got initial room, when loading page first ime
@@ -116,7 +129,10 @@ update msg model =
                 , room = Just room
                 , loginForm = Nothing
               }
-            , storeSessionCmd session
+            , Cmd.batch <|
+                [ storeSessionCmd session
+                , fillComments session room
+                ]
             )
 
         GotRoom (Err (Session.Error code error)) ->
@@ -126,23 +142,23 @@ update msg model =
             )
 
         ViewMore session room ->
-            -- "view more" button hit - issue request to fetch more messages
-            ( model
-            , Task.attempt (GotMessages room) <|
-                getMessages session room.roomId room.end
+            -- "view more" button hit, increase count of comments to show,
+            -- and issue request to fetch more messages
+            ( { model | showComments = model.showComments + model.config.pageSize }
+            , getMoreMessages (GotMessages session room) session room
             )
 
-        GotMessages room (Ok newMsgs) ->
+        GotMessages session room (Ok newMsgs) ->
             -- got more messages. result of the "ViewMore"-button request
             let
                 newRoom =
                     mergeNewMessages room newMsgs
             in
-            ( { model | room = Just newRoom }
-            , Cmd.none
+            ( { model | room = Just <| newRoom }
+            , fillComments session newRoom
             )
 
-        GotMessages _ (Err (Session.Error code error)) ->
+        GotMessages _ _ (Err (Session.Error code error)) ->
             -- http error while getting more comments
             ( { model | error = Just <| code ++ error }
             , Cmd.none
@@ -161,14 +177,6 @@ update msg model =
                 newSession =
                     incrementTransactionId session
 
-                {- TODO:
-                   if guest:
-                     joinPutLeave |> andthen getMessages
-
-                   if user:
-                     joinPut |> andThen getMessages
-
-                -}
                 putTask =
                     case sessionKind session of
                         Guest ->
@@ -309,7 +317,7 @@ viewRoomEvents defaultHomeserverUrl time members roomEvents =
     div [] <|
         List.map
             (viewMessageEvent defaultHomeserverUrl time members)
-            (onlyMessageEvents roomEvents)
+            (messageEvents roomEvents)
 
 
 viewMoreButton : Session -> Room -> Html Msg

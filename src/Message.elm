@@ -5,7 +5,7 @@ module Message exposing
     , RoomEvent(..)
     , decodeMessages
     , getMessages
-    , onlyMessageEvents
+    , messageEvents
     , timeSinceText
     , viewMessageEvent
     )
@@ -51,17 +51,17 @@ type Message
     | UnsupportedMessageType
 
 
-onlyMessageEvents : List RoomEvent -> List (Event Message)
-onlyMessageEvents roomEvents =
+messageEvents : List RoomEvent -> List (Event Message)
+messageEvents roomEvents =
     -- filter room events for message events
     List.foldl
-        (\roomEvent messageEvents ->
+        (\roomEvent msgs ->
             case roomEvent of
                 MessageEvent msg ->
-                    msg :: messageEvents
+                    msg :: msgs
 
                 _ ->
-                    messageEvents
+                    msgs
         )
         []
         roomEvents

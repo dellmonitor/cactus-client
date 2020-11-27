@@ -1,10 +1,10 @@
-module Room exposing (Room, getInitialRoom, getRoomAsGuest, mergeNewMessages)
+module Room exposing (Room, commentCount, getInitialRoom, getMoreMessages, getRoomAsGuest, mergeNewMessages)
 
 import Dict exposing (Dict)
 import Http
 import Json.Decode as JD
 import Member exposing (Member, getJoinedMembers)
-import Message exposing (RoomEvent(..), decodeMessages, getMessages)
+import Message exposing (GetMessagesResponse, RoomEvent(..), decodeMessages, getMessages, messageEvents)
 import Session exposing (Session, authenticatedRequest, registerGuest)
 import Task exposing (Task)
 import Time
@@ -22,11 +22,20 @@ type alias Room =
     }
 
 
+{-| Get more messages messages from current end token the room.
+To be merged using `mergeNewMessages`
+-}
+getMoreMessages : (Result Session.Error GetMessagesResponse -> a) -> Session -> Room -> Cmd a
+getMoreMessages cmd session room =
+    Task.attempt cmd <|
+        getMessages session room.roomId room.start
+
+
 mergeNewMessages : Room -> { a | start : String, end : String, chunk : List RoomEvent } -> Room
 mergeNewMessages room newMessages =
     { room
         | events = sortByTime (room.events ++ newMessages.chunk)
-        , end = newMessages.end
+        , start = newMessages.end
     }
 
 
@@ -42,6 +51,13 @@ sortByTime events =
                     UnsupportedEvent uEvt ->
                         .originServerTs uEvt |> Time.posixToMillis
             )
+
+
+{-| Count the number of renderable messages in the room
+-}
+commentCount : Room -> Int
+commentCount room =
+    List.length <| messageEvents room.events
 
 
 {-| Register a guest account on the default homeserver, then get a room using
