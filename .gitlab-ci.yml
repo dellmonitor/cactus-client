@@ -35,4 +35,4 @@ ipfs:
     - apk add python3 py3-requests
     - python3 pinata-upload.py
   only:
-    - main
+    - tags
