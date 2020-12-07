@@ -4,6 +4,7 @@ port module Session exposing
     , Session
     , authenticatedRequest
     , decodeStoredSession
+    , getHomeserverUrl
     , incrementTransactionId
     , isUser
     , login
@@ -29,6 +30,8 @@ import Url.Builder exposing (QueryParameter)
 -}
 
 
+{-| Opaque type for an authenticated Matrix session.
+-}
 type Session
     = Session SessionData
 
@@ -40,6 +43,11 @@ type alias SessionData =
     , userId : String
     , accessToken : String
     }
+
+
+getHomeserverUrl : Session -> String
+getHomeserverUrl (Session session) =
+    session.homeserverUrl
 
 
 {-| Decodes "user\_id" and "access\_token" fields into a Session record.

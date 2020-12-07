@@ -1,10 +1,13 @@
-module Room exposing (Room, commentCount, getInitialRoom, getMoreMessages, getRoomAsGuest, mergeNewMessages)
+module Room exposing (Room, commentCount, getInitialRoom, getMoreMessages, getRoomAsGuest, mergeNewMessages, viewRoom)
 
+import Accessibility exposing (Html, button, div, text)
 import Dict exposing (Dict)
+import Html.Attributes exposing (class)
+import Html.Events exposing (onClick)
 import Http
 import Json.Decode as JD
 import Member exposing (Member, getJoinedMembers)
-import Message exposing (GetMessagesResponse, RoomEvent(..), decodeMessages, getMessages, messageEvents)
+import Message exposing (GetMessagesResponse, RoomEvent(..), decodeMessages, getMessages, messageEvents, viewMessageEvent)
 import Session exposing (Session, authenticatedRequest, registerGuest)
 import Task exposing (Task)
 import Time
@@ -22,13 +25,22 @@ type alias Room =
     }
 
 
-{-| Get more messages messages from current end token the room.
+{-| Get more messages messages from current end token of the room.
+Get strictly less than
+
 To be merged using `mergeNewMessages`
+
 -}
-getMoreMessages : (Result Session.Error GetMessagesResponse -> a) -> Session -> Room -> Cmd a
-getMoreMessages cmd session room =
-    Task.attempt cmd <|
-        getMessages session room.roomId room.start
+getMoreMessages : Session -> Room -> Task Session.Error GetMessagesResponse
+getMoreMessages session room =
+    getMessages session room.roomId room.start
+
+
+{-| Count the number of renderable messages in the room
+-}
+commentCount : Room -> Int
+commentCount room =
+    List.length <| messageEvents room.events
 
 
 mergeNewMessages : Room -> { a | start : String, end : String, chunk : List RoomEvent } -> Room
@@ -51,13 +63,6 @@ sortByTime events =
                     UnsupportedEvent uEvt ->
                         .originServerTs uEvt |> Time.posixToMillis
             )
-
-
-{-| Count the number of renderable messages in the room
--}
-commentCount : Room -> Int
-commentCount room =
-    List.length <| messageEvents room.events
 
 
 {-| Register a guest account on the default homeserver, then get a room using
@@ -173,3 +178,38 @@ getInitialSync session roomId =
         , responseDecoder = JD.field "messages" decodeMessages
         , body = Http.emptyBody
         }
+
+
+{-| View all of the comments in a Room
+The `homeserverUrl` is used translate mxc:// to media API endpoints
+-}
+viewRoom : Room -> String -> Int -> msg -> Html msg
+viewRoom room homeserverUrl count viewMoreMsg =
+    div []
+        [ viewRoomEvents
+            homeserverUrl
+            room.time
+            room.members
+            room.events
+            count
+        , viewMoreButton viewMoreMsg
+        ]
+
+
+viewRoomEvents : String -> Time.Posix -> Dict String Member -> List RoomEvent -> Int -> Html msg
+viewRoomEvents defaultHomeserverUrl time members roomEvents count =
+    div [] <|
+        List.map
+            (viewMessageEvent defaultHomeserverUrl time members)
+            (messageEvents roomEvents |> List.take count)
+
+
+viewMoreButton : msg -> Html msg
+viewMoreButton msg =
+    div [ class "cactus-view-more" ]
+        [ button
+            [ class "cactus-button"
+            , onClick msg
+            ]
+            [ text "View more" ]
+        ]

@@ -11,9 +11,9 @@ import Http
 import Json.Decode as JD
 import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
 import Member exposing (Member)
-import Message exposing (GetMessagesResponse, Message(..), RoomEvent, messageEvents, viewMessageEvent)
-import Room exposing (Room, commentCount, getInitialRoom, getMoreMessages, mergeNewMessages)
-import Session exposing (Kind(..), Session, decodeStoredSession, incrementTransactionId, registerGuest, sessionKind, storeSessionCmd)
+import Message exposing (GetMessagesResponse, Message(..), RoomEvent, messageEvents)
+import Room exposing (Room, commentCount, getInitialRoom, getMoreMessages, mergeNewMessages, viewRoom)
+import Session exposing (Kind(..), Session, decodeStoredSession, getHomeserverUrl, incrementTransactionId, registerGuest, sessionKind, storeSessionCmd)
 import Task
 import Time
 
@@ -45,16 +45,8 @@ type alias Flags =
     , siteName : String
     , commentSectionId : String
     , storedSession : JD.Value
+    , pageSize : Int
     }
-
-
-parseFlags : Flags -> ( StaticConfig, Maybe Session )
-parseFlags flags =
-    -- TODO: remove magic 5
-    ( StaticConfig flags.defaultHomeserverUrl (makeRoomAlias flags) 5
-    , JD.decodeValue decodeStoredSession flags.storedSession
-        |> Result.toMaybe
-    )
 
 
 type alias StaticConfig =
@@ -62,6 +54,14 @@ type alias StaticConfig =
     , roomAlias : String
     , pageSize : Int
     }
+
+
+parseFlags : Flags -> ( StaticConfig, Maybe Session )
+parseFlags flags =
+    ( StaticConfig flags.defaultHomeserverUrl (makeRoomAlias flags) flags.pageSize
+    , JD.decodeValue decodeStoredSession flags.storedSession
+        |> Result.toMaybe
+    )
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -116,7 +116,8 @@ update msg model =
         {- Get more comments if needed -}
         fillComments session room =
             if commentCount room < model.showComments then
-                getMoreMessages (GotMessages session room) session room
+                Task.attempt (GotMessages session room) <|
+                    getMoreMessages session room
 
             else
                 Cmd.none
@@ -144,8 +145,13 @@ update msg model =
         ViewMore session room ->
             -- "view more" button hit, increase count of comments to show,
             -- and issue request to fetch more messages
-            ( { model | showComments = model.showComments + model.config.pageSize }
-            , getMoreMessages (GotMessages session room) session room
+            let
+                newShowComments =
+                    model.showComments + model.config.pageSize
+            in
+            ( { model | showComments = newShowComments }
+            , Task.attempt (GotMessages session room) <|
+                getMoreMessages session room
             )
 
         GotMessages session room (Ok newMsgs) ->
@@ -298,34 +304,8 @@ view model =
         , editor
         , case ( model.room, model.session ) of
             ( Just room, Just session ) ->
-                div []
-                    [ viewRoomEvents
-                        model.config.defaultHomeserverUrl
-                        room.time
-                        room.members
-                        room.events
-                    , viewMoreButton session room
-                    ]
+                viewRoom room (getHomeserverUrl session) model.showComments <| ViewMore session room
 
             _ ->
                 p [] [ text "Getting comments..." ]
-        ]
-
-
-viewRoomEvents : String -> Time.Posix -> Dict String Member -> List RoomEvent -> Html Msg
-viewRoomEvents defaultHomeserverUrl time members roomEvents =
-    div [] <|
-        List.map
-            (viewMessageEvent defaultHomeserverUrl time members)
-            (messageEvents roomEvents)
-
-
-viewMoreButton : Session -> Room -> Html Msg
-viewMoreButton auth room =
-    div [ class "cactus-view-more" ]
-        [ button
-            [ class "cactus-button"
-            , onClick <| ViewMore auth room
-            ]
-            [ text "View more" ]
         ]
