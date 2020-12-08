@@ -1,10 +1,10 @@
 import os
-import json
+import sys
 import requests
 
 PINATA_API_KEY = os.environ["PINATA_API_KEY"]
 PINATA_SECRET_API_KEY = os.environ["PINATA_SECRET_API_KEY"]
-VERSION=json.load(open("package.json"))["version"]
+VERSION = sys.argv[1]
 
 files = [
         ("file", (f"cactus-{VERSION}/{VERSION}/cactus.js",     open('dist/cactus.js'),     'text/javascript')),
