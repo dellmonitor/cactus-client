@@ -4,7 +4,7 @@ stages:
   - test
   - build
   - ipfs
-  - release
+  - gitlab_release
 
 test:
   stage: test
@@ -30,22 +30,28 @@ build:
       - ./dist/style.css.map
 
 ipfs:
-  image: alpine:3.7
   stage: ipfs
+  image: alpine:3.7
   rules:
     - if: $CI_COMMIT_TAG
+  needs:
+    - job: build
+      artifacts: true
   script:
     - apk add python3 py3-requests
     - python3 pinata-upload.py
 
-release:
-  stage: release
+gitlab_release:
+  stage: gitlab_release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG
   needs:
     - job: build
       artifacts: true
-  rules:
-    - if: $CI_COMMIT_TAG
+  script:
+    - echo 'Making Gitlab release for $CI_COMMIT_TAG'
   release:
     name: 'Release $CI_COMMIT_TAG'
-    image: registry.gitlab.com/gitlab-org/release-cli:latest
+    description: 'Cactus Comments Web Client $CI_COMMIT_TAG'
     tag_name: '$CI_COMMIT_TAG'
