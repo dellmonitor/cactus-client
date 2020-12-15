@@ -39,7 +39,7 @@ ipfs:
       artifacts: true
   script:
     - apk add python3 py3-requests
-    - python3 pinata-upload.py
+    - python3 pinata-upload.py "$CI_COMMIT_TAG"
 
 gitlab_release:
   stage: gitlab_release
