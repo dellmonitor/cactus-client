@@ -4,7 +4,7 @@ import Accessibility exposing (Html, button, div, h5, p, text)
 import ApiUtils exposing (makeRoomAlias)
 import Browser
 import Dict exposing (Dict)
-import Editor exposing (Editor, joinPut, joinPutLeave, viewEditor)
+import Editor exposing (Editor, joinPutLeave, joinRoom, putMessage, viewEditor)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Http
@@ -78,20 +78,34 @@ init flags =
       , showComments = config.pageSize
       , error = Nothing
       }
-    , -- first GET to the matrix room
+    , -- first GET to the matrix room, as Guest or User
       Task.attempt GotRoom <|
         case session of
-            -- register guest if no localstorage session was found
+            -- if no localstorage session was found
+            -- then register a guest user w/ default homeserver
             Nothing ->
                 registerGuest config.defaultHomeserverUrl
                     |> Task.andThen
                         (\sess -> getInitialRoom sess config.roomAlias |> Task.map (Tuple.pair sess))
 
-            -- use stored session
+            -- otherwise, use stored session
             Just sess ->
-                getInitialRoom sess config.roomAlias
-                    |> Task.map (Tuple.pair sess)
+                joinIfUser sess config.roomAlias
+                    |> Task.andThen
+                        (\_ -> getInitialRoom sess config.roomAlias |> Task.map (Tuple.pair sess))
     )
+
+
+joinIfUser : Session -> String -> Task.Task Session.Error ()
+joinIfUser session roomAlias =
+    -- make sure Users are always joined
+    case sessionKind session of
+        User ->
+            joinRoom session roomAlias
+
+        Guest ->
+            -- Guests don't need to be joined
+            Task.succeed ()
 
 
 type Msg
@@ -186,10 +200,12 @@ update msg model =
                 putTask =
                     case sessionKind session of
                         Guest ->
+                            -- join room, HTTP PUT comment, leave room
                             joinPutLeave
 
                         User ->
-                            joinPut
+                            -- user is already joined - leave room
+                            putMessage
             in
             ( { model
                 | editor = { content = "" }
@@ -256,8 +272,12 @@ update msg model =
                 (loginTask
                     |> Task.andThen
                         (\session ->
-                            getInitialRoom session model.config.roomAlias
-                                |> Task.map (\room -> ( session, room ))
+                            joinRoom session model.config.roomAlias
+                                |> Task.andThen
+                                    (\_ ->
+                                        getInitialRoom session model.config.roomAlias
+                                            |> Task.map (\room -> ( session, room ))
+                                    )
                         )
                 )
             )

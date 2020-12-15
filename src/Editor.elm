@@ -1,4 +1,4 @@
-module Editor exposing (Editor, joinPut, joinPutLeave, viewEditor)
+module Editor exposing (Editor, joinPutLeave, joinRoom, putMessage, viewEditor)
 
 import Accessibility exposing (Html, a, button, div, labelHidden, p, text, textarea)
 import ApiUtils exposing (matrixDotToUrl)
@@ -30,28 +30,17 @@ type alias Editor =
 -}
 joinPutLeave : Session -> String -> String -> Task Session.Error ()
 joinPutLeave session roomId comment =
-    joinPut session roomId comment
+    joinRoom session roomId
+        |> Task.andThen (\_ -> putMessage session roomId comment)
         |> Task.andThen (\_ -> leaveRoom session roomId)
 
 
-{-| Chain of two requests:
-
-1.  join room
-2.  HTTP PUT a comment into the room
-
--}
-joinPut : Session -> String -> String -> Task Session.Error ()
-joinPut session roomId comment =
-    joinRoom session roomId
-        |> Task.andThen (\_ -> putMessage session roomId comment)
-
-
 joinRoom : Session -> String -> Task Session.Error ()
-joinRoom session roomId =
+joinRoom session roomIdOrAlias =
     authenticatedRequest
         session
         { method = "POST"
-        , path = [ "rooms", roomId, "join" ]
+        , path = [ "join", roomIdOrAlias ]
         , params = []
         , responseDecoder = JD.succeed ()
         , body = Http.stringBody "application/json" "{}"

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0
+
+- Always join users. Issue join API call on login and on user session deserialization
+
 ## 0.2.1
 
 - Fix Gitlab CI release pipeline for pinning artifacts to IPFS.
