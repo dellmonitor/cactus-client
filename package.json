@@ -1,6 +1,5 @@
 {
   "name": "cactus-client",
-  "version": "0.2.0",
   "description": "Web comments using Matrix",
   "main": "./src/cactus.js",
   "directories": {
@@ -11,7 +10,7 @@
     "build": "parcel build ./src/cactus.js ./src/style.css"
   },
   "author": "Asbjørn Olling",
-  "license": "MIT",
+  "license": "AGPL",
   "dependencies": {
     "parcel": "^1.12.4",
     "elm": "^0.19.1-3"
