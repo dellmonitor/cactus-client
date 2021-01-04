@@ -35,6 +35,7 @@ type alias Model =
     , room : Maybe Room
     , loginForm : Maybe LoginForm
     , showComments : Int
+    , gotAllComments : Bool
     , error : Maybe String
     }
 
@@ -76,6 +77,7 @@ init flags =
       , room = Nothing
       , loginForm = Nothing
       , showComments = config.pageSize
+      , gotAllComments = False
       , error = Nothing
       }
     , -- first GET to the matrix room, as Guest or User
@@ -156,6 +158,32 @@ update msg model =
             , Cmd.none
             )
 
+        GotMessages session room (Ok newMsgs) ->
+            -- got more messages. result of the "ViewMore"-button request
+            let
+                newRoom =
+                    mergeNewMessages room newMsgs
+
+                newModel =
+                    { model
+                        | room = Just <| newRoom
+                        , gotAllComments = newMsgs.chunk == []
+                    }
+            in
+            ( newModel
+            , if not newModel.gotAllComments then
+                fillComments session newRoom
+
+              else
+                Cmd.none
+            )
+
+        GotMessages _ _ (Err (Session.Error code error)) ->
+            -- http error while getting more comments
+            ( { model | error = Just <| code ++ error }
+            , Cmd.none
+            )
+
         ViewMore session room ->
             -- "view more" button hit, increase count of comments to show,
             -- and issue request to fetch more messages
@@ -166,22 +194,6 @@ update msg model =
             ( { model | showComments = newShowComments }
             , Task.attempt (GotMessages session room) <|
                 getMoreMessages session room
-            )
-
-        GotMessages session room (Ok newMsgs) ->
-            -- got more messages. result of the "ViewMore"-button request
-            let
-                newRoom =
-                    mergeNewMessages room newMsgs
-            in
-            ( { model | room = Just <| newRoom }
-            , fillComments session newRoom
-            )
-
-        GotMessages _ _ (Err (Session.Error code error)) ->
-            -- http error while getting more comments
-            ( { model | error = Just <| code ++ error }
-            , Cmd.none
             )
 
         EditComment str ->
@@ -324,8 +336,26 @@ view model =
         , editor
         , case ( model.room, model.session ) of
             ( Just room, Just session ) ->
-                viewRoom room (getHomeserverUrl session) model.showComments <| ViewMore session room
+                div []
+                    [ viewRoom room (getHomeserverUrl session) model.showComments
+                    , if not model.gotAllComments then
+                        viewMoreButton <| ViewMore session room
+
+                      else
+                        text ""
+                    ]
 
             _ ->
                 p [] [ text "Getting comments..." ]
+        ]
+
+
+viewMoreButton : msg -> Html msg
+viewMoreButton msg =
+    div [ class "cactus-view-more" ]
+        [ button
+            [ class "cactus-button"
+            , onClick msg
+            ]
+            [ text "View more" ]
         ]
