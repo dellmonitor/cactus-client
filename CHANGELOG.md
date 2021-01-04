@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+
+- Don't fetch messages again after an empty chunk was received
+- AGPL -> GPL3
+
 ## 0.3.0
 
 - Always join users. Issue join API call on login and on user session deserialization
