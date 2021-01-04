@@ -25,6 +25,14 @@ type alias Room =
     }
 
 
+
+-- merge new messages
+-- if new messages isn't empty and the current message count is less than
+-- showComments:
+--   get more messages
+--
+
+
 {-| Get more messages messages from current end token of the room.
 Get strictly less than
 
@@ -59,6 +67,9 @@ sortByTime events =
                 case e of
                     MessageEvent msgEvent ->
                         .originServerTs msgEvent |> Time.posixToMillis
+
+                    StateEvent stEvent ->
+                        .originServerTs stEvent |> Time.posixToMillis
 
                     UnsupportedEvent uEvt ->
                         .originServerTs uEvt |> Time.posixToMillis
@@ -183,17 +194,14 @@ getInitialSync session roomId =
 {-| View all of the comments in a Room
 The `homeserverUrl` is used translate mxc:// to media API endpoints
 -}
-viewRoom : Room -> String -> Int -> msg -> Html msg
-viewRoom room homeserverUrl count viewMoreMsg =
-    div []
-        [ viewRoomEvents
-            homeserverUrl
-            room.time
-            room.members
-            room.events
-            count
-        , viewMoreButton viewMoreMsg
-        ]
+viewRoom : Room -> String -> Int -> Html msg
+viewRoom room homeserverUrl count =
+    viewRoomEvents
+        homeserverUrl
+        room.time
+        room.members
+        room.events
+        count
 
 
 viewRoomEvents : String -> Time.Posix -> Dict String Member -> List RoomEvent -> Int -> Html msg
@@ -202,14 +210,3 @@ viewRoomEvents defaultHomeserverUrl time members roomEvents count =
         List.map
             (viewMessageEvent defaultHomeserverUrl time members)
             (messageEvents roomEvents |> List.take count)
-
-
-viewMoreButton : msg -> Html msg
-viewMoreButton msg =
-    div [ class "cactus-view-more" ]
-        [ button
-            [ class "cactus-button"
-            , onClick msg
-            ]
-            [ text "View more" ]
-        ]

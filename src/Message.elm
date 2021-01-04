@@ -28,6 +28,7 @@ import Url.Builder
 
 type RoomEvent
     = MessageEvent (Event Message)
+    | StateEvent (Event State)
     | UnsupportedEvent (Event ())
 
 
@@ -37,6 +38,11 @@ type alias Event a =
     , sender : String
     , originServerTs : Time.Posix
     }
+
+
+type State
+    = Created String
+    | UnsupportedStateType
 
 
 type Message
@@ -128,6 +134,18 @@ decodeRoomEvent =
                             )
                             decodeMessage
 
+                    "m.room.create" ->
+                        makeRoomEvent
+                            (\t msg s ots ->
+                                StateEvent
+                                    { eventType = t
+                                    , content = msg
+                                    , sender = s
+                                    , originServerTs = ots
+                                    }
+                            )
+                            decodeCreate
+
                     _ ->
                         makeRoomEvent
                             (\t msg s ots ->
@@ -140,6 +158,11 @@ decodeRoomEvent =
                             )
                             (JD.succeed ())
             )
+
+
+decodeCreate : JD.Decoder State
+decodeCreate =
+    JD.map Created <| JD.field "creator" JD.string
 
 
 decodeMessage : JD.Decoder Message
