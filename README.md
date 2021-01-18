@@ -11,8 +11,8 @@ An embeddable web client for federated comments using the Matrix network.
 Here is a minimal HTML page with Cactus Comments:
 
 ```html
-<script type="text/javascript" src="https://gateway.pinata.cloud/ipfs/QmTPXPLwHvHh1SpSsqFh8BnAXMauGAEoNHEeafiB3uHSxq/0.1.0/cactus.js"></script>
-<link rel="stylesheet" href="https://gateway.pinata.cloud/ipfs/QmTPXPLwHvHh1SpSsqFh8BnAXMauGAEoNHEeafiB3uHSxq/0.1.0/style.css"></script>
+<script type="text/javascript" src="https://gateway.pinata.cloud/ipfs/QmVQYzRzcXS3hvYxL7dpWdT8YRbb4AfZzmtMsMmaWpS9Wo/v0.3.1/cactus.js"></script>
+<link rel="stylesheet" href="https://gateway.pinata.cloud/ipfs/QmVQYzRzcXS3hvYxL7dpWdT8YRbb4AfZzmtMsMmaWpS9Wo/v0.3.1/style.css" type="text/css">
 <div id="comment-section">Loading Comments...</div>
 <script>
   initComments({

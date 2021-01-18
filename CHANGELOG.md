@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2
+
+- CI changes: put IPFS gateway links in release description
+
 ## 0.3.1
 
 - Don't fetch messages again after an empty chunk was received
