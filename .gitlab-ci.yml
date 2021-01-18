@@ -62,10 +62,12 @@ gitlab_release:
   release:
     name: 'Release $CI_COMMIT_TAG'
     description: |
-      Cactus Comments Web Client $CI_COMMIT_TAG
+      # Cactus Comments Web Client $CI_COMMIT_TAG
 
-      IPFS Hash: $IPFS_HASH
-      JS URL: https://gateway.pinata.cloud/ipfs/$IPFS_HASH/$CI_COMMIT_TAG/cactus.js
-      CSS URL: https://gateway.pinata.cloud/ipfs/$IPFS_HASH/$CI_COMMIT_TAG/style.css
+      |               |     |
+      | ------------- | --- |
+      | **IPFS Hash** | $IPFS_HASH |
+      | **JS URL**    | https://gateway.pinata.cloud/ipfs/$IPFS_HASH/$CI_COMMIT_TAG/cactus.js |
+      | **CSS URL**   | https://gateway.pinata.cloud/ipfs/$IPFS_HASH/$CI_COMMIT_TAG/style.css |
     tag_name: '$CI_COMMIT_TAG'
     ref: '$CI_COMMIT_TAG'
