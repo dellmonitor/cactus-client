@@ -13,7 +13,7 @@ files = [
         ("file", (f"cactus-{VERSION}/{VERSION}/style.css.map", open('dist/style.css.map'), 'application/json'))
 ]
 
-print(f"Uploading {VERSION}: {len(files)} files...")
+print(f"Uploading {VERSION}: {len(files)} files...", file=sys.stderr)
 r = requests.post(
       "https://api.pinata.cloud/pinning/pinFileToIPFS",
       headers={
@@ -24,8 +24,6 @@ r = requests.post(
 )
 
 if r.status_code == 200:
-    print("Success!")
+    print(r.json()['IpfsHash'])
 else:
-    print(f"Error: {r.status_code}")
-
-print(r.json())
+    print(f"Error: {r.status_code}", file=sys.stderr)
