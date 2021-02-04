@@ -4,7 +4,7 @@ import Accessibility exposing (Html, button, div, h5, p, text)
 import ApiUtils exposing (makeRoomAlias)
 import Browser
 import Dict exposing (Dict)
-import Editor exposing (Editor, joinPutLeave, joinRoom, putMessage, viewEditor)
+import Editor exposing (joinPutLeave, joinRoom, putMessage, viewEditor)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Http
@@ -12,7 +12,7 @@ import Json.Decode as JD
 import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
 import Member exposing (Member)
 import Message exposing (GetMessagesResponse, Message(..), RoomEvent, messageEvents)
-import Room exposing (Room, commentCount, getInitialRoom, getMoreMessages, mergeNewMessages, viewRoom)
+import Room exposing (Room, commentCount, getInitialRoom, getNewerMessages, getOlderMessages, mergeNewMessages, viewRoom)
 import Session exposing (Kind(..), Session, decodeStoredSession, getHomeserverUrl, incrementTransactionId, registerGuest, sessionKind, storeSessionCmd)
 import Task
 import Time
@@ -30,7 +30,7 @@ main =
 
 type alias Model =
     { config : StaticConfig
-    , editor : Editor
+    , editorContent : String
     , session : Maybe Session
     , room : Maybe Room
     , loginForm : Maybe LoginForm
@@ -72,7 +72,7 @@ init flags =
             parseFlags flags
     in
     ( { config = config
-      , editor = { content = "" }
+      , editorContent = ""
       , session = session
       , room = Nothing
       , loginForm = Nothing
@@ -117,7 +117,7 @@ type Msg
       -- EDITOR
     | EditComment String
     | SendComment Session Room
-    | SentComment (Result Session.Error ())
+    | SentComment Session Room (Result Session.Error ())
       -- LOGIN
     | ShowLogin
     | HideLogin
@@ -133,7 +133,7 @@ update msg model =
         fillComments session room =
             if commentCount room < model.showComments then
                 Task.attempt (GotMessages session room) <|
-                    getMoreMessages session room
+                    getOlderMessages session room
 
             else
                 Cmd.none
@@ -193,12 +193,12 @@ update msg model =
             in
             ( { model | showComments = newShowComments }
             , Task.attempt (GotMessages session room) <|
-                getMoreMessages session room
+                getOlderMessages session room
             )
 
         EditComment str ->
             -- user changes text in comment box
-            ( { model | editor = { content = str } }
+            ( { model | editorContent = str }
             , Cmd.none
             )
 
@@ -220,29 +220,27 @@ update msg model =
                             putMessage
             in
             ( { model
-                | editor = { content = "" }
+                | editorContent = ""
                 , session = Just newSession
                 , room = Just room
               }
             , Cmd.batch
-                [ Task.attempt SentComment <|
-                    putTask
-                        session
-                        room.roomId
-                        model.editor.content
+                [ -- send message
+                  Task.attempt (SentComment session room) <|
+                    putTask session room.roomId model.editorContent
 
                 -- store session with updated txnId
                 , storeSessionCmd newSession
                 ]
             )
 
-        SentComment (Ok ()) ->
+        SentComment session room (Ok ()) ->
             ( model
-              -- TODO: fetch messages again
-            , Cmd.none
+            , Task.attempt (GotMessages session room) <|
+                getNewerMessages session room
             )
 
-        SentComment (Err (Session.Error code error)) ->
+        SentComment session room (Err (Session.Error code error)) ->
             ( { model | error = Just <| code ++ error }
             , Cmd.none
             )
@@ -327,7 +325,7 @@ view model =
                 , sendMsg = Maybe.map2 SendComment model.session model.room
                 , session = model.session
                 , roomAlias = model.config.roomAlias
-                , editor = model.editor
+                , editorContent = model.editorContent
                 }
     in
     div [ class "cactus-container" ] <|

@@ -1,4 +1,4 @@
-module Editor exposing (Editor, joinPutLeave, joinRoom, putMessage, viewEditor)
+module Editor exposing (joinPutLeave, joinRoom, putMessage, viewEditor)
 
 import Accessibility exposing (Html, a, button, div, labelHidden, p, text, textarea)
 import ApiUtils exposing (matrixDotToUrl)
@@ -7,6 +7,7 @@ import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
+import Message exposing (RoomEvent)
 import Session exposing (Kind(..), Session, authenticatedRequest, isUser, sessionStatusString, transactionId)
 import Task exposing (Task)
 
@@ -15,10 +16,6 @@ import Task exposing (Task)
 {- EDITOR
    This module handles the comment editing and posting UI and API interaction.
 -}
-
-
-type alias Editor =
-    { content : String }
 
 
 {-| Chain of three requests:
@@ -94,10 +91,10 @@ viewEditor :
     , sendMsg : Maybe msg
     , session : Maybe Session
     , roomAlias : String
-    , editor : Editor
+    , editorContent : String
     }
     -> Html msg
-viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, editor } =
+viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, editorContent } =
     let
         anotherClientLink =
             a
@@ -111,14 +108,14 @@ viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, edit
                 (text "Comment Editor")
                 (textarea
                     [ class "cactus-editor-textarea"
-                    , value editor.content
+                    , value editorContent
                     , onInput editMsg
                     ]
                     []
                 )
 
         sendButton =
-            viewSendButton sendMsg session editor
+            viewSendButton sendMsg session editorContent
 
         authStatusStr =
             session
@@ -180,14 +177,14 @@ loginOrLogoutButton { loginMsg, logoutMsg, session } =
             loginButton
 
 
-viewSendButton : Maybe msg -> Maybe Session -> Editor -> Html msg
-viewSendButton msg auth editor =
+viewSendButton : Maybe msg -> Maybe Session -> String -> Html msg
+viewSendButton msg auth editorContent =
     let
         -- button is disabled if there is no session
         -- or if editor is empty
         isDisabled : Bool
         isDisabled =
-            (auth == Nothing) || (String.length editor.content == 0)
+            (auth == Nothing) || (String.length editorContent == 0)
 
         attrs =
             [ class "cactus-button"

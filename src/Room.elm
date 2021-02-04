@@ -1,4 +1,4 @@
-module Room exposing (Room, commentCount, getInitialRoom, getMoreMessages, getRoomAsGuest, mergeNewMessages, viewRoom)
+module Room exposing (Room, commentCount, getInitialRoom, getNewerMessages, getOlderMessages, getRoomAsGuest, mergeNewMessages, viewRoom)
 
 import Accessibility exposing (Html, button, div, text)
 import Dict exposing (Dict)
@@ -21,27 +21,21 @@ type alias Room =
     , start : String
     , end : String
     , members : Dict String Member
-    , time : Time.Posix
+    , now : Time.Posix
     }
 
 
-
--- merge new messages
--- if new messages isn't empty and the current message count is less than
--- showComments:
---   get more messages
---
-
-
-{-| Get more messages messages from current end token of the room.
-Get strictly less than
-
-To be merged using `mergeNewMessages`
-
+{-| Get more messages, scanning backwards from the earliest event in the room
 -}
-getMoreMessages : Session -> Room -> Task Session.Error GetMessagesResponse
-getMoreMessages session room =
-    getMessages session room.roomId room.start
+getOlderMessages : Session -> Room -> Task Session.Error GetMessagesResponse
+getOlderMessages session room =
+    getMessages session { roomId = room.roomId, dir = "b", from = room.start }
+
+
+{-| Get more messages, scanning forwards from the earliest event in the room
+-}
+getNewerMessages session room =
+    getMessages session { roomId = room.roomId, dir = "f", from = room.end }
 
 
 {-| Count the number of renderable messages in the room
@@ -153,7 +147,7 @@ getInitialRoom session roomAlias =
                         , end = data.end
                         , members = data.members
                         , --
-                          time = time
+                          now = time
                         }
                     )
     in
@@ -198,7 +192,7 @@ viewRoom : Room -> String -> Int -> Html msg
 viewRoom room homeserverUrl count =
     viewRoomEvents
         homeserverUrl
-        room.time
+        room.now
         room.members
         room.events
         count

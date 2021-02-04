@@ -80,15 +80,15 @@ type alias GetMessagesResponse =
     }
 
 
-getMessages : Session -> String -> String -> Task Session.Error GetMessagesResponse
-getMessages session roomId from =
+getMessages : Session -> { roomId : String, dir : String, from : String } -> Task Session.Error GetMessagesResponse
+getMessages session { roomId, dir, from } =
     authenticatedRequest
         session
         { method = "GET"
         , path =
             [ "rooms", roomId, "messages" ]
         , params =
-            [ Url.Builder.string "dir" "b"
+            [ Url.Builder.string "dir" dir
             , Url.Builder.string "from" from
             ]
         , responseDecoder = decodeMessages
