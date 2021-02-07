@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+
+- Fetch new messages after successfully posting a comment
+- Update current time periodically
+- Bugfix: don't crash on redactions
+- Bugfix: guest users can view messages sent by others after posting anonymously
+
 ## 0.3.2
 
 - CI changes: put IPFS gateway links in release description
