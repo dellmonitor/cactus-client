@@ -41,7 +41,7 @@ Go to [the appservice repository](https://gitlab.com/cactus-comments/cactus-apps
 on setting up the appservice.
 
 
-## Get JS and CSS from IPFS
+## Link to JS and CSS
 
 To get the v0.3.1 web client and default stylesheet from
 [pinata.cloud](https://pinata.cloud)'s IPFS gateway, include this HTML:
@@ -50,9 +50,10 @@ To get the v0.3.1 web client and default stylesheet from
 <script type="text/javascript" src="https://gateway.pinata.cloud/ipfs/QmVQYzRzcXS3hvYxL7dpWdT8YRbb4AfZzmtMsMmaWpS9Wo/v0.3.1/cactus.js"></script>
 <link type="text/css" rel="stylesheet" href="https://gateway.pinata.cloud/ipfs/QmVQYzRzcXS3hvYxL7dpWdT8YRbb4AfZzmtMsMmaWpS9Wo/v0.3.1/style.css">
 ```
-
 These files are accessible via the IPFS network, so you can also get them from
 [a number of others IPFS gateways](https://ipfs.github.io/public-gateway-checker/), if you wish.
+
+You likely want to replace the URLs with [the latest release.](https://gitlab.com/cactus-comments/cactus-client/-/releases)
 
 
 ## Initialize comments
