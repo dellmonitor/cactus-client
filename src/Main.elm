@@ -4,7 +4,7 @@ import Accessibility exposing (Html, button, div, h5, p, text)
 import ApiUtils exposing (makeRoomAlias)
 import Browser
 import Dict exposing (Dict)
-import Editor exposing (joinPutLeave, joinRoom, putMessage, viewEditor)
+import Editor exposing (joinPut, joinRoom, putMessage, viewEditor)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Http
@@ -226,7 +226,7 @@ update msg model =
                     case sessionKind session of
                         Guest ->
                             -- join room, HTTP PUT comment, leave room
-                            joinPutLeave
+                            joinPut
 
                         User ->
                             -- user is already joined - leave room

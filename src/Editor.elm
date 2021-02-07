@@ -1,4 +1,4 @@
-module Editor exposing (joinPutLeave, joinRoom, putMessage, viewEditor)
+module Editor exposing (joinPut, joinRoom, putMessage, viewEditor)
 
 import Accessibility exposing (Html, a, button, div, labelHidden, p, text, textarea)
 import ApiUtils exposing (matrixDotToUrl)
@@ -18,18 +18,12 @@ import Task exposing (Task)
 -}
 
 
-{-| Chain of three requests:
-
-1.  join room
-2.  HTTP PUT a comment into the room
-3.  leave the room
-
+{-| Join a room before sending a comment into the room
 -}
-joinPutLeave : Session -> String -> String -> Task Session.Error ()
-joinPutLeave session roomId comment =
+joinPut : Session -> String -> String -> Task Session.Error ()
+joinPut session roomId comment =
     joinRoom session roomId
         |> Task.andThen (\_ -> putMessage session roomId comment)
-        |> Task.andThen (\_ -> leaveRoom session roomId)
 
 
 joinRoom : Session -> String -> Task Session.Error ()
