@@ -85,8 +85,7 @@ getMessages session { roomId, dir, from } =
     authenticatedRequest
         session
         { method = "GET"
-        , path =
-            [ "rooms", roomId, "messages" ]
+        , path = [ "rooms", roomId, "messages" ]
         , params =
             [ Url.Builder.string "dir" dir
             , Url.Builder.string "from" from
@@ -117,47 +116,52 @@ decodeRoomEvent =
                 (JD.field "sender" JD.string)
                 (JD.field "origin_server_ts" JD.int |> JD.map Time.millisToPosix)
     in
-    -- switch on room event type,
-    JD.field "type" JD.string
-        |> JD.andThen
-            (\eventType ->
-                case eventType of
-                    "m.room.message" ->
-                        makeRoomEvent
-                            (\t msg s ots ->
-                                MessageEvent
-                                    { eventType = t
-                                    , content = msg
-                                    , sender = s
-                                    , originServerTs = ots
-                                    }
-                            )
-                            decodeMessage
+    JD.oneOf
+        [ -- switch on room event type,
+          JD.field "type" JD.string
+            |> JD.andThen
+                (\eventType ->
+                    case eventType of
+                        "m.room.message" ->
+                            makeRoomEvent
+                                (\t msg s ots ->
+                                    MessageEvent
+                                        { eventType = t
+                                        , content = msg
+                                        , sender = s
+                                        , originServerTs = ots
+                                        }
+                                )
+                                decodeMessage
 
-                    "m.room.create" ->
-                        makeRoomEvent
-                            (\t msg s ots ->
-                                StateEvent
-                                    { eventType = t
-                                    , content = msg
-                                    , sender = s
-                                    , originServerTs = ots
-                                    }
-                            )
-                            decodeCreate
+                        "m.room.create" ->
+                            makeRoomEvent
+                                (\t msg s ots ->
+                                    StateEvent
+                                        { eventType = t
+                                        , content = msg
+                                        , sender = s
+                                        , originServerTs = ots
+                                        }
+                                )
+                                decodeCreate
 
-                    _ ->
-                        makeRoomEvent
-                            (\t msg s ots ->
-                                UnsupportedEvent
-                                    { eventType = t
-                                    , content = msg
-                                    , sender = s
-                                    , originServerTs = ots
-                                    }
-                            )
-                            (JD.succeed ())
+                        _ ->
+                            JD.fail ("Unsupported event type: " ++ eventType)
+                )
+
+        -- on failure: return unsupported event
+        , makeRoomEvent
+            (\t msg s ots ->
+                UnsupportedEvent
+                    { eventType = t
+                    , content = msg
+                    , sender = s
+                    , originServerTs = ots
+                    }
             )
+            (JD.succeed ())
+        ]
 
 
 decodeCreate : JD.Decoder State
