@@ -1,6 +1,7 @@
 module Main exposing (main)
 
-import Accessibility exposing (Html, button, div, h5, p, text)
+import Accessibility exposing (Html, b, button, div, p, text)
+import Accessibility.Aria exposing (errorMessage)
 import ApiUtils exposing (makeRoomAlias)
 import Browser
 import Dict exposing (Dict)
@@ -112,6 +113,8 @@ joinIfUser session roomAlias =
 
 type Msg
     = Tick Time.Posix
+    | CloseError
+      -- Message Fetching
     | GotRoom (Result Session.Error ( Session, Room ))
     | ViewMore Session Room
     | GotMessages Session Room (Result Session.Error GetMessagesResponse)
@@ -152,6 +155,9 @@ update msg model =
                 Nothing ->
                     ( model, Cmd.none )
 
+        CloseError ->
+            ( { model | error = Nothing }, Cmd.none )
+
         GotRoom (Ok ( session, room )) ->
             -- got initial room, when loading page first ime
             ( { model
@@ -167,7 +173,7 @@ update msg model =
 
         GotRoom (Err (Session.Error code error)) ->
             -- error while setting up initial room
-            ( { model | error = Just <| code ++ error }
+            ( { model | error = Just <| code ++ " " ++ error }
             , Cmd.none
             )
 
@@ -193,7 +199,7 @@ update msg model =
 
         GotMessages _ _ (Err (Session.Error code error)) ->
             -- http error while getting more comments
-            ( { model | error = Just <| code ++ error }
+            ( { model | error = Just <| code ++ " " ++ error }
             , Cmd.none
             )
 
@@ -254,7 +260,7 @@ update msg model =
             )
 
         SentComment session room (Err (Session.Error code error)) ->
-            ( { model | error = Just <| code ++ error }
+            ( { model | error = Just <| code ++ " " ++ error }
             , Cmd.none
             )
 
@@ -314,13 +320,15 @@ view : Model -> Html Msg
 view model =
     let
         errors =
-            h5 [] <|
-                case model.error of
-                    Nothing ->
-                        []
+            case model.error of
+                Nothing ->
+                    text ""
 
-                    Just errmsg ->
-                        [ text <| "ERROR: " ++ errmsg ]
+                Just errmsg ->
+                    div [ class "cactus-error", errorMessage errmsg ]
+                        [ button [ class "cactus-button", onClick CloseError ] [ text "X" ]
+                        , b [] [ text <| " Error: " ++ errmsg ]
+                        ]
 
         loginPopup =
             case model.loginForm of

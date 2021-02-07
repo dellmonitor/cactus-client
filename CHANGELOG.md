@@ -4,6 +4,7 @@
 
 - Fetch new messages after successfully posting a comment
 - Update current time periodically
+- Error messages are now red, and can be closed
 - Bugfix: don't crash on redactions
 - Bugfix: guest users can view messages sent by others after posting anonymously
 
