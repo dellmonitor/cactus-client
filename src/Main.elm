@@ -4,15 +4,12 @@ import Accessibility exposing (Html, b, button, div, p, text)
 import Accessibility.Aria exposing (errorMessage)
 import ApiUtils exposing (makeRoomAlias)
 import Browser
-import Dict exposing (Dict)
 import Editor exposing (joinPut, joinRoom, putMessage, viewEditor)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
-import Http
 import Json.Decode as JD
 import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
-import Member exposing (Member)
-import Message exposing (GetMessagesResponse, Message(..), RoomEvent, messageEvents)
+import Message exposing (GetMessagesResponse, Message(..))
 import Room exposing (Room, commentCount, getInitialRoom, getNewerMessages, getOlderMessages, mergeNewMessages, viewRoom)
 import Session exposing (Kind(..), Session, decodeStoredSession, getHomeserverUrl, incrementTransactionId, registerGuest, sessionKind, storeSessionCmd)
 import Task
@@ -259,7 +256,7 @@ update msg model =
                 getNewerMessages session room
             )
 
-        SentComment session room (Err (Session.Error code error)) ->
+        SentComment _ _ (Err (Session.Error code error)) ->
             ( { model | error = Just <| code ++ " " ++ error }
             , Cmd.none
             )

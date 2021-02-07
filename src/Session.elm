@@ -252,7 +252,7 @@ handleJsonResponse decoder response =
         Http.NetworkError_ ->
             Err <| RetryAfterMs retryConstant
 
-        Http.BadStatus_ metadata body ->
+        Http.BadStatus_ _ body ->
             Err <|
                 (JD.decodeString decodeMatrixError body
                     |> Result.withDefault (UnhandledError "Could not decode error" body)

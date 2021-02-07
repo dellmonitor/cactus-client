@@ -5,7 +5,7 @@ import ApiUtils exposing (httpFromMxc)
 import Html.Parser
 import Html.Parser.Util
 import Json.Decode as JD
-import Parser exposing ((|.), (|=), Parser)
+import Parser exposing ((|.), Parser)
 import Set exposing (Set)
 import Tuple
 

@@ -7,7 +7,6 @@ import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
-import Message exposing (RoomEvent)
 import Session exposing (Kind(..), Session, authenticatedRequest, isUser, sessionStatusString, transactionId)
 import Task exposing (Task)
 
@@ -32,18 +31,6 @@ joinRoom session roomIdOrAlias =
         session
         { method = "POST"
         , path = [ "join", roomIdOrAlias ]
-        , params = []
-        , responseDecoder = JD.succeed ()
-        , body = Http.stringBody "application/json" "{}"
-        }
-
-
-leaveRoom : Session -> String -> Task Session.Error ()
-leaveRoom session roomId =
-    authenticatedRequest
-        session
-        { method = "POST"
-        , path = [ "rooms", roomId, "leave" ]
         , params = []
         , responseDecoder = JD.succeed ()
         , body = Http.stringBody "application/json" "{}"

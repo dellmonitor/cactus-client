@@ -1,9 +1,7 @@
 module Room exposing (Room, commentCount, getInitialRoom, getNewerMessages, getOlderMessages, getRoomAsGuest, mergeNewMessages, viewRoom)
 
-import Accessibility exposing (Html, button, div, text)
+import Accessibility exposing (Html, div)
 import Dict exposing (Dict)
-import Html.Attributes exposing (class)
-import Html.Events exposing (onClick)
 import Http
 import Json.Decode as JD
 import Member exposing (Member, getJoinedMembers)
@@ -11,7 +9,6 @@ import Message exposing (GetMessagesResponse, RoomEvent(..), decodeMessages, get
 import Session exposing (Session, authenticatedRequest, registerGuest)
 import Task exposing (Task)
 import Time
-import Url.Builder
 
 
 type alias Room =
@@ -34,6 +31,7 @@ getOlderMessages session room =
 
 {-| Get more messages, scanning forwards from the earliest event in the room
 -}
+getNewerMessages : Session -> Room -> Task Session.Error GetMessagesResponse
 getNewerMessages session room =
     getMessages session { roomId = room.roomId, dir = "f", from = room.end }
 

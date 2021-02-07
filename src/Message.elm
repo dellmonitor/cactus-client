@@ -42,7 +42,6 @@ type alias Event a =
 
 type State
     = Created String
-    | UnsupportedStateType
 
 
 type Message

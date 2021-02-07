@@ -3,7 +3,6 @@ module LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithFor
 import Accessibility exposing (Html, button, div, h3, inputText, labelBefore, p, text)
 import Html.Attributes exposing (class, disabled, placeholder, required, type_)
 import Html.Events exposing (onClick, onInput)
-import Http
 import Session exposing (Session, login)
 import Task exposing (Task)
 
