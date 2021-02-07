@@ -24,7 +24,7 @@ main =
         { init = init
         , update = update
         , view = view
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = \_ -> Time.every 5000 Tick
         }
 
 
@@ -111,7 +111,8 @@ joinIfUser session roomAlias =
 
 
 type Msg
-    = GotRoom (Result Session.Error ( Session, Room ))
+    = Tick Time.Posix
+    | GotRoom (Result Session.Error ( Session, Room ))
     | ViewMore Session Room
     | GotMessages Session Room (Result Session.Error GetMessagesResponse)
       -- EDITOR
@@ -139,6 +140,18 @@ update msg model =
                 Cmd.none
     in
     case msg of
+        Tick now ->
+            case model.room of
+                Just room ->
+                    let
+                        newroom =
+                            { room | now = now }
+                    in
+                    ( { model | room = Just newroom }, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
         GotRoom (Ok ( session, room )) ->
             -- got initial room, when loading page first ime
             ( { model
