@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+- Bugfix: Move the right sync token when getting newer messages, preventing duplicate comments after posting in small rooms.
+
 ## 0.4.0
 
 - Fetch new messages after successfully posting a comment
