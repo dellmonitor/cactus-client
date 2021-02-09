@@ -1,54 +1,64 @@
-module Room exposing (Room, commentCount, getInitialRoom, getNewerMessages, getOlderMessages, getRoomAsGuest, mergeNewMessages, viewRoom)
+module Room exposing
+    ( Direction(..)
+    , Room
+    , commentCount
+    , getInitialRoom
+    , getNewerMessages
+    , getOlderMessages
+    , getRoomAsGuest
+    , joinRoom
+    , mergeNewerMessages
+    , mergeOlderMessages
+    , sendComment
+    , viewRoomEvents
+    )
 
 import Accessibility exposing (Html, div)
 import Dict exposing (Dict)
 import Http
 import Json.Decode as JD
+import Json.Encode as JE
 import Member exposing (Member, getJoinedMembers)
 import Message exposing (GetMessagesResponse, RoomEvent(..), decodeMessages, getMessages, messageEvents, viewMessageEvent)
-import Session exposing (Session, authenticatedRequest, registerGuest)
+import Session exposing (Kind(..), Session, authenticatedRequest, incrementTransactionId, registerGuest, sessionKind, transactionId)
 import Task exposing (Task)
 import Time
 
 
-type alias Room =
-    { roomAlias : String
-    , roomId : String
-    , events : List RoomEvent
-    , start : String
-    , end : String
-    , members : Dict String Member
-    , now : Time.Posix
-    }
-
-
-{-| Get more messages, scanning backwards from the earliest event in the room
--}
-getOlderMessages : Session -> Room -> Task Session.Error GetMessagesResponse
-getOlderMessages session room =
-    getMessages session { roomId = room.roomId, dir = "b", from = room.start }
-
-
-{-| Get more messages, scanning forwards from the earliest event in the room
--}
-getNewerMessages : Session -> Room -> Task Session.Error GetMessagesResponse
-getNewerMessages session room =
-    getMessages session { roomId = room.roomId, dir = "f", from = room.end }
+type Room
+    = Room
+        { roomAlias : String
+        , roomId : String
+        , events : List RoomEvent
+        , start : String
+        , end : String
+        , members : Dict String Member
+        }
 
 
 {-| Count the number of renderable messages in the room
 -}
 commentCount : Room -> Int
-commentCount room =
+commentCount (Room room) =
     List.length <| messageEvents room.events
 
 
-mergeNewMessages : Room -> { a | start : String, end : String, chunk : List RoomEvent } -> Room
-mergeNewMessages room newMessages =
-    { room
-        | events = sortByTime (room.events ++ newMessages.chunk)
-        , start = newMessages.end
-    }
+mergeOlderMessages : Room -> { a | start : String, end : String, chunk : List RoomEvent } -> Room
+mergeOlderMessages (Room room) newMessages =
+    Room
+        { room
+            | events = sortByTime (room.events ++ newMessages.chunk)
+            , start = newMessages.end
+        }
+
+
+mergeNewerMessages : Room -> { a | start : String, end : String, chunk : List RoomEvent } -> Room
+mergeNewerMessages (Room room) newMessages =
+    Room
+        { room
+            | events = sortByTime (room.events ++ newMessages.chunk)
+            , end = newMessages.end
+        }
 
 
 sortByTime : List RoomEvent -> List RoomEvent
@@ -86,7 +96,6 @@ getRoomAsGuest { homeserverUrl, roomAlias } =
 1.  Look up roomId using roomAlias
 2.  Get message events and pagination tokens
 3.  Get current room members
-4.  (Get current time)
 
 The Task eventually completes a Room record
 
@@ -132,27 +141,11 @@ getInitialRoom session roomAlias =
                           members = members
                         }
                     )
-
-        -- note current time
-        addTime data =
-            Time.now
-                |> Task.map
-                    (\time ->
-                        { roomAlias = data.roomAlias
-                        , roomId = data.roomId
-                        , events = data.events
-                        , start = data.start
-                        , end = data.end
-                        , members = data.members
-                        , --
-                          now = time
-                        }
-                    )
     in
     addRoomId
         |> Task.andThen addEvents
         |> Task.andThen addMembers
-        |> Task.andThen addTime
+        |> Task.map Room
 
 
 {-| Make a GET request to resolve a roomId from a given roomAlias.
@@ -186,19 +179,97 @@ getInitialSync session roomId =
 {-| View all of the comments in a Room
 The `homeserverUrl` is used translate mxc:// to media API endpoints
 -}
-viewRoom : Room -> String -> Int -> Html msg
-viewRoom room homeserverUrl count =
-    viewRoomEvents
-        homeserverUrl
-        room.now
-        room.members
-        room.events
-        count
-
-
-viewRoomEvents : String -> Time.Posix -> Dict String Member -> List RoomEvent -> Int -> Html msg
-viewRoomEvents defaultHomeserverUrl time members roomEvents count =
+viewRoomEvents : String -> Room -> Int -> Time.Posix -> Html msg
+viewRoomEvents homeserverUrl (Room room) count now =
     div [] <|
         List.map
-            (viewMessageEvent defaultHomeserverUrl time members)
-            (messageEvents roomEvents |> List.take count)
+            (viewMessageEvent homeserverUrl now room.members)
+            (messageEvents room.events |> List.take count)
+
+
+
+{- API INTERACTIONS -}
+
+
+type Direction
+    = Older
+    | Newer
+
+
+{-| Get more messages, scanning backwards from the earliest event in the room
+-}
+getOlderMessages : Session -> Room -> Task Session.Error GetMessagesResponse
+getOlderMessages session (Room room) =
+    getMessages session { roomId = room.roomId, dir = "b", from = room.start }
+
+
+{-| Get more messages, scanning forwards from the earliest event in the room
+-}
+getNewerMessages : Session -> Room -> Task Session.Error GetMessagesResponse
+getNewerMessages session (Room room) =
+    getMessages session { roomId = room.roomId, dir = "f", from = room.end }
+
+
+joinRoom : Session -> String -> Task Session.Error ()
+joinRoom session roomIdOrAlias =
+    authenticatedRequest
+        session
+        { method = "POST"
+        , path = [ "join", roomIdOrAlias ]
+        , params = []
+        , responseDecoder = JD.succeed ()
+        , body = Http.stringBody "application/json" "{}"
+        }
+
+
+sendComment : Session -> Room -> String -> ( Task Session.Error (), Session )
+sendComment session room comment =
+    ( case sessionKind session of
+        Guest ->
+            -- join room, send message
+            joinAndSend session room comment
+
+        User ->
+            -- user is already joined, just send message
+            sendMessage session room comment
+      -- increment transaction Id (idempotency measure)
+    , incrementTransactionId session
+    )
+
+
+{-| Join a room before sending a comment into the room
+-}
+joinAndSend : Session -> Room -> String -> Task Session.Error ()
+joinAndSend session (Room room) comment =
+    joinRoom session room.roomId
+        |> Task.andThen (\_ -> sendMessage session (Room room) comment)
+
+
+{-| Send a message to the room
+-}
+sendMessage : Session -> Room -> String -> Task Session.Error ()
+sendMessage session (Room room) comment =
+    -- post a message
+    let
+        eventType =
+            "m.room.message"
+
+        msgtype =
+            "m.text"
+
+        txnId =
+            transactionId session
+    in
+    authenticatedRequest
+        session
+        { method = "PUT"
+        , path = [ "rooms", room.roomId, "send", eventType, String.fromInt txnId ]
+        , params = []
+        , responseDecoder = JD.succeed ()
+        , body =
+            Http.jsonBody <|
+                JE.object
+                    [ ( "msgtype", JE.string msgtype )
+                    , ( "body", JE.string comment )
+                    ]
+        }

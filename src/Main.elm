@@ -4,14 +4,36 @@ import Accessibility exposing (Html, b, button, div, p, text)
 import Accessibility.Aria exposing (errorMessage)
 import ApiUtils exposing (makeRoomAlias)
 import Browser
-import Editor exposing (joinPut, joinRoom, putMessage, viewEditor)
+import Editor exposing (viewEditor)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Json.Decode as JD
 import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
 import Message exposing (GetMessagesResponse, Message(..))
-import Room exposing (Room, commentCount, getInitialRoom, getNewerMessages, getOlderMessages, mergeNewMessages, viewRoom)
-import Session exposing (Kind(..), Session, decodeStoredSession, getHomeserverUrl, incrementTransactionId, registerGuest, sessionKind, storeSessionCmd)
+import Room
+    exposing
+        ( Direction(..)
+        , Room
+        , commentCount
+        , getInitialRoom
+        , getNewerMessages
+        , getOlderMessages
+        , joinRoom
+        , mergeNewerMessages
+        , mergeOlderMessages
+        , sendComment
+        , viewRoomEvents
+        )
+import Session
+    exposing
+        ( Kind(..)
+        , Session
+        , decodeStoredSession
+        , getHomeserverUrl
+        , registerGuest
+        , sessionKind
+        , storeSessionCmd
+        )
 import Task
 import Time
 
@@ -35,6 +57,7 @@ type alias Model =
     , showComments : Int
     , gotAllComments : Bool
     , error : Maybe String
+    , now : Time.Posix
     }
 
 
@@ -77,22 +100,27 @@ init flags =
       , showComments = config.pageSize
       , gotAllComments = False
       , error = Nothing
+      , now = Time.millisToPosix 1600000000 -- fall 2020
       }
-    , -- first GET to the matrix room, as Guest or User
-      Task.attempt GotRoom <|
-        case session of
-            -- if no localstorage session was found
-            -- then register a guest user w/ default homeserver
-            Nothing ->
-                registerGuest config.defaultHomeserverUrl
-                    |> Task.andThen
-                        (\sess -> getInitialRoom sess config.roomAlias |> Task.map (Tuple.pair sess))
+    , Cmd.batch
+        [ -- get curren time
+          Task.perform Tick Time.now
+        , -- first GET to the matrix room, as Guest or User
+          Task.attempt GotRoom <|
+            case session of
+                -- if no localstorage session was found
+                -- then register a guest user w/ default homeserver
+                Nothing ->
+                    registerGuest config.defaultHomeserverUrl
+                        |> Task.andThen
+                            (\sess -> getInitialRoom sess config.roomAlias |> Task.map (Tuple.pair sess))
 
-            -- otherwise, use stored session
-            Just sess ->
-                joinIfUser sess config.roomAlias
-                    |> Task.andThen
-                        (\_ -> getInitialRoom sess config.roomAlias |> Task.map (Tuple.pair sess))
+                -- otherwise, use stored session
+                Just sess ->
+                    joinIfUser sess config.roomAlias
+                        |> Task.andThen
+                            (\_ -> getInitialRoom sess config.roomAlias |> Task.map (Tuple.pair sess))
+        ]
     )
 
 
@@ -114,7 +142,7 @@ type Msg
       -- Message Fetching
     | GotRoom (Result Session.Error ( Session, Room ))
     | ViewMore Session Room
-    | GotMessages Session Room (Result Session.Error GetMessagesResponse)
+    | GotMessages Session Room Direction (Result Session.Error GetMessagesResponse)
       -- EDITOR
     | EditComment String
     | SendComment Session Room
@@ -133,7 +161,7 @@ update msg model =
         {- Get more comments if needed -}
         fillComments session room =
             if commentCount room < model.showComments then
-                Task.attempt (GotMessages session room) <|
+                Task.attempt (GotMessages session room Older) <|
                     getOlderMessages session room
 
             else
@@ -141,16 +169,7 @@ update msg model =
     in
     case msg of
         Tick now ->
-            case model.room of
-                Just room ->
-                    let
-                        newroom =
-                            { room | now = now }
-                    in
-                    ( { model | room = Just newroom }, Cmd.none )
-
-                Nothing ->
-                    ( model, Cmd.none )
+            ( { model | now = now }, Cmd.none )
 
         CloseError ->
             ( { model | error = Nothing }, Cmd.none )
@@ -174,11 +193,19 @@ update msg model =
             , Cmd.none
             )
 
-        GotMessages session room (Ok newMsgs) ->
+        GotMessages session room dir (Ok newMsgs) ->
             -- got more messages. result of the "ViewMore"-button request
             let
                 newRoom =
-                    mergeNewMessages room newMsgs
+                    (case dir of
+                        Newer ->
+                            mergeNewerMessages
+
+                        Older ->
+                            mergeOlderMessages
+                    )
+                        room
+                        newMsgs
 
                 newModel =
                     { model
@@ -194,7 +221,7 @@ update msg model =
                 Cmd.none
             )
 
-        GotMessages _ _ (Err (Session.Error code error)) ->
+        GotMessages _ _ _ (Err (Session.Error code error)) ->
             -- http error while getting more comments
             ( { model | error = Just <| code ++ " " ++ error }
             , Cmd.none
@@ -208,7 +235,7 @@ update msg model =
                     model.showComments + model.config.pageSize
             in
             ( { model | showComments = newShowComments }
-            , Task.attempt (GotMessages session room) <|
+            , Task.attempt (GotMessages session room Older) <|
                 getOlderMessages session room
             )
 
@@ -221,19 +248,8 @@ update msg model =
         SendComment session room ->
             -- user hit send button
             let
-                -- increment transaction Id (idempotency measure)
-                newSession =
-                    incrementTransactionId session
-
-                putTask =
-                    case sessionKind session of
-                        Guest ->
-                            -- join room, HTTP PUT comment, leave room
-                            joinPut
-
-                        User ->
-                            -- user is already joined - leave room
-                            putMessage
+                ( sendTask, newSession ) =
+                    sendComment session room model.editorContent
             in
             ( { model
                 | editorContent = ""
@@ -242,8 +258,7 @@ update msg model =
               }
             , Cmd.batch
                 [ -- send message
-                  Task.attempt (SentComment session room) <|
-                    putTask session room.roomId model.editorContent
+                  Task.attempt (SentComment session room) sendTask
 
                 -- store session with updated txnId
                 , storeSessionCmd newSession
@@ -252,7 +267,7 @@ update msg model =
 
         SentComment session room (Ok ()) ->
             ( model
-            , Task.attempt (GotMessages session room) <|
+            , Task.attempt (GotMessages session room Newer) <|
                 getNewerMessages session room
             )
 
@@ -330,7 +345,11 @@ view model =
         loginPopup =
             case model.loginForm of
                 Just loginForm ->
-                    viewLoginForm loginForm { submitMsg = Login, hideMsg = HideLogin, editMsg = EditLogin }
+                    viewLoginForm loginForm
+                        { submitMsg = Login
+                        , hideMsg = HideLogin
+                        , editMsg = EditLogin
+                        }
 
                 Nothing ->
                     text ""
@@ -353,25 +372,25 @@ view model =
         , case ( model.room, model.session ) of
             ( Just room, Just session ) ->
                 div []
-                    [ viewRoom room (getHomeserverUrl session) model.showComments
-                    , if not model.gotAllComments then
-                        viewMoreButton <| ViewMore session room
+                    [ viewRoomEvents
+                        (getHomeserverUrl session)
+                        room
+                        model.showComments
+                        model.now
+                    , if model.gotAllComments then
+                        text ""
 
                       else
-                        text ""
+                        -- "View More" button
+                        div [ class "cactus-view-more" ]
+                            [ button
+                                [ class "cactus-button"
+                                , onClick <| ViewMore session room
+                                ]
+                                [ text "View more" ]
+                            ]
                     ]
 
             _ ->
                 p [] [ text "Getting comments..." ]
-        ]
-
-
-viewMoreButton : msg -> Html msg
-viewMoreButton msg =
-    div [ class "cactus-view-more" ]
-        [ button
-            [ class "cactus-button"
-            , onClick msg
-            ]
-            [ text "View more" ]
         ]

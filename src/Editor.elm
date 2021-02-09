@@ -1,68 +1,16 @@
-module Editor exposing (joinPut, joinRoom, putMessage, viewEditor)
+module Editor exposing (viewEditor)
 
 import Accessibility exposing (Html, a, button, div, labelHidden, p, text, textarea)
 import ApiUtils exposing (matrixDotToUrl)
 import Html.Attributes exposing (class, disabled, href, value)
 import Html.Events exposing (onClick, onInput)
-import Http
-import Json.Decode as JD
-import Json.Encode as JE
-import Session exposing (Kind(..), Session, authenticatedRequest, isUser, sessionStatusString, transactionId)
-import Task exposing (Task)
+import Session exposing (Kind(..), Session, isUser, sessionStatusString)
 
 
 
 {- EDITOR
-   This module handles the comment editing and posting UI and API interaction.
+   Handles UI for the comment editor and buttons.
 -}
-
-
-{-| Join a room before sending a comment into the room
--}
-joinPut : Session -> String -> String -> Task Session.Error ()
-joinPut session roomId comment =
-    joinRoom session roomId
-        |> Task.andThen (\_ -> putMessage session roomId comment)
-
-
-joinRoom : Session -> String -> Task Session.Error ()
-joinRoom session roomIdOrAlias =
-    authenticatedRequest
-        session
-        { method = "POST"
-        , path = [ "join", roomIdOrAlias ]
-        , params = []
-        , responseDecoder = JD.succeed ()
-        , body = Http.stringBody "application/json" "{}"
-        }
-
-
-putMessage : Session -> String -> String -> Task Session.Error ()
-putMessage session roomId comment =
-    -- post a message
-    let
-        eventType =
-            "m.room.message"
-
-        msgtype =
-            "m.text"
-
-        txnId =
-            transactionId session
-    in
-    authenticatedRequest
-        session
-        { method = "PUT"
-        , path = [ "rooms", roomId, "send", eventType, String.fromInt txnId ]
-        , params = []
-        , responseDecoder = JD.succeed ()
-        , body =
-            Http.jsonBody <|
-                JE.object
-                    [ ( "msgtype", JE.string msgtype )
-                    , ( "body", JE.string comment )
-                    ]
-        }
 
 
 viewEditor :
