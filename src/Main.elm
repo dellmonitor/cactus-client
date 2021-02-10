@@ -38,7 +38,7 @@ import Task
 import Time
 
 
-main : Program Flags Model Msg
+main : Program JD.Value Model Msg
 main =
     Browser.element
         { init = init
@@ -66,7 +66,7 @@ type alias Flags =
     , serverName : String
     , siteName : String
     , commentSectionId : String
-    , storedSession : JD.Value
+    , storedSession : Maybe Session
     , pageSize : Int
     }
 
@@ -80,17 +80,51 @@ type alias StaticConfig =
 
 parseFlags : Flags -> ( StaticConfig, Maybe Session )
 parseFlags flags =
-    ( StaticConfig flags.defaultHomeserverUrl (makeRoomAlias flags) flags.pageSize
-    , JD.decodeValue decodeStoredSession flags.storedSession
-        |> Result.toMaybe
+    ( StaticConfig
+        flags.defaultHomeserverUrl
+        (makeRoomAlias flags)
+        flags.pageSize
+    , flags.storedSession
     )
 
 
-init : Flags -> ( Model, Cmd Msg )
+decodeFlags : JD.Decoder Flags
+decodeFlags =
+    JD.map6 Flags
+        (JD.field "defaultHomeserverUrl" JD.string)
+        (JD.field "serverName" JD.string)
+        (JD.field "siteName" JD.string)
+        (JD.field "commentSectionId" JD.string
+            |> JD.andThen
+                (\csid ->
+                    if String.contains "_" csid then
+                        JD.fail "commentSectionId can't contain underscores"
+
+                    else
+                        JD.succeed csid
+                )
+        )
+        (JD.field "storedSession" <| JD.nullable decodeStoredSession)
+        (JD.oneOf [ JD.field "pageSize" JD.int, JD.succeed 10 ])
+
+
+init : JD.Value -> ( Model, Cmd Msg )
 init flags =
     let
-        ( config, session ) =
-            parseFlags flags
+        parsedFlags : Result JD.Error ( StaticConfig, Maybe Session )
+        parsedFlags =
+            JD.decodeValue decodeFlags flags
+                |> Result.map parseFlags
+
+        config =
+            parsedFlags
+                |> Result.map Tuple.first
+                |> Result.withDefault (StaticConfig "" "" 10)
+
+        session =
+            parsedFlags
+                |> Result.map Tuple.second
+                |> Result.withDefault Nothing
     in
     ( { config = config
       , editorContent = ""
@@ -99,11 +133,17 @@ init flags =
       , loginForm = Nothing
       , showComments = config.pageSize
       , gotAllComments = False
-      , error = Nothing
-      , now = Time.millisToPosix 1600000000 -- fall 2020
+      , error =
+            case parsedFlags of
+                Ok _ ->
+                    Nothing
+
+                Err err ->
+                    Just (JD.errorToString err)
+      , now = Time.millisToPosix 0 -- shitty default value
       }
     , Cmd.batch
-        [ -- get curren time
+        [ -- get current time
           Task.perform Tick Time.now
         , -- first GET to the matrix room, as Guest or User
           Task.attempt GotRoom <|
@@ -143,11 +183,11 @@ type Msg
     | GotRoom (Result Session.Error ( Session, Room ))
     | ViewMore Session Room
     | GotMessages Session Room Direction (Result Session.Error GetMessagesResponse)
-      -- EDITOR
+      -- Editor
     | EditComment String
     | SendComment Session Room
     | SentComment Session Room (Result Session.Error ())
-      -- LOGIN
+      -- Login
     | ShowLogin
     | HideLogin
     | EditLogin LoginForm
