@@ -56,9 +56,27 @@ type alias Model =
     , loginForm : Maybe LoginForm
     , showComments : Int
     , gotAllComments : Bool
-    , error : Maybe String
+    , errors : List Error
     , now : Time.Posix
     }
+
+
+type alias Error =
+    { id : Int
+    , message : String
+    }
+
+
+addError : List Error -> String -> List Error
+addError errors message =
+    { id =
+        List.map .id errors
+            |> List.maximum
+            |> Maybe.map ((+) 1)
+            |> Maybe.withDefault 0
+    , message = message
+    }
+        :: errors
 
 
 type alias Flags =
@@ -133,13 +151,13 @@ init flags =
       , loginForm = Nothing
       , showComments = config.pageSize
       , gotAllComments = False
-      , error =
+      , errors =
             case parsedFlags of
                 Ok _ ->
-                    Nothing
+                    []
 
                 Err err ->
-                    Just (JD.errorToString err)
+                    [ { id = 0, message = JD.errorToString err } ]
       , now = Time.millisToPosix 0 -- shitty default value
       }
     , Cmd.batch
@@ -178,7 +196,7 @@ joinIfUser session roomAlias =
 
 type Msg
     = Tick Time.Posix
-    | CloseError
+    | CloseError Int
       -- Message Fetching
     | GotRoom (Result Session.Error ( Session, Room ))
     | ViewMore Session Room
@@ -211,11 +229,13 @@ update msg model =
         Tick now ->
             ( { model | now = now }, Cmd.none )
 
-        CloseError ->
-            ( { model | error = Nothing }, Cmd.none )
+        CloseError id ->
+            ( { model | errors = List.filter (\e -> e.id /= id) model.errors }
+            , Cmd.none
+            )
 
         GotRoom (Ok ( session, room )) ->
-            -- got initial room, when loading page first ime
+            -- got initial room, when loading page first time
             ( { model
                 | session = Just session
                 , room = Just room
@@ -229,7 +249,7 @@ update msg model =
 
         GotRoom (Err (Session.Error code error)) ->
             -- error while setting up initial room
-            ( { model | error = Just <| code ++ " " ++ error }
+            ( { model | errors = addError model.errors <| code ++ " " ++ error }
             , Cmd.none
             )
 
@@ -263,7 +283,7 @@ update msg model =
 
         GotMessages _ _ _ (Err (Session.Error code error)) ->
             -- http error while getting more comments
-            ( { model | error = Just <| code ++ " " ++ error }
+            ( { model | errors = addError model.errors <| code ++ " " ++ error }
             , Cmd.none
             )
 
@@ -312,7 +332,7 @@ update msg model =
             )
 
         SentComment _ _ (Err (Session.Error code error)) ->
-            ( { model | error = Just <| code ++ " " ++ error }
+            ( { model | errors = addError model.errors <| code ++ " " ++ error }
             , Cmd.none
             )
 
@@ -372,15 +392,19 @@ view : Model -> Html Msg
 view model =
     let
         errors =
-            case model.error of
-                Nothing ->
-                    text ""
-
-                Just errmsg ->
-                    div [ class "cactus-error", errorMessage errmsg ]
-                        [ button [ class "cactus-button", onClick CloseError ] [ text "X" ]
-                        , b [] [ text <| " Error: " ++ errmsg ]
-                        ]
+            div [] <|
+                List.map
+                    (\{ id, message } ->
+                        div [ class "cactus-error", errorMessage message ]
+                            [ button
+                                [ class "cactus-button"
+                                , onClick <| CloseError id
+                                ]
+                                [ text "X" ]
+                            , b [] [ text <| " Error: " ++ message ]
+                            ]
+                    )
+                    model.errors
 
         loginPopup =
             case model.loginForm of
