@@ -461,7 +461,7 @@ view model =
                         room
                         model.showComments
                         model.now
-                    , if model.gotAllComments || model.room. then
+                    , if model.gotAllComments then
                         text ""
 
                       else
