@@ -10,8 +10,8 @@ module Message exposing
     , viewMessageEvent
     )
 
-import Accessibility exposing (Html, a, div, img, p, text)
-import ApiUtils exposing (thumbnailFromMxc)
+import Accessibility exposing (Html, a, b, div, img, p, text)
+import ApiUtils exposing (httpFromMxc, thumbnailFromMxc)
 import Dict exposing (Dict)
 import Duration
 import FormattedText exposing (FormattedText(..), decodeFormattedText, viewFormattedText)
@@ -48,7 +48,7 @@ type Message
     = Text FormattedText
     | Emote FormattedText
     | Notice FormattedText
-    | Image
+    | Image ImageData
     | File
     | Audio
     | Location
@@ -168,6 +168,54 @@ decodeCreate =
     JD.map Created <| JD.field "creator" JD.string
 
 
+type alias ImageData =
+    { body : String
+    , info : Maybe ImageInfo
+    , url : String
+    }
+
+
+decodeImage : JD.Decoder ImageData
+decodeImage =
+    JD.map3 ImageData
+        (JD.field "body" JD.string)
+        (JD.maybe <| JD.field "info" decodeImageInfo)
+        (JD.field "url" JD.string)
+
+
+type alias ImageInfo =
+    { h : Int
+    , w : Int
+    , mimetype : String
+    , thumbnail_url : Maybe String
+    , thumbnail_info :
+        Maybe
+            { h : Int
+            , w : Int
+            , mimetype : String
+            }
+    }
+
+
+decodeImageInfo : JD.Decoder ImageInfo
+decodeImageInfo =
+    JD.map5
+        ImageInfo
+        (JD.field "h" JD.int)
+        (JD.field "w" JD.int)
+        (JD.field "mimetype" JD.string)
+        (JD.maybe <| JD.field "thumbnail_url" JD.string)
+        (JD.maybe <|
+            JD.field "thumbnail_info"
+                (JD.map3
+                    (\w h mime -> { w = w, h = h, mimetype = mime })
+                    (JD.field "w" JD.int)
+                    (JD.field "h" JD.int)
+                    (JD.field "mimetype" JD.string)
+                )
+        )
+
+
 decodeMessage : JD.Decoder Message
 decodeMessage =
     JD.field "msgtype" JD.string
@@ -184,7 +232,7 @@ decodeMessage =
                         JD.map Notice decodeFormattedText
 
                     "m.image" ->
-                        JD.succeed Image
+                        JD.map Image decodeImage
 
                     "m.file" ->
                         JD.succeed File
@@ -192,11 +240,11 @@ decodeMessage =
                     "m.audio" ->
                         JD.succeed Audio
 
-                    "m.location" ->
-                        JD.succeed Location
-
                     "m.video" ->
                         JD.succeed Video
+
+                    "m.location" ->
+                        JD.succeed UnsupportedMessageType
 
                     _ ->
                         JD.succeed UnsupportedMessageType
@@ -313,6 +361,12 @@ viewAvatar homeserverUrl member =
                 [ p [] [ text "?" ] ]
 
 
+
+-- TODO
+-- viewImage : String -> ImageData -> Html msg
+-- viewImage homeserverUrl image =
+
+
 viewMessage : String -> String -> Message -> Html msg
 viewMessage homeserverUrl displayname message =
     case message of
@@ -335,6 +389,35 @@ viewMessage homeserverUrl displayname message =
             div
                 [ class "cactus-message-text" ]
                 [ viewFormattedText homeserverUrl fmt ]
+
+        Image image ->
+            let
+                imgUrl : Maybe String
+                imgUrl =
+                    httpFromMxc homeserverUrl image.url
+
+                thumbnailUrl : Maybe String
+                thumbnailUrl =
+                    image.info
+                        |> Maybe.map
+                            (\info ->
+                                info.thumbnail_url
+                                    |> Maybe.map (httpFromMxc homeserverUrl)
+                                    |> Maybe.withDefault Nothing
+                            )
+                        |> Maybe.withDefault Nothing
+            in
+            case ( imgUrl, thumbnailUrl ) of
+                ( _, Just url ) ->
+                    img image.body
+                        [ class "cactus-message-image" ]
+
+                ( Just url, _ ) ->
+                    img image.body
+                        [ class "cactus-message-image" ]
+
+                ( Nothing, Nothing ) ->
+                    p [] [ b [] [ text "unsupported message event" ] ]
 
         _ ->
             -- TODO: this shouldn't be a thing
