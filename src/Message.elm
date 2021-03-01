@@ -47,7 +47,7 @@ type State
 type Message
     = Text FormattedText
     | Emote FormattedText
-    | Notice
+    | Notice FormattedText
     | Image
     | File
     | Audio
@@ -181,7 +181,7 @@ decodeMessage =
                         JD.map Emote decodeFormattedText
 
                     "m.notice" ->
-                        JD.succeed Notice
+                        JD.map Notice decodeFormattedText
 
                     "m.image" ->
                         JD.succeed Image
@@ -273,7 +273,7 @@ viewMessageEvent defaultHomeserverUrl time members messageEvent =
 
         body : Html msg
         body =
-            viewMessage defaultHomeserverUrl messageEvent.content
+            viewMessage defaultHomeserverUrl displayname messageEvent.content
     in
     div [ class "cactus-comment" ]
         [ -- avatar image
@@ -313,8 +313,8 @@ viewAvatar homeserverUrl member =
                 [ p [] [ text "?" ] ]
 
 
-viewMessage : String -> Message -> Html msg
-viewMessage homeserverUrl message =
+viewMessage : String -> String -> Message -> Html msg
+viewMessage homeserverUrl displayname message =
     case message of
         Text fmt ->
             div
@@ -324,9 +324,14 @@ viewMessage homeserverUrl message =
         Emote (Plain str) ->
             div
                 [ class "cactus-message-emote" ]
-                [ p [] [ text <| "Asbjørn " ++ str ] ]
+                [ p [] [ text <| displayname ++ " " ++ str ] ]
 
         Emote fmt ->
+            div
+                [ class "cactus-message-text" ]
+                [ viewFormattedText homeserverUrl fmt ]
+
+        Notice fmt ->
             div
                 [ class "cactus-message-text" ]
                 [ viewFormattedText homeserverUrl fmt ]
