@@ -61,71 +61,6 @@ type alias Model =
     }
 
 
-type alias Error =
-    { id : Int
-    , message : String
-    }
-
-
-addError : List Error -> String -> List Error
-addError errors message =
-    { id =
-        List.map .id errors
-            |> List.maximum
-            |> Maybe.map ((+) 1)
-            |> Maybe.withDefault 0
-    , message = message
-    }
-        :: errors
-
-
-type alias Flags =
-    { defaultHomeserverUrl : String
-    , serverName : String
-    , siteName : String
-    , commentSectionId : String
-    , storedSession : Maybe Session
-    , pageSize : Int
-    }
-
-
-type alias StaticConfig =
-    { defaultHomeserverUrl : String
-    , roomAlias : String
-    , pageSize : Int
-    }
-
-
-parseFlags : Flags -> ( StaticConfig, Maybe Session )
-parseFlags flags =
-    ( StaticConfig
-        flags.defaultHomeserverUrl
-        (makeRoomAlias flags)
-        flags.pageSize
-    , flags.storedSession
-    )
-
-
-decodeFlags : JD.Decoder Flags
-decodeFlags =
-    JD.map6 Flags
-        (JD.field "defaultHomeserverUrl" JD.string)
-        (JD.field "serverName" JD.string)
-        (JD.field "siteName" JD.string)
-        (JD.field "commentSectionId" JD.string
-            |> JD.andThen
-                (\csid ->
-                    if String.contains "_" csid then
-                        JD.fail "commentSectionId can't contain underscores"
-
-                    else
-                        JD.succeed csid
-                )
-        )
-        (JD.field "storedSession" <| JD.nullable decodeStoredSession)
-        (JD.oneOf [ JD.field "pageSize" JD.int, JD.succeed 10 ])
-
-
 init : JD.Value -> ( Model, Cmd Msg )
 init flags =
     let
@@ -385,6 +320,91 @@ update msg model =
 
 
 
+-- CONFIG
+
+
+type alias Flags =
+    { defaultHomeserverUrl : String
+    , serverName : String
+    , siteName : String
+    , commentSectionId : String
+    , storedSession : Maybe Session
+    , pageSize : Int
+    }
+
+
+type alias StaticConfig =
+    { defaultHomeserverUrl : String
+    , roomAlias : String
+    , pageSize : Int
+    }
+
+
+parseFlags : Flags -> ( StaticConfig, Maybe Session )
+parseFlags flags =
+    ( StaticConfig
+        flags.defaultHomeserverUrl
+        (makeRoomAlias flags)
+        flags.pageSize
+    , flags.storedSession
+    )
+
+
+decodeFlags : JD.Decoder Flags
+decodeFlags =
+    JD.map6 Flags
+        (JD.field "defaultHomeserverUrl" JD.string)
+        (JD.field "serverName" JD.string)
+        (JD.field "siteName" JD.string)
+        (JD.field "commentSectionId" decodeCommentSectionId)
+        (JD.field "storedSession" <| JD.nullable decodeStoredSession)
+        (JD.oneOf [ JD.field "pageSize" JD.int, JD.succeed 10 ])
+
+
+decodeCommentSectionId : JD.Decoder String
+decodeCommentSectionId =
+    JD.string
+        |> JD.andThen
+            (\csid ->
+                if String.contains "_" csid then
+                    JD.fail "commentSectionId can't contain underscores"
+
+                else
+                    JD.succeed csid
+            )
+        |> JD.andThen
+            (\csid ->
+                if String.contains " " csid then
+                    JD.fail "commentSectionId can't contain spaces"
+
+                else
+                    JD.succeed csid
+            )
+
+
+
+-- ERRORS
+
+
+type alias Error =
+    { id : Int
+    , message : String
+    }
+
+
+addError : List Error -> String -> List Error
+addError errors message =
+    { id =
+        List.map .id errors
+            |> List.maximum
+            |> Maybe.map ((+) 1)
+            |> Maybe.withDefault 0
+    , message = message
+    }
+        :: errors
+
+
+
 -- VIEW
 
 
@@ -441,7 +461,7 @@ view model =
                         room
                         model.showComments
                         model.now
-                    , if model.gotAllComments then
+                    , if model.gotAllComments || model.room. then
                         text ""
 
                       else
