@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.2
+
+- Can now display multiple error messages at the same time.
+- Better error messages for common bad config values.
+- `m.notice` messages render now.
+- Config parsing moved out of javascript, into Elm.
+- Bugfix: Correct a hardcoded string oversight, that caused incorrect displaynames on Emote messages.
+
 ## 0.4.1
 
 - Bugfix: Move the right sync token when getting newer messages, preventing duplicate comments after posting in small rooms.
