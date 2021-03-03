@@ -10,12 +10,12 @@ module Message exposing
     , viewMessageEvent
     )
 
-import Accessibility exposing (Html, a, b, div, img, p, text)
+import Accessibility exposing (Html, a, b, div, i, img, p, text)
 import ApiUtils exposing (httpFromMxc, thumbnailFromMxc)
 import Dict exposing (Dict)
 import Duration
 import FormattedText exposing (FormattedText(..), decodeFormattedText, viewFormattedText)
-import Html.Attributes exposing (class, href, src)
+import Html.Attributes exposing (class, height, href, src, width)
 import Http
 import Json.Decode as JD
 import Maybe.Extra
@@ -170,50 +170,59 @@ decodeCreate =
 
 type alias ImageData =
     { body : String
-    , info : Maybe ImageInfo
     , url : String
+    , info : Maybe ImageInfo
     }
+
+
+type alias ImageInfo_ a =
+    { a
+        | w : Int
+        , h : Int
+    }
+
+
+type alias ThumbnailInfo =
+    ImageInfo_ {}
+
+
+type alias ImageInfo =
+    ImageInfo_
+        { thumbnail_url : Maybe String
+        , thumbnail_info : Maybe ThumbnailInfo
+        }
 
 
 decodeImage : JD.Decoder ImageData
 decodeImage =
     JD.map3 ImageData
         (JD.field "body" JD.string)
-        (JD.maybe <| JD.field "info" decodeImageInfo)
         (JD.field "url" JD.string)
-
-
-type alias ImageInfo =
-    { h : Int
-    , w : Int
-    , mimetype : String
-    , thumbnail_url : Maybe String
-    , thumbnail_info :
-        Maybe
-            { h : Int
-            , w : Int
-            , mimetype : String
-            }
-    }
+        (JD.maybe <| JD.field "info" decodeImageInfo)
 
 
 decodeImageInfo : JD.Decoder ImageInfo
 decodeImageInfo =
-    JD.map5
-        ImageInfo
-        (JD.field "h" JD.int)
-        (JD.field "w" JD.int)
-        (JD.field "mimetype" JD.string)
-        (JD.maybe <| JD.field "thumbnail_url" JD.string)
-        (JD.maybe <|
-            JD.field "thumbnail_info"
-                (JD.map3
-                    (\w h mime -> { w = w, h = h, mimetype = mime })
-                    (JD.field "w" JD.int)
-                    (JD.field "h" JD.int)
-                    (JD.field "mimetype" JD.string)
-                )
+    JD.map4
+        (\w h tnurl tninfo ->
+            { w = w
+            , h = h
+            , thumbnail_url = tnurl
+            , thumbnail_info = tninfo
+            }
         )
+        (JD.field "w" JD.int)
+        (JD.field "h" JD.int)
+        (JD.maybe <| JD.field "thumbnail_url" JD.string)
+        (JD.maybe <| JD.field "thumbnail_info" decodeThumbnailInfo)
+
+
+decodeThumbnailInfo : JD.Decoder ThumbnailInfo
+decodeThumbnailInfo =
+    JD.map2
+        (\w h -> { w = w, h = h })
+        (JD.field "w" JD.int)
+        (JD.field "h" JD.int)
 
 
 decodeMessage : JD.Decoder Message
@@ -361,12 +370,6 @@ viewAvatar homeserverUrl member =
                 [ p [] [ text "?" ] ]
 
 
-
--- TODO
--- viewImage : String -> ImageData -> Html msg
--- viewImage homeserverUrl image =
-
-
 viewMessage : String -> String -> Message -> Html msg
 viewMessage homeserverUrl displayname message =
     case message of
@@ -392,32 +395,67 @@ viewMessage homeserverUrl displayname message =
 
         Image image ->
             let
-                imgUrl : Maybe String
-                imgUrl =
-                    httpFromMxc homeserverUrl image.url
+                mainImage : ( Maybe String, Maybe ImageInfo )
+                mainImage =
+                    ( httpFromMxc homeserverUrl image.url
+                    , image.info
+                    )
 
-                thumbnailUrl : Maybe String
-                thumbnailUrl =
-                    image.info
-                        |> Maybe.map
-                            (\info ->
-                                info.thumbnail_url
-                                    |> Maybe.map (httpFromMxc homeserverUrl)
+                thumbnail : Maybe ( String, ThumbnailInfo )
+                thumbnail =
+                    case image.info of
+                        Nothing ->
+                            Nothing
+
+                        Just info ->
+                            case
+                                ( Maybe.map (httpFromMxc homeserverUrl) info.thumbnail_url
                                     |> Maybe.withDefault Nothing
-                            )
-                        |> Maybe.withDefault Nothing
+                                , info.thumbnail_info
+                                )
+                            of
+                                ( Just url, Just tninfo ) ->
+                                    Just ( url, tninfo )
+
+                                _ ->
+                                    Nothing
             in
-            case ( imgUrl, thumbnailUrl ) of
-                ( _, Just url ) ->
-                    img image.body
-                        [ class "cactus-message-image" ]
+            case ( mainImage, thumbnail ) of
+                ( ( Just mainUrl, _ ), Just ( tnurl, tninfo ) ) ->
+                    -- valid image url and thumbnail
+                    -- render thumbnail
+                    a [ href mainUrl ]
+                        [ img image.body
+                            [ class "cactus-message-image"
+                            , src tnurl
+                            , width tninfo.w
+                            , height tninfo.h
+                            ]
+                        ]
 
-                ( Just url, _ ) ->
-                    img image.body
-                        [ class "cactus-message-image" ]
+                ( ( Just mainUrl, Just info ), Nothing ) ->
+                    -- valid url, no thumbnail, full main image metadata
+                    -- just show main imagae
+                    a [ href mainUrl ]
+                        [ img image.body
+                            [ class "cactus-message-image"
+                            , src mainUrl
+                            , width info.w
+                            , height info.h
+                            ]
+                        ]
 
-                ( Nothing, Nothing ) ->
-                    p [] [ b [] [ text "unsupported message event" ] ]
+                ( ( Just mainUrl, Nothing ), Nothing ) ->
+                    -- valid url, nothing else
+                    a [ href mainUrl ]
+                        [ img image.body
+                            [ class "cactus-message-image"
+                            , src mainUrl
+                            ]
+                        ]
+
+                _ ->
+                    p [] [ i [] [ text "Error: Could not render image" ] ]
 
         _ ->
             -- TODO: this shouldn't be a thing
