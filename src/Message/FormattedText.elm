@@ -1,4 +1,4 @@
-module FormattedText exposing (FormattedText(..), cleanHtmlNode, decodeFormattedText, viewFormattedText)
+module Message.FormattedText exposing (FormattedText(..), cleanHtmlNode, decodeFormattedText, viewFormattedText)
 
 import Accessibility exposing (Html, div, p, text)
 import ApiUtils exposing (httpFromMxc)

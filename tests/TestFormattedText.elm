@@ -1,12 +1,12 @@
 module TestFormattedText exposing (..)
 
 import Expect exposing (Expectation)
-import FormattedText exposing (FormattedText(..), cleanHtmlNode, viewFormattedText)
 import Fuzz exposing (Fuzzer)
 import Hex
 import Html exposing (p)
 import Html.Attributes exposing (height, src, width)
 import Html.Parser
+import Message.FormattedText exposing (FormattedText(..), cleanHtmlNode, viewFormattedText)
 import Set exposing (Set)
 import Test exposing (..)
 import Test.Html.Query as Query
