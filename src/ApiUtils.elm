@@ -1,5 +1,7 @@
 module ApiUtils exposing (clientEndpoint, httpFromMxc, makeRoomAlias, matrixDotToUrl, mediaEndpoint, serverNameFromId, thumbnailFromMxc)
 
+import Parser exposing ((|.), (|=), Parser)
+import Set
 import Url exposing (percentEncode)
 import Url.Builder exposing (QueryParameter, crossOrigin)
 
@@ -79,12 +81,39 @@ serverNameFromId id =
 -- MEDIA
 
 
-mxcServerName : String -> Maybe String
-mxcServerName mxcUrl =
+mxcServerName_ : String -> Maybe String
+mxcServerName_ mxcUrl =
     mxcUrl
         |> String.dropLeft 6
         |> String.split "/"
         |> List.head
+
+
+{-| Parse a server name from an mxc:// url
+Server name grammar found here:
+<https://matrix.org/docs/spec/appendices#identifier-grammar>
+-}
+mxcServerName : String -> Maybe String
+mxcServerName mxcUrl =
+    let
+        validChar : Char -> Bool
+        validChar c =
+            Char.isAlphaNum c || List.member c [ '.', '-', ':' ]
+
+        parser : Parser String
+        parser =
+            -- this parser sloppily allows ports in the middle of the domain
+            -- like "abcd:8448:wow". it's not ideal but ¯\_(ツ)_/¯
+            Parser.succeed identity
+                |. Parser.token "mxc://"
+                |= Parser.variable
+                    { start = validChar
+                    , inner = validChar
+                    , reserved = Set.empty
+                    }
+    in
+    Parser.run parser mxcUrl
+        |> Result.toMaybe
 
 
 mxcMediaId : String -> Maybe String

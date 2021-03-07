@@ -3,6 +3,9 @@ import { Elm } from './Main.elm'
 function initComments(config) {
   // get nullable session object from localstorage
   config['storedSession'] = JSON.parse(localStorage.getItem("cactus-session"));
+
+  // get node from the config
+  // remove it from config object before passing to elm
   var node = config['node']
   delete config['node']
 

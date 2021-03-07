@@ -216,3 +216,7 @@ div.cactus-view-more {
   padding-top: 0.5em;
   opacity: 0.7;
 }
+.cactus-message-image {
+  max-width: 100%;
+  height: auto;
+}

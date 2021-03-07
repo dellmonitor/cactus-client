@@ -10,16 +10,17 @@ module Message exposing
     , viewMessageEvent
     )
 
-import Accessibility exposing (Html, a, div, img, p, text)
-import ApiUtils exposing (thumbnailFromMxc)
+import Accessibility exposing (Html, a, b, div, i, img, p, text)
+import ApiUtils exposing (httpFromMxc, thumbnailFromMxc)
 import Dict exposing (Dict)
 import Duration
-import FormattedText exposing (FormattedText(..), decodeFormattedText, viewFormattedText)
-import Html.Attributes exposing (class, href, src)
+import Html.Attributes exposing (class, height, href, src, width)
 import Http
 import Json.Decode as JD
 import Maybe.Extra
 import Member exposing (Member)
+import Message.FormattedText exposing (FormattedText(..), decodeFormattedText, viewFormattedText)
+import Message.Image exposing (ImageData, decodeImage, viewImage)
 import Session exposing (Session, authenticatedRequest)
 import Task exposing (Task)
 import Time
@@ -48,7 +49,7 @@ type Message
     = Text FormattedText
     | Emote FormattedText
     | Notice FormattedText
-    | Image
+    | Image ImageData
     | File
     | Audio
     | Location
@@ -184,7 +185,7 @@ decodeMessage =
                         JD.map Notice decodeFormattedText
 
                     "m.image" ->
-                        JD.succeed Image
+                        JD.map Image decodeImage
 
                     "m.file" ->
                         JD.succeed File
@@ -192,11 +193,11 @@ decodeMessage =
                     "m.audio" ->
                         JD.succeed Audio
 
-                    "m.location" ->
-                        JD.succeed Location
-
                     "m.video" ->
                         JD.succeed Video
+
+                    "m.location" ->
+                        JD.succeed UnsupportedMessageType
 
                     _ ->
                         JD.succeed UnsupportedMessageType
@@ -335,6 +336,9 @@ viewMessage homeserverUrl displayname message =
             div
                 [ class "cactus-message-text" ]
                 [ viewFormattedText homeserverUrl fmt ]
+
+        Image image ->
+            viewImage homeserverUrl image
 
         _ ->
             -- TODO: this shouldn't be a thing
