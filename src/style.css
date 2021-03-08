@@ -220,3 +220,7 @@ div.cactus-view-more {
   max-width: 100%;
   height: auto;
 }
+.cactus-message-file {
+  line-height: 3em;
+  margin-left: 1em;
+}
