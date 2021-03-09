@@ -224,3 +224,6 @@ div.cactus-view-more {
   line-height: 3em;
   margin-left: 1em;
 }
+.cactus-message-video {
+  max-width: 100%;
+}

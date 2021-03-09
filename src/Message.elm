@@ -22,6 +22,7 @@ import Member exposing (Member)
 import Message.File exposing (FileData, decodeFile, viewFile)
 import Message.FormattedText exposing (FormattedText(..), decodeFormattedText, viewFormattedText)
 import Message.Image exposing (ImageData, decodeImage, viewImage)
+import Message.Video exposing (VideoData, decodeVideo, viewVideo)
 import Session exposing (Session, authenticatedRequest)
 import Task exposing (Task)
 import Time
@@ -52,9 +53,9 @@ type Message
     | Notice FormattedText
     | Image ImageData
     | File FileData
+    | Video VideoData
     | Audio
     | Location
-    | Video
     | UnsupportedMessageType
 
 
@@ -195,7 +196,7 @@ decodeMessage =
                         JD.succeed Audio
 
                     "m.video" ->
-                        JD.succeed Video
+                        JD.map Video decodeVideo
 
                     "m.location" ->
                         JD.succeed UnsupportedMessageType
@@ -343,6 +344,9 @@ viewMessage homeserverUrl displayname message =
 
         File file ->
             viewFile homeserverUrl file
+
+        Video video ->
+            viewVideo homeserverUrl video
 
         _ ->
             -- TODO: this shouldn't be a thing
