@@ -1,6 +1,6 @@
 module Message.File exposing (FileData, decodeFile, viewFile)
 
-import Accessibility exposing (Html, a, div, i, p, text)
+import Accessibility exposing (Html, a, i, p, text)
 import ApiUtils exposing (httpFromMxc)
 import Html.Attributes exposing (class, href, rel)
 import Json.Decode as JD

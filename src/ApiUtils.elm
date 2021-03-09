@@ -81,14 +81,6 @@ serverNameFromId id =
 -- MEDIA
 
 
-mxcServerName_ : String -> Maybe String
-mxcServerName_ mxcUrl =
-    mxcUrl
-        |> String.dropLeft 6
-        |> String.split "/"
-        |> List.head
-
-
 {-| Parse a server name from an mxc:// url
 Server name grammar found here:
 <https://matrix.org/docs/spec/appendices#identifier-grammar>

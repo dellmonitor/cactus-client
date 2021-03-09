@@ -10,11 +10,11 @@ module Message exposing
     , viewMessageEvent
     )
 
-import Accessibility exposing (Html, a, b, div, i, img, p, text)
-import ApiUtils exposing (httpFromMxc, thumbnailFromMxc)
+import Accessibility exposing (Html, a, div, img, p, text)
+import ApiUtils exposing (thumbnailFromMxc)
 import Dict exposing (Dict)
 import Duration
-import Html.Attributes exposing (class, height, href, src, width)
+import Html.Attributes exposing (class, href, src)
 import Http
 import Json.Decode as JD
 import Maybe.Extra

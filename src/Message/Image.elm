@@ -1,6 +1,6 @@
 module Message.Image exposing (ImageData, decodeImage, viewImage)
 
-import Accessibility exposing (Html, a, b, div, i, img, p, text)
+import Accessibility exposing (Html, a, i, img, p, text)
 import ApiUtils exposing (httpFromMxc)
 import Html.Attributes exposing (class, height, href, src, width)
 import Json.Decode as JD
@@ -74,22 +74,21 @@ viewImage homeserverUrl image =
 
         thumbnail : Maybe ( String, ThumbnailInfo )
         thumbnail =
-            case image.info of
-                Nothing ->
-                    Nothing
+            image.info
+                |> Maybe.andThen
+                    (\info ->
+                        case
+                            ( Maybe.map (httpFromMxc homeserverUrl) info.thumbnail_url
+                                |> Maybe.withDefault Nothing
+                            , info.thumbnail_info
+                            )
+                        of
+                            ( Just url, Just tninfo ) ->
+                                Just ( url, tninfo )
 
-                Just info ->
-                    case
-                        ( Maybe.map (httpFromMxc homeserverUrl) info.thumbnail_url
-                            |> Maybe.withDefault Nothing
-                        , info.thumbnail_info
-                        )
-                    of
-                        ( Just url, Just tninfo ) ->
-                            Just ( url, tninfo )
-
-                        _ ->
-                            Nothing
+                            _ ->
+                                Nothing
+                    )
     in
     case ( mainImage, thumbnail ) of
         ( ( Just mainUrl, _ ), Just ( tnurl, tninfo ) ) ->
