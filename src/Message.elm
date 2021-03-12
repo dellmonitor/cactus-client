@@ -19,6 +19,7 @@ import Http
 import Json.Decode as JD
 import Maybe.Extra
 import Member exposing (Member)
+import Message.Audio exposing (AudioData, decodeAudio, viewAudio)
 import Message.File exposing (FileData, decodeFile, viewFile)
 import Message.FormattedText exposing (FormattedText(..), decodeFormattedText, viewFormattedText)
 import Message.Image exposing (ImageData, decodeImage, viewImage)
@@ -54,7 +55,7 @@ type Message
     | Image ImageData
     | File FileData
     | Video VideoData
-    | Audio
+    | Audio AudioData
     | Location
     | UnsupportedMessageType
 
@@ -193,7 +194,7 @@ decodeMessage =
                         JD.map File decodeFile
 
                     "m.audio" ->
-                        JD.succeed Audio
+                        JD.map Audio decodeAudio
 
                     "m.video" ->
                         JD.map Video decodeVideo
@@ -344,6 +345,9 @@ viewMessage homeserverUrl displayname message =
 
         File file ->
             viewFile homeserverUrl file
+
+        Audio audio ->
+            viewAudio homeserverUrl audio
 
         Video video ->
             viewVideo homeserverUrl video
