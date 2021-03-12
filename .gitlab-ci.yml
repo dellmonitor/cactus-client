@@ -59,10 +59,13 @@ gitlab_release:
       artifacts: true
   script:
     - echo 'Making Gitlab release for $CI_COMMIT_TAG'
+    - CHANGELOG="`sed '3,/^##/!d;/##/d' CHANGELOG.md`"
   release:
     name: 'Release $CI_COMMIT_TAG'
     description: |
       # Cactus Comments Web Client $CI_COMMIT_TAG
+
+      $CHANGELOG
 
       |               |     |
       | ------------- | --- |
