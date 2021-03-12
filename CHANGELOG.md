@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- Support `m.image` messages
+- Support `m.audio` messages
+- Support `m.file` messages
+- Support `m.video` messages
+
 ## 0.4.2
 
 - Can now display multiple error messages at the same time.
