@@ -123,8 +123,10 @@ viewLoginForm (LoginForm form) roomAlias { editMsg, submitMsg, hideMsg } =
             a
                 [ href <| matrixDotToUrl roomAlias ]
                 [ button
-                    [ class "cactus-button" ]
-                    [ text "Log in using a native Matrix client" ]
+                    [ class "cactus-button"
+                    , class "cactus-matrixdotto-button"
+                    ]
+                    [ text "Use a Matrix client" ]
                 ]
 
         buttons =

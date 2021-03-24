@@ -4,7 +4,7 @@ import Accessibility exposing (Html, a, button, div, labelHidden, p, text, texta
 import ApiUtils exposing (matrixDotToUrl)
 import Html.Attributes exposing (class, disabled, href, value)
 import Html.Events exposing (onClick, onInput)
-import Session exposing (Kind(..), Session, isUser, getUserId)
+import Session exposing (Kind(..), Session, getUserId, isUser)
 
 
 
@@ -40,21 +40,10 @@ viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, edit
 
         sendButton =
             viewSendButton sendMsg session editorContent
-
-        authStatusStr =
-            case session of
-              Nothing ->
-                "Connecting to Matrix server..."
-              Just _ ->
-                ""
-
-        signedInText =
-            p [] [ text authStatusStr ]
     in
     div
         [ class "cactus-editor" ]
-        [ div [ class "cactus-editor-above" ] [ signedInText ]
-        , commentEditor
+        [ commentEditor
         , div [ class "cactus-editor-below" ]
             [ div []
                 [ loginOrLogoutButton
@@ -124,9 +113,11 @@ viewSendButton msg auth editorContent =
 
         postButtonString =
             case auth of
-              Nothing ->
-                "Post"  -- greyed out, since it is disabled
-              Just session ->
-                "Post as " ++ (getUserId session)
+                Nothing ->
+                    -- greyed out, since it is disabled
+                    "Post"
+
+                Just session ->
+                    "Post as " ++ getUserId session
     in
     button attrs [ text postButtonString ]
