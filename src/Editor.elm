@@ -25,11 +25,6 @@ viewEditor :
     -> Html msg
 viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, editorContent } =
     let
-        anotherClientLink =
-            a
-                [ href <| matrixDotToUrl roomAlias ]
-                [ text "Use a Matrix client" ]
-
         commentEditor =
             labelHidden
                 "Comment Editor"
@@ -61,8 +56,7 @@ viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, edit
         [ div [ class "cactus-editor-above" ] [ signedInText ]
         , commentEditor
         , div [ class "cactus-editor-below" ]
-            [ anotherClientLink
-            , div []
+            [ div []
                 [ loginOrLogoutButton
                     { loginMsg = showLoginMsg
                     , logoutMsg = logoutMsg

@@ -61,14 +61,8 @@ div.cactus-view-more {
 .cactus-editor-below {
   /* "use a matrix client", comment button, and login button */
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding: 0.5em;
-}
-
-.cactus-editor-below > a {
-  padding: 1em;
-  color: inherit;
-  font-weight: bold;
 }
 
 .cactus-login-button {

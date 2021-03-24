@@ -1,7 +1,8 @@
 module LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
 
-import Accessibility exposing (Html, button, div, h3, inputText, labelBefore, p, text)
-import Html.Attributes exposing (class, disabled, placeholder, required, type_)
+import Accessibility exposing (Html, button, div, h3, inputText, labelBefore, p, text, a)
+import ApiUtils exposing (matrixDotToUrl)
+import Html.Attributes exposing (class, disabled, placeholder, required, type_, href)
 import Html.Events exposing (onClick, onInput)
 import Session exposing (Session, login)
 import Task exposing (Task)
@@ -57,8 +58,8 @@ loginWithForm (LoginForm form) =
 
 {-| HTML view for a login form.
 -}
-viewLoginForm : LoginForm -> { editMsg : LoginForm -> msg, submitMsg : LoginForm -> msg, hideMsg : msg } -> Html msg
-viewLoginForm (LoginForm form) { editMsg, submitMsg, hideMsg } =
+viewLoginForm : LoginForm -> String -> { editMsg : LoginForm -> msg, submitMsg : LoginForm -> msg, hideMsg : msg } -> Html msg
+viewLoginForm (LoginForm form) roomAlias { editMsg, submitMsg, hideMsg } =
     let
         textField { name, value, msgf, attrs } =
             labelBefore
@@ -71,6 +72,11 @@ viewLoginForm (LoginForm form) { editMsg, submitMsg, hideMsg } =
                     ]
                         ++ attrs
                 )
+
+        anotherClientLink =
+            a
+                [ href <| matrixDotToUrl roomAlias ]
+                [ text "log in using a native Matrix client" ]
 
         username =
             textField
@@ -131,4 +137,10 @@ viewLoginForm (LoginForm form) { editMsg, submitMsg, hideMsg } =
         , password
         , homeserverUrl
         , buttons
+        , h3 []
+             [ text "Alternatively, you can "
+             , anotherClientLink
+             , text "."
+             ]
+
         ]
