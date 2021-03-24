@@ -4,7 +4,7 @@ import Accessibility exposing (Html, a, button, div, labelHidden, p, text, texta
 import ApiUtils exposing (matrixDotToUrl)
 import Html.Attributes exposing (class, disabled, href, value)
 import Html.Events exposing (onClick, onInput)
-import Session exposing (Kind(..), Session, isUser, sessionStatusString)
+import Session exposing (Kind(..), Session, isUser, getUserId)
 
 
 
@@ -47,9 +47,11 @@ viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, edit
             viewSendButton sendMsg session editorContent
 
         authStatusStr =
-            session
-                |> Maybe.map sessionStatusString
-                |> Maybe.withDefault "Connecting to Matrix server..."
+            case session of
+              Nothing ->
+                "Connecting to Matrix server..."
+              Just _ ->
+                ""
 
         signedInText =
             p [] [ text authStatusStr ]
@@ -125,5 +127,12 @@ viewSendButton msg auth editorContent =
                         |> Maybe.map (\m -> [ onClick m ])
                         |> Maybe.withDefault []
                    )
+
+        postButtonString =
+            case auth of
+              Nothing ->
+                "Post"  -- greyed out, since it is disabled
+              Just session ->
+                "Post as " ++ (getUserId session)
     in
-    button attrs [ text "Post" ]
+    button attrs [ text postButtonString ]
