@@ -47,6 +47,17 @@ ipfs:
     reports:
       dotenv: ipfs.env
 
+changelog:
+  stage: changelog
+  image: alpine:3.7
+  script:
+    - echo "CHANGELOG=$(sed '3,/^##/!d;/##/d' CHANGELOG.md)" > changelog.env
+  rules:
+    - if: $CI_COMMIT_TAG
+  artifacts:
+    reports:
+      dotenv: changelog.env
+
 gitlab_release:
   stage: gitlab_release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
@@ -57,9 +68,10 @@ gitlab_release:
       artifacts: true
     - job: ipfs
       artifacts: true
-  before_script:
+    - job: changelog
+      artifacts: true
+  script:
     - echo 'Making Gitlab release for $CI_COMMIT_TAG'
-    - export CHANGELOG="`sed '3,/^##/!d;/##/d' CHANGELOG.md`"
   release:
     name: 'Release $CI_COMMIT_TAG'
     description: |
