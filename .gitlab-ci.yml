@@ -57,9 +57,9 @@ gitlab_release:
       artifacts: true
     - job: ipfs
       artifacts: true
-  script:
+  before_script:
     - echo 'Making Gitlab release for $CI_COMMIT_TAG'
-    - CHANGELOG="`sed '3,/^##/!d;/##/d' CHANGELOG.md`"
+    - export CHANGELOG="`sed '3,/^##/!d;/##/d' CHANGELOG.md`"
   release:
     name: 'Release $CI_COMMIT_TAG'
     description: |
