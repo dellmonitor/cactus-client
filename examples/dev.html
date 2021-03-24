@@ -8,22 +8,44 @@
     body {
       font-family: "Helvetica", "Arial", sans-serif;
       margin: auto;
-      width: 50%;
+      width: 30%;
     }
-  </style
+
+    body.light {
+      background-color: white;
+      color: black;
+    }
+
+    body.dark {
+      background-color: black;
+      color: white;
+    }
+  </style>
+  <script>
+    function toggleDarkMode() {
+      if (document.body.className == "light") {
+        document.body.className = "dark"
+      } else if (document.body.className == "dark") {
+        document.body.className = "light"
+      }
+    }
+  </script>
 </head>
+<body class="light">
+  <button onClick="toggleDarkMode()">Toggle Dark Mode</button>
 
-<div>
-  <h1>Comments</h1>
-  <div id="my-comments"></div>
-</div>
-
-<script>
-  initComments({
-    node: document.getElementById("my-comments"),
-    defaultHomeserverUrl: "https://matrix.cactus.chat:8448",
-    serverName: "cactus.chat",
-    siteName: "my-blog",
-    commentSectionId: "example-page"
-  })
-</script>
+  <div>
+    <h1>Comments</h1>
+    <div id="my-comments"></div>
+  </div>
+  <script>
+    initComments({
+      node: document.getElementById("my-comments"),
+      defaultHomeserverUrl: "https://matrix.cactus.chat:8448",
+      serverName: "cactus.chat",
+      siteName: "my-blog",
+      commentSectionId: "example-page"
+      // commentSectionId: "all-event-types"
+    })
+  </script>
+</body>
