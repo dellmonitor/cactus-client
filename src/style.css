@@ -61,14 +61,8 @@ div.cactus-view-more {
 .cactus-editor-below {
   /* "use a matrix client", comment button, and login button */
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding: 0.5em;
-}
-
-.cactus-editor-below > a {
-  padding: 1em;
-  color: inherit;
-  font-weight: bold;
 }
 
 .cactus-login-button {
@@ -126,22 +120,24 @@ div.cactus-view-more {
   display: flex;
   align-content: stretch;
   padding-top: 1em;
+  padding-bottom: 1em;
 
   --gap: 1em;
   margin: calc(-1 * var(--gap)) 0 0 calc(-1 * var(--gap));
 }
 
 .cactus-login-buttons > button {
-  /* font-size: 1em; */
   flex: 1;
   margin: var(--gap) 0 0 var(--gap);
   padding: 0.6em 0 0.6em 0;
 
-  /*
-  background: inherit;
-  */
   border-radius: 0.5em;
   border: 1px;
+}
+
+.cactus-matrixdotto-button {
+  /* "Use a Matrix client" button */
+  width: 100%;
 }
 
 

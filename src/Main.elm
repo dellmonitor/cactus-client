@@ -430,6 +430,7 @@ view model =
             case model.loginForm of
                 Just loginForm ->
                     viewLoginForm loginForm
+                        model.config.roomAlias
                         { submitMsg = Login
                         , hideMsg = HideLogin
                         , editMsg = EditLogin

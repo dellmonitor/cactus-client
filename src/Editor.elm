@@ -1,10 +1,9 @@
 module Editor exposing (viewEditor)
 
-import Accessibility exposing (Html, a, button, div, labelHidden, p, text, textarea)
-import ApiUtils exposing (matrixDotToUrl)
-import Html.Attributes exposing (class, disabled, href, value)
+import Accessibility exposing (Html, button, div, labelHidden, text, textarea)
+import Html.Attributes exposing (class, disabled, value)
 import Html.Events exposing (onClick, onInput)
-import Session exposing (Kind(..), Session, isUser, getUserId)
+import Session exposing (Kind(..), Session, getUserId, isUser)
 
 
 
@@ -23,13 +22,8 @@ viewEditor :
     , editorContent : String
     }
     -> Html msg
-viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, editorContent } =
+viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, editorContent } =
     let
-        anotherClientLink =
-            a
-                [ href <| matrixDotToUrl roomAlias ]
-                [ text "Use a Matrix client" ]
-
         commentEditor =
             labelHidden
                 "Comment Editor"
@@ -45,24 +39,12 @@ viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, edit
 
         sendButton =
             viewSendButton sendMsg session editorContent
-
-        authStatusStr =
-            case session of
-              Nothing ->
-                "Connecting to Matrix server..."
-              Just _ ->
-                ""
-
-        signedInText =
-            p [] [ text authStatusStr ]
     in
     div
         [ class "cactus-editor" ]
-        [ div [ class "cactus-editor-above" ] [ signedInText ]
-        , commentEditor
+        [ commentEditor
         , div [ class "cactus-editor-below" ]
-            [ anotherClientLink
-            , div []
+            [ div []
                 [ loginOrLogoutButton
                     { loginMsg = showLoginMsg
                     , logoutMsg = logoutMsg
@@ -130,9 +112,11 @@ viewSendButton msg auth editorContent =
 
         postButtonString =
             case auth of
-              Nothing ->
-                "Post"  -- greyed out, since it is disabled
-              Just session ->
-                "Post as " ++ (getUserId session)
+                Nothing ->
+                    -- greyed out, since it is disabled
+                    "Post"
+
+                Just session ->
+                    "Post as " ++ getUserId session
     in
     button attrs [ text postButtonString ]

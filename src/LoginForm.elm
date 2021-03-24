@@ -1,7 +1,8 @@
 module LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
 
-import Accessibility exposing (Html, button, div, h3, inputText, labelBefore, p, text)
-import Html.Attributes exposing (class, disabled, placeholder, required, type_)
+import Accessibility exposing (Html, a, button, div, h3, inputText, labelBefore, p, text)
+import ApiUtils exposing (matrixDotToUrl)
+import Html.Attributes exposing (class, disabled, href, placeholder, required, type_)
 import Html.Events exposing (onClick, onInput)
 import Session exposing (Session, login)
 import Task exposing (Task)
@@ -57,8 +58,8 @@ loginWithForm (LoginForm form) =
 
 {-| HTML view for a login form.
 -}
-viewLoginForm : LoginForm -> { editMsg : LoginForm -> msg, submitMsg : LoginForm -> msg, hideMsg : msg } -> Html msg
-viewLoginForm (LoginForm form) { editMsg, submitMsg, hideMsg } =
+viewLoginForm : LoginForm -> String -> { editMsg : LoginForm -> msg, submitMsg : LoginForm -> msg, hideMsg : msg } -> Html msg
+viewLoginForm (LoginForm form) roomAlias { editMsg, submitMsg, hideMsg } =
     let
         textField { name, value, msgf, attrs } =
             labelBefore
@@ -118,17 +119,29 @@ viewLoginForm (LoginForm form) { editMsg, submitMsg, hideMsg } =
                             "Logging in..."
                 ]
 
+        anotherClientLink =
+            a
+                [ href <| matrixDotToUrl roomAlias ]
+                [ button
+                    [ class "cactus-button"
+                    , class "cactus-matrixdotto-button"
+                    ]
+                    [ text "Use a Matrix client" ]
+                ]
+
         buttons =
-            div
+            [ div
                 [ class "cactus-login-buttons" ]
                 [ backButton
                 , submitButton
                 ]
+            , anotherClientLink
+            ]
     in
-    div [ class "cactus-login-form" ]
+    div [ class "cactus-login-form" ] <|
         [ h3 [] [ text "Log in using Matrix" ]
         , username
         , password
         , homeserverUrl
-        , buttons
         ]
+            ++ buttons
