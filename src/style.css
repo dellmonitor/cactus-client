@@ -120,6 +120,7 @@ div.cactus-view-more {
   display: flex;
   align-content: stretch;
   padding-top: 1em;
+  padding-bottom: 1em;
 
   --gap: 1em;
   margin: calc(-1 * var(--gap)) 0 0 calc(-1 * var(--gap));
