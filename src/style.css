@@ -155,7 +155,9 @@ div.cactus-view-more {
   padding-right: 0;
   padding-bottom: 0;
   padding-top: 1em;
-  border-bottom: 1px solid #eee;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-color: rgba(127, 127, 127, 0.2);
 }
 
 .cactus-comment-avatar {
