@@ -5,12 +5,12 @@ port module Session exposing
     , authenticatedRequest
     , decodeStoredSession
     , getHomeserverUrl
+    , getUserId
     , incrementTransactionId
     , isUser
     , login
     , registerGuest
     , sessionKind
-    , sessionStatusString
     , storeSessionCmd
     , transactionId
     )
@@ -61,12 +61,9 @@ decodeSession homeserverUrl kind =
         |> JD.map Session
 
 
-{-| A natural language string that summarizes the auth status.
--}
-sessionStatusString : Session -> String
-sessionStatusString (Session session) =
-    "Signed in as " ++ toString session.kind ++ " " ++ session.userId
-
+getUserId : Session -> String
+getUserId (Session session) =
+    session.userId
 
 
 -- TRANSACTION ID
