@@ -1,8 +1,7 @@
 module Editor exposing (viewEditor)
 
-import Accessibility exposing (Html, a, button, div, labelHidden, p, text, textarea)
-import ApiUtils exposing (matrixDotToUrl)
-import Html.Attributes exposing (class, disabled, href, value)
+import Accessibility exposing (Html, button, div, labelHidden, text, textarea)
+import Html.Attributes exposing (class, disabled, value)
 import Html.Events exposing (onClick, onInput)
 import Session exposing (Kind(..), Session, getUserId, isUser)
 
@@ -23,7 +22,7 @@ viewEditor :
     , editorContent : String
     }
     -> Html msg
-viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, editorContent } =
+viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, editorContent } =
     let
         commentEditor =
             labelHidden
