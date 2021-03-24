@@ -4,6 +4,7 @@ stages:
   - test
   - build
   - ipfs
+  - changelog
   - gitlab_release
 
 test:
