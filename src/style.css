@@ -32,6 +32,7 @@
 
 div.cactus-view-more {
   /* contains the view-more button */
+  padding-top: 1em;
   text-align: center;
 }
 
