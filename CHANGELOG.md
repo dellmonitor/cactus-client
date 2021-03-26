@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0
+
+- Move matrix.to link into login modal.
+- Removed login status string above textarea.
+- Show userid in Post button.
+- Add placeholder text to comment textarea.
+- Textarea inherits background color, to work better with darkmode websites.
+- dev.html example page now has a darkmode toggle button.
+- A bunch of smaller improvements to the default CSS.
+
 ## 0.5.0
 
 - Support `m.image` messages
