@@ -49,6 +49,14 @@ div.cactus-view-more {
 .cactus-editor-textarea {
   width: 100%;
   height: 10rem;
+  background: inherit;
+  color: inherit;
+}
+
+.cactus-editor-textarea::placeholder {
+  text-align: center;
+  line-height: 9rem;
+  font-size: 1.5em;
 }
 
 .cactus-editor-above {

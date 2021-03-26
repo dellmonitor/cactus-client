@@ -1,7 +1,7 @@
 module Editor exposing (viewEditor)
 
 import Accessibility exposing (Html, button, div, labelHidden, text, textarea)
-import Html.Attributes exposing (class, disabled, value)
+import Html.Attributes exposing (class, disabled, placeholder, value)
 import Html.Events exposing (onClick, onInput)
 import Session exposing (Kind(..), Session, getUserId, isUser)
 
@@ -33,6 +33,7 @@ viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, editorContent }
                     [ class "cactus-editor-textarea"
                     , value editorContent
                     , onInput editMsg
+                    , placeholder "Add a comment"
                     ]
                     []
                 )
