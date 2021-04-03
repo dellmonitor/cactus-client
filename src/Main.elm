@@ -72,7 +72,8 @@ init flags =
         config =
             parsedFlags
                 |> Result.map Tuple.first
-                |> Result.withDefault (StaticConfig "" "" 10)
+                -- TODO get rid of this dumb default
+                |> Result.withDefault (StaticConfig "" "" 10 True)
 
         session =
             parsedFlags
@@ -329,7 +330,8 @@ type alias Flags =
     , siteName : String
     , commentSectionId : String
     , storedSession : Maybe Session
-    , pageSize : Int
+    , pageSize : Maybe Int
+    , embeddedLogin : Maybe Bool
     }
 
 
@@ -337,6 +339,7 @@ type alias StaticConfig =
     { defaultHomeserverUrl : String
     , roomAlias : String
     , pageSize : Int
+    , embeddedLogin : Bool
     }
 
 
@@ -345,20 +348,22 @@ parseFlags flags =
     ( StaticConfig
         flags.defaultHomeserverUrl
         (makeRoomAlias flags)
-        flags.pageSize
+        (flags.pageSize |> Maybe.withDefault 10)
+        (flags.embeddedLogin |> Maybe.withDefault True)
     , flags.storedSession
     )
 
 
 decodeFlags : JD.Decoder Flags
 decodeFlags =
-    JD.map6 Flags
+    JD.map7 Flags
         (JD.field "defaultHomeserverUrl" JD.string)
         (JD.field "serverName" JD.string)
         (JD.field "siteName" JD.string)
         (JD.field "commentSectionId" decodeCommentSectionId)
         (JD.field "storedSession" <| JD.nullable decodeStoredSession)
-        (JD.oneOf [ JD.field "pageSize" JD.int, JD.succeed 10 ])
+        (JD.maybe <| JD.field "pageSize" JD.int)
+        (JD.maybe <| JD.field "embeddedLogin" JD.bool)
 
 
 decodeCommentSectionId : JD.Decoder String
@@ -448,6 +453,7 @@ view model =
                 , session = model.session
                 , roomAlias = model.config.roomAlias
                 , editorContent = model.editorContent
+                , loginEnabled = model.config.embeddedLogin
                 }
     in
     div [ class "cactus-container" ] <|

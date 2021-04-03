@@ -1,7 +1,8 @@
 module Editor exposing (viewEditor)
 
-import Accessibility exposing (Html, button, div, labelHidden, text, textarea)
-import Html.Attributes exposing (class, disabled, placeholder, value)
+import Accessibility exposing (Html, a, button, div, labelHidden, text, textarea)
+import ApiUtils exposing (matrixDotToUrl)
+import Html.Attributes exposing (class, disabled, href, placeholder, value)
 import Html.Events exposing (onClick, onInput)
 import Session exposing (Kind(..), Session, getUserId, isUser)
 
@@ -20,9 +21,10 @@ viewEditor :
     , session : Maybe Session
     , roomAlias : String
     , editorContent : String
+    , loginEnabled : Bool
     }
     -> Html msg
-viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, editorContent } =
+viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, editorContent, loginEnabled } =
     let
         commentEditor =
             labelHidden
@@ -40,20 +42,24 @@ viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, editorContent }
 
         sendButton =
             viewSendButton sendMsg session editorContent
-    in
-    div
-        [ class "cactus-editor" ]
-        [ commentEditor
-        , div [ class "cactus-editor-below" ]
-            [ div []
-                [ loginOrLogoutButton
+
+        loginButton =
+            if loginEnabled then
+                loginOrLogoutButton
                     { loginMsg = showLoginMsg
                     , logoutMsg = logoutMsg
                     , session = session
                     }
-                , sendButton
-                ]
-            ]
+
+            else
+                matrixDotToLoginButton roomAlias
+    in
+    div
+        [ class "cactus-editor" ]
+        [ commentEditor
+        , div
+            [ class "cactus-editor-below" ]
+            [ loginButton, sendButton ]
         ]
 
 
@@ -89,6 +95,16 @@ loginOrLogoutButton { loginMsg, logoutMsg, session } =
 
         Nothing ->
             loginButton
+
+
+matrixDotToLoginButton : String -> Html msg
+matrixDotToLoginButton roomAlias =
+    a
+        [ href <| matrixDotToUrl roomAlias ]
+        [ button
+            [ class "cactus-button" ]
+            [ text "Log in" ]
+        ]
 
 
 viewSendButton : Maybe msg -> Maybe Session -> String -> Html msg
