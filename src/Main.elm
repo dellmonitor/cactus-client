@@ -1,4 +1,4 @@
-module Main exposing (main)
+module Main exposing (..)
 
 import Accessibility exposing (Html, b, button, div, p, text)
 import Accessibility.Aria exposing (errorMessage)
@@ -66,7 +66,8 @@ init flags =
     let
         parsedFlags : Result JD.Error ( StaticConfig, Maybe Session )
         parsedFlags =
-            JD.decodeValue decodeFlags flags
+            flags
+                |> JD.decodeValue decodeFlags
                 |> Result.map parseFlags
 
         config =
