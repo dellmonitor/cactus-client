@@ -332,7 +332,7 @@ type alias Flags =
     , commentSectionId : String
     , storedSession : Maybe Session
     , pageSize : Maybe Int
-    , embeddedLogin : Maybe Bool
+    , loginEnabled : Maybe Bool
     }
 
 
@@ -340,7 +340,7 @@ type alias StaticConfig =
     { defaultHomeserverUrl : String
     , roomAlias : String
     , pageSize : Int
-    , embeddedLogin : Bool
+    , loginEnabled : Bool
     }
 
 
@@ -350,7 +350,7 @@ parseFlags flags =
         flags.defaultHomeserverUrl
         (makeRoomAlias flags)
         (flags.pageSize |> Maybe.withDefault 10)
-        (flags.embeddedLogin |> Maybe.withDefault True)
+        (flags.loginEnabled |> Maybe.withDefault True)
     , flags.storedSession
     )
 
@@ -364,7 +364,7 @@ decodeFlags =
         (JD.field "commentSectionId" decodeCommentSectionId)
         (JD.field "storedSession" <| JD.nullable decodeStoredSession)
         (JD.maybe <| JD.field "pageSize" JD.int)
-        (JD.maybe <| JD.field "embeddedLogin" JD.bool)
+        (JD.maybe <| JD.field "loginEnabled" JD.bool)
 
 
 decodeCommentSectionId : JD.Decoder String
@@ -454,7 +454,7 @@ view model =
                 , session = model.session
                 , roomAlias = model.config.roomAlias
                 , editorContent = model.editorContent
-                , loginEnabled = model.config.embeddedLogin
+                , loginEnabled = model.config.loginEnabled
                 }
     in
     div [ class "cactus-container" ] <|
