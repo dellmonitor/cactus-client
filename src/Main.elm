@@ -1,4 +1,4 @@
-module Main exposing (..)
+module Main exposing (Flags, StaticConfig, decodeFlags, main, parseFlags)
 
 import Accessibility exposing (Html, b, button, div, p, text)
 import Accessibility.Aria exposing (errorMessage)
