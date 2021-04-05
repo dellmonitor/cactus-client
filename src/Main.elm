@@ -48,17 +48,19 @@ main =
         }
 
 
-type alias Model =
-    { config : StaticConfig
-    , editorContent : String
-    , session : Maybe Session
-    , room : Maybe Room
-    , loginForm : Maybe LoginForm
-    , showComments : Int
-    , gotAllComments : Bool
-    , errors : List Error
-    , now : Time.Posix
-    }
+type Model
+    = BadConfig String
+    | GoodConfig
+        { config : StaticConfig
+        , editorContent : String
+        , session : Maybe Session
+        , room : Maybe Room
+        , loginForm : Maybe LoginForm
+        , showComments : Int
+        , gotAllComments : Bool
+        , errors : List Error
+        , now : Time.Posix
+        }
 
 
 init : JD.Value -> ( Model, Cmd Msg )
@@ -69,54 +71,51 @@ init flags =
             flags
                 |> JD.decodeValue decodeFlags
                 |> Result.map parseFlags
-
-        config =
-            parsedFlags
-                |> Result.map Tuple.first
-                -- TODO get rid of this dumb default
-                |> Result.withDefault (StaticConfig "" "" 10 True)
-
-        session =
-            parsedFlags
-                |> Result.map Tuple.second
-                |> Result.withDefault Nothing
     in
-    ( { config = config
-      , editorContent = ""
-      , session = session
-      , room = Nothing
-      , loginForm = Nothing
-      , showComments = config.pageSize
-      , gotAllComments = False
-      , errors =
-            case parsedFlags of
-                Ok _ ->
-                    []
+    case parsedFlags of
+        Ok ( config, session ) ->
+            ( GoodConfig
+                { config = config
+                , editorContent = ""
+                , session = session
+                , room = Nothing
+                , loginForm = Nothing
+                , showComments = config.pageSize
+                , gotAllComments = False
+                , errors =
+                    case parsedFlags of
+                        Ok _ ->
+                            []
 
-                Err err ->
-                    [ { id = 0, message = JD.errorToString err } ]
-      , now = Time.millisToPosix 0 -- shitty default value
-      }
-    , Cmd.batch
-        [ -- get current time
-          Task.perform Tick Time.now
-        , -- first GET to the matrix room, as Guest or User
-          Task.attempt GotRoom <|
-            case session of
-                -- if no localstorage session was found
-                -- then register a guest user w/ default homeserver
-                Nothing ->
-                    registerGuest config.defaultHomeserverUrl
-                        |> Task.andThen
-                            (\sess -> getInitialRoom sess config.roomAlias |> Task.map (Tuple.pair sess))
+                        Err err ->
+                            [ { id = 0, message = JD.errorToString err } ]
+                , now = Time.millisToPosix 0 -- shitty default value
+                }
+            , Cmd.batch
+                [ -- get current time
+                  Task.perform Tick Time.now
+                , -- first GET to the matrix room, as Guest or User
+                  Task.attempt GotRoom <|
+                    case session of
+                        -- if no localstorage session was found
+                        -- then register a guest user w/ default homeserver
+                        Nothing ->
+                            registerGuest config.defaultHomeserverUrl
+                                |> Task.andThen
+                                    (\sess -> getInitialRoom sess config.roomAlias |> Task.map (Tuple.pair sess))
 
-                -- otherwise, use stored session
-                Just sess ->
-                    joinIfUser sess config.roomAlias
-                        |> Task.andThen
-                            (\_ -> getInitialRoom sess config.roomAlias |> Task.map (Tuple.pair sess))
-        ]
-    )
+                        -- otherwise, use stored session
+                        Just sess ->
+                            joinIfUser sess config.roomAlias
+                                |> Task.andThen
+                                    (\_ -> getInitialRoom sess config.roomAlias |> Task.map (Tuple.pair sess))
+                ]
+            )
+
+        Err err ->
+            ( BadConfig <| JD.errorToString err
+            , Cmd.none
+            )
 
 
 joinIfUser : Session -> String -> Task.Task Session.Error ()
@@ -151,174 +150,180 @@ type Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    let
-        {- Get more comments if needed -}
-        fillComments session room =
-            if commentCount room < model.showComments then
-                Task.attempt (GotMessages session room Older) <|
-                    getOlderMessages session room
+update msg model_ =
+    case model_ of
+        BadConfig err ->
+            ( model_, Cmd.none )
 
-            else
-                Cmd.none
-    in
-    case msg of
-        Tick now ->
-            ( { model | now = now }, Cmd.none )
-
-        CloseError id ->
-            ( { model | errors = List.filter (\e -> e.id /= id) model.errors }
-            , Cmd.none
-            )
-
-        GotRoom (Ok ( session, room )) ->
-            -- got initial room, when loading page first time
-            ( { model
-                | session = Just session
-                , room = Just room
-                , loginForm = Nothing
-              }
-            , Cmd.batch <|
-                [ storeSessionCmd session
-                , fillComments session room
-                ]
-            )
-
-        GotRoom (Err (Session.Error code error)) ->
-            -- error while setting up initial room
-            ( { model | errors = addError model.errors <| code ++ " " ++ error }
-            , Cmd.none
-            )
-
-        GotMessages session room dir (Ok newMsgs) ->
-            -- got more messages. result of the "ViewMore"-button request
+        GoodConfig model ->
             let
-                newRoom =
-                    (case dir of
-                        Newer ->
-                            mergeNewerMessages
+                {- Get more comments if needed -}
+                fillComments session room =
+                    if commentCount room < model.showComments then
+                        Task.attempt (GotMessages session room Older) <|
+                            getOlderMessages session room
 
-                        Older ->
-                            mergeOlderMessages
-                    )
-                        room
-                        newMsgs
-
-                newModel =
-                    { model
-                        | room = Just <| newRoom
-                        , gotAllComments = newMsgs.chunk == []
-                    }
+                    else
+                        Cmd.none
             in
-            ( newModel
-            , if not newModel.gotAllComments then
-                fillComments session newRoom
+            Tuple.mapFirst GoodConfig <|
+                case msg of
+                    Tick now ->
+                        ( { model | now = now }, Cmd.none )
 
-              else
-                Cmd.none
-            )
-
-        GotMessages _ _ _ (Err (Session.Error code error)) ->
-            -- http error while getting more comments
-            ( { model | errors = addError model.errors <| code ++ " " ++ error }
-            , Cmd.none
-            )
-
-        ViewMore session room ->
-            -- "view more" button hit, increase count of comments to show,
-            -- and issue request to fetch more messages
-            let
-                newShowComments =
-                    model.showComments + model.config.pageSize
-            in
-            ( { model | showComments = newShowComments }
-            , Task.attempt (GotMessages session room Older) <|
-                getOlderMessages session room
-            )
-
-        EditComment str ->
-            -- user changes text in comment box
-            ( { model | editorContent = str }
-            , Cmd.none
-            )
-
-        SendComment session room ->
-            -- user hit send button
-            let
-                ( sendTask, newSession ) =
-                    sendComment session room model.editorContent
-            in
-            ( { model
-                | editorContent = ""
-                , session = Just newSession
-                , room = Just room
-              }
-            , Cmd.batch
-                [ -- send message
-                  Task.attempt (SentComment session room) sendTask
-
-                -- store session with updated txnId
-                , storeSessionCmd newSession
-                ]
-            )
-
-        SentComment session room (Ok ()) ->
-            ( model
-            , Task.attempt (GotMessages session room Newer) <|
-                getNewerMessages session room
-            )
-
-        SentComment _ _ (Err (Session.Error code error)) ->
-            ( { model | errors = addError model.errors <| code ++ " " ++ error }
-            , Cmd.none
-            )
-
-        ShowLogin ->
-            ( { model | loginForm = Just initLoginForm }
-            , Cmd.none
-            )
-
-        HideLogin ->
-            ( { model | loginForm = Nothing }
-            , Cmd.none
-            )
-
-        EditLogin form ->
-            ( { model | loginForm = Just form }
-            , Cmd.none
-            )
-
-        LogOut ->
-            ( model
-            , Task.attempt GotRoom <|
-                (registerGuest model.config.defaultHomeserverUrl
-                    |> Task.andThen
-                        (\sess ->
-                            getInitialRoom sess model.config.roomAlias
-                                |> Task.map (Tuple.pair sess)
+                    CloseError id ->
+                        ( { model | errors = List.filter (\e -> e.id /= id) model.errors }
+                        , Cmd.none
                         )
-                )
-            )
 
-        Login form ->
-            let
-                ( newForm, loginTask ) =
-                    loginWithForm form
-            in
-            ( { model | loginForm = Just newForm }
-            , Task.attempt GotRoom <|
-                (loginTask
-                    |> Task.andThen
-                        (\session ->
-                            joinRoom session model.config.roomAlias
+                    GotRoom (Ok ( session, room )) ->
+                        -- got initial room, when loading page first time
+                        ( { model
+                            | session = Just session
+                            , room = Just room
+                            , loginForm = Nothing
+                          }
+                        , Cmd.batch <|
+                            [ storeSessionCmd session
+                            , fillComments session room
+                            ]
+                        )
+
+                    GotRoom (Err (Session.Error code error)) ->
+                        -- error while setting up initial room
+                        ( { model | errors = addError model.errors <| code ++ " " ++ error }
+                        , Cmd.none
+                        )
+
+                    GotMessages session room dir (Ok newMsgs) ->
+                        -- got more messages. result of the "ViewMore"-button request
+                        let
+                            newRoom =
+                                (case dir of
+                                    Newer ->
+                                        mergeNewerMessages
+
+                                    Older ->
+                                        mergeOlderMessages
+                                )
+                                    room
+                                    newMsgs
+
+                            newModel =
+                                { model
+                                    | room = Just <| newRoom
+                                    , gotAllComments = newMsgs.chunk == []
+                                }
+                        in
+                        ( newModel
+                        , if not newModel.gotAllComments then
+                            fillComments session newRoom
+
+                          else
+                            Cmd.none
+                        )
+
+                    GotMessages _ _ _ (Err (Session.Error code error)) ->
+                        -- http error while getting more comments
+                        ( { model | errors = addError model.errors <| code ++ " " ++ error }
+                        , Cmd.none
+                        )
+
+                    ViewMore session room ->
+                        -- "view more" button hit, increase count of comments to show,
+                        -- and issue request to fetch more messages
+                        let
+                            newShowComments =
+                                model.showComments + model.config.pageSize
+                        in
+                        ( { model | showComments = newShowComments }
+                        , Task.attempt (GotMessages session room Older) <|
+                            getOlderMessages session room
+                        )
+
+                    EditComment str ->
+                        -- user changes text in comment box
+                        ( { model | editorContent = str }
+                        , Cmd.none
+                        )
+
+                    SendComment session room ->
+                        -- user hit send button
+                        let
+                            ( sendTask, newSession ) =
+                                sendComment session room model.editorContent
+                        in
+                        ( { model
+                            | editorContent = ""
+                            , session = Just newSession
+                            , room = Just room
+                          }
+                        , Cmd.batch
+                            [ -- send message
+                              Task.attempt (SentComment session room) sendTask
+
+                            -- store session with updated txnId
+                            , storeSessionCmd newSession
+                            ]
+                        )
+
+                    SentComment session room (Ok ()) ->
+                        ( model
+                        , Task.attempt (GotMessages session room Newer) <|
+                            getNewerMessages session room
+                        )
+
+                    SentComment _ _ (Err (Session.Error code error)) ->
+                        ( { model | errors = addError model.errors <| code ++ " " ++ error }
+                        , Cmd.none
+                        )
+
+                    ShowLogin ->
+                        ( { model | loginForm = Just initLoginForm }
+                        , Cmd.none
+                        )
+
+                    HideLogin ->
+                        ( { model | loginForm = Nothing }
+                        , Cmd.none
+                        )
+
+                    EditLogin form ->
+                        ( { model | loginForm = Just form }
+                        , Cmd.none
+                        )
+
+                    LogOut ->
+                        ( model
+                        , Task.attempt GotRoom <|
+                            (registerGuest model.config.defaultHomeserverUrl
                                 |> Task.andThen
-                                    (\_ ->
-                                        getInitialRoom session model.config.roomAlias
-                                            |> Task.map (\room -> ( session, room ))
+                                    (\sess ->
+                                        getInitialRoom sess model.config.roomAlias
+                                            |> Task.map (Tuple.pair sess)
                                     )
+                            )
                         )
-                )
-            )
+
+                    Login form ->
+                        let
+                            ( newForm, loginTask ) =
+                                loginWithForm form
+                        in
+                        ( { model | loginForm = Just newForm }
+                        , Task.attempt GotRoom <|
+                            (loginTask
+                                |> Task.andThen
+                                    (\session ->
+                                        joinRoom session model.config.roomAlias
+                                            |> Task.andThen
+                                                (\_ ->
+                                                    getInitialRoom session model.config.roomAlias
+                                                        |> Task.map (\room -> ( session, room ))
+                                                )
+                                    )
+                            )
+                        )
 
 
 
@@ -410,79 +415,85 @@ addError errors message =
         :: errors
 
 
+viewError : Error -> Html Msg
+viewError { id, message } =
+    div [ class "cactus-error", errorMessage message ]
+        [ button
+            [ class "cactus-button"
+            , onClick <| CloseError id
+            ]
+            [ text "X" ]
+        , b [] [ text <| " Error: " ++ message ]
+        ]
+
+
 
 -- VIEW
 
 
 view : Model -> Html Msg
-view model =
-    let
-        errors =
-            div [] <|
-                List.map
-                    (\{ id, message } ->
-                        div [ class "cactus-error", errorMessage message ]
-                            [ button
-                                [ class "cactus-button"
-                                , onClick <| CloseError id
-                                ]
-                                [ text "X" ]
-                            , b [] [ text <| " Error: " ++ message ]
-                            ]
-                    )
-                    model.errors
+view model_ =
+    case model_ of
+        BadConfig err ->
+            viewError { id = 0, message = "Bad configuration: " ++ err }
 
-        loginPopup =
-            case model.loginForm of
-                Just loginForm ->
-                    viewLoginForm loginForm
-                        model.config.roomAlias
-                        { submitMsg = Login
-                        , hideMsg = HideLogin
-                        , editMsg = EditLogin
+        GoodConfig model ->
+            let
+                errors =
+                    div [] <|
+                        List.map viewError model.errors
+
+                loginPopup =
+                    case model.loginForm of
+                        Just loginForm ->
+                            viewLoginForm loginForm
+                                model.config.roomAlias
+                                { submitMsg = Login
+                                , hideMsg = HideLogin
+                                , editMsg = EditLogin
+                                }
+
+                        Nothing ->
+                            text ""
+
+                editor =
+                    viewEditor
+                        { showLoginMsg = ShowLogin
+                        , logoutMsg = LogOut
+                        , editMsg = EditComment
+                        , sendMsg = Maybe.map2 SendComment model.session model.room
+                        , session = model.session
+                        , roomAlias = model.config.roomAlias
+                        , editorContent = model.editorContent
+                        , loginEnabled = model.config.loginEnabled
                         }
+            in
+            div [ class "cactus-container" ] <|
+                [ errors
+                , loginPopup
+                , editor
+                , case ( model.room, model.session ) of
+                    ( Just room, Just session ) ->
+                        div []
+                            [ viewRoomEvents
+                                (getHomeserverUrl session)
+                                room
+                                model.showComments
+                                model.now
+                            , if model.gotAllComments then
+                                text ""
 
-                Nothing ->
-                    text ""
-
-        editor =
-            viewEditor
-                { showLoginMsg = ShowLogin
-                , logoutMsg = LogOut
-                , editMsg = EditComment
-                , sendMsg = Maybe.map2 SendComment model.session model.room
-                , session = model.session
-                , roomAlias = model.config.roomAlias
-                , editorContent = model.editorContent
-                , loginEnabled = model.config.loginEnabled
-                }
-    in
-    div [ class "cactus-container" ] <|
-        [ errors
-        , loginPopup
-        , editor
-        , case ( model.room, model.session ) of
-            ( Just room, Just session ) ->
-                div []
-                    [ viewRoomEvents
-                        (getHomeserverUrl session)
-                        room
-                        model.showComments
-                        model.now
-                    , if model.gotAllComments then
-                        text ""
-
-                      else
-                        -- "View More" button
-                        div [ class "cactus-view-more" ]
-                            [ button
-                                [ class "cactus-button"
-                                , onClick <| ViewMore session room
-                                ]
-                                [ text "View more" ]
+                              else
+                                -- "View More" button
+                                div [ class "cactus-view-more" ]
+                                    [ button
+                                        [ class "cactus-button"
+                                        , onClick <| ViewMore session room
+                                        ]
+                                        [ text "View more" ]
+                                    ]
                             ]
-                    ]
 
-            _ ->
-                p [] [ text "Getting comments..." ]
-        ]
+                    _ ->
+                        p [] [ text "Getting comments..." ]
+                ]
