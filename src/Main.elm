@@ -152,7 +152,7 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model_ =
     case model_ of
-        BadConfig err ->
+        BadConfig _ ->
             ( model_, Cmd.none )
 
         GoodConfig model ->
