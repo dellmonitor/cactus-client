@@ -73,6 +73,10 @@ div.cactus-view-more {
 .cactus-send-button {
   margin-left: 1em;
 }
+.cactus-matrixdotto-only {
+  /* only used when guestPostingEnabled=false and loginEnabled=false */
+  width: 100%;
+}
 
 
 /*

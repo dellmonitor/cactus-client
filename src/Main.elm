@@ -68,9 +68,11 @@ init flags =
     let
         parsedFlags : Result JD.Error ( StaticConfig, Maybe Session )
         parsedFlags =
-            flags
-                |> JD.decodeValue decodeFlags
-                |> Result.map parseFlags
+            Debug.log "TODO: remove me" <|
+                (flags
+                    |> JD.decodeValue decodeFlags
+                    |> Result.map parseFlags
+                )
     in
     case parsedFlags of
         Ok ( config, session ) ->
@@ -338,6 +340,7 @@ type alias Flags =
     , storedSession : Maybe Session
     , pageSize : Maybe Int
     , loginEnabled : Maybe Bool
+    , guestPostingEnabled : Maybe Bool
     }
 
 
@@ -346,6 +349,7 @@ type alias StaticConfig =
     , roomAlias : String
     , pageSize : Int
     , loginEnabled : Bool
+    , guestPostingEnabled : Bool
     }
 
 
@@ -356,13 +360,14 @@ parseFlags flags =
         (makeRoomAlias flags)
         (flags.pageSize |> Maybe.withDefault 10)
         (flags.loginEnabled |> Maybe.withDefault True)
+        (flags.guestPostingEnabled |> Maybe.withDefault True)
     , flags.storedSession
     )
 
 
 decodeFlags : JD.Decoder Flags
 decodeFlags =
-    JD.map7 Flags
+    JD.map8 Flags
         (JD.field "defaultHomeserverUrl" JD.string)
         (JD.field "serverName" JD.string)
         (JD.field "siteName" JD.string)
@@ -370,6 +375,7 @@ decodeFlags =
         (JD.field "storedSession" <| JD.nullable decodeStoredSession)
         (JD.maybe <| JD.field "pageSize" JD.int)
         (JD.maybe <| JD.field "loginEnabled" JD.bool)
+        (JD.maybe <| JD.field "guestPostingEnabled" JD.bool)
 
 
 decodeCommentSectionId : JD.Decoder String
@@ -466,6 +472,7 @@ view model_ =
                         , roomAlias = model.config.roomAlias
                         , editorContent = model.editorContent
                         , loginEnabled = model.config.loginEnabled
+                        , guestPostingEnabled = model.config.guestPostingEnabled
                         }
             in
             div [ class "cactus-container" ] <|

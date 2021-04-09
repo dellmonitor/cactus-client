@@ -22,11 +22,12 @@ viewEditor :
     , roomAlias : String
     , editorContent : String
     , loginEnabled : Bool
+    , guestPostingEnabled : Bool
     }
     -> Html msg
-viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, editorContent, loginEnabled } =
+viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, editorContent, loginEnabled, guestPostingEnabled } =
     let
-        commentEditor =
+        commentEditor enabled =
             labelHidden
                 "Comment Editor"
                 []
@@ -36,6 +37,7 @@ viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, edit
                     , value editorContent
                     , onInput editMsg
                     , placeholder "Add a comment"
+                    , disabled <| not enabled
                     ]
                     []
                 )
@@ -44,23 +46,56 @@ viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, edit
             viewSendButton sendMsg session editorContent
 
         loginButton =
-            if loginEnabled then
-                loginOrLogoutButton
-                    { loginMsg = showLoginMsg
-                    , logoutMsg = logoutMsg
-                    , session = session
-                    }
-
-            else
-                matrixDotToLoginButton roomAlias
+            loginOrLogoutButton
+                { loginMsg = showLoginMsg
+                , logoutMsg = logoutMsg
+                , session = session
+                }
     in
-    div
-        [ class "cactus-editor" ]
-        [ commentEditor
-        , div
-            [ class "cactus-editor-below" ]
-            [ loginButton, sendButton ]
-        ]
+    div [ class "cactus-editor" ] <|
+        case ( loginEnabled, guestPostingEnabled ) of
+            ( True, True ) ->
+                -- fully featured
+                [ commentEditor True
+                , div
+                    [ class "cactus-editor-below" ]
+                    [ loginButton, sendButton ]
+                ]
+
+            ( True, False ) ->
+                -- disable guest posting
+                [ commentEditor <| (Maybe.map isUser session |> Maybe.withDefault False)
+                , div
+                    [ class "cactus-editor-below" ]
+                    [ loginButton, sendButton ]
+                ]
+
+            ( False, True ) ->
+                -- replace login button with matrix.to button
+                [ commentEditor True
+                , div
+                    [ class "cactus-editor-below" ]
+                    [ a
+                        [ href <| matrixDotToUrl roomAlias ]
+                        [ button
+                            [ class "cactus-button" ]
+                            [ text "Comment using a Matrix client" ]
+                        ]
+                    , sendButton
+                    ]
+                ]
+
+            ( False, False ) ->
+                -- only show matrix.to button
+                [ a
+                    [ href <| matrixDotToUrl roomAlias ]
+                    [ button
+                        [ class "cactus-button"
+                        , class "cactus-matrixdotto-only"
+                        ]
+                        [ text "Comment using a Matrix client" ]
+                    ]
+                ]
 
 
 {-| If logged in as a non-guest user, show logout button, else show login
@@ -95,16 +130,6 @@ loginOrLogoutButton { loginMsg, logoutMsg, session } =
 
         Nothing ->
             loginButton
-
-
-matrixDotToLoginButton : String -> Html msg
-matrixDotToLoginButton roomAlias =
-    a
-        [ href <| matrixDotToUrl roomAlias ]
-        [ button
-            [ class "cactus-button" ]
-            [ text "Log in" ]
-        ]
 
 
 viewSendButton : Maybe msg -> Maybe Session -> String -> Html msg
