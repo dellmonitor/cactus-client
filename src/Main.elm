@@ -68,11 +68,9 @@ init flags =
     let
         parsedFlags : Result JD.Error ( StaticConfig, Maybe Session )
         parsedFlags =
-            Debug.log "TODO: remove me" <|
-                (flags
-                    |> JD.decodeValue decodeFlags
-                    |> Result.map parseFlags
-                )
+            flags
+                |> JD.decodeValue decodeFlags
+                |> Result.map parseFlags
     in
     case parsedFlags of
         Ok ( config, session ) ->
