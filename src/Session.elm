@@ -66,6 +66,7 @@ getUserId (Session session) =
     session.userId
 
 
+
 -- TRANSACTION ID
 
 
