@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+- New configuration option: `loginEnabled` changes the login button to be a matrix.to link, if set to false (default is true).
+- New configuration option: `guestPostingEnabled` requires users to log in using their Matrix account, if set to false (default is true).
+- Added HACKING.md, a guide to getting started with hacking on the client.
+
 ## 0.6.0
 
 - Move matrix.to link into login modal.
