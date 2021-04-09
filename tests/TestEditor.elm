@@ -3,7 +3,7 @@ module TestEditor exposing (..)
 import Editor exposing (viewEditor)
 import Expect exposing (Expectation)
 import Html exposing (Html)
-import Html.Attributes exposing (disabled)
+import Html.Attributes exposing (class, disabled, href)
 import Json.Decode as JD
 import Session
 import Test exposing (..)
@@ -107,3 +107,23 @@ testGuestPostingToggle =
                         |> Query.has [ Selector.attribute (disabled True) ]
                 ]
         ]
+
+
+testLoginDisabled : Test
+testLoginDisabled =
+    test "Test loginEnabled=False" <|
+        \_ ->
+            viewEditorHelper { loginEnabled = False, guestPostingEnabled = True, session = Nothing }
+                |> Query.fromHtml
+                |> Query.find [ Selector.tag "a" ]
+                |> Query.has [ Selector.attribute (href "https://matrix.to/#/%23room%3Aalias") ]
+
+
+testBothDisabled : Test
+testBothDisabled =
+    test "Test loginEnabled=False, guestPostingEnabled=False" <|
+        \_ ->
+            viewEditorHelper { loginEnabled = False, guestPostingEnabled = False, session = Nothing }
+                |> Query.fromHtml
+                |> Query.find [ Selector.tag "button", Selector.class "cactus-button" ]
+                |> Query.has [ Selector.class "cactus-matrixdotto-only" ]
