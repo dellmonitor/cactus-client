@@ -42,6 +42,7 @@ testDecodeMinimalConfig =
                                     , roomAlias = "#comments_blog.example.com_myCommentSection:example.com"
                                     , pageSize = 10
                                     , loginEnabled = True
+                                    , guestPostingEnabled = True
                                     }
                             ]
                             ( conf, sess )
@@ -59,6 +60,7 @@ completeValidJson =
         "commentSectionId": "anotherCommentSection",
         "pageSize": 2,
         "loginEnabled": false,
+        "guestPostingEnabled": false,
         "storedSession": {
           "homeserverUrl": "https://example.com:8448",
           "kind": "guest",
@@ -92,6 +94,7 @@ testDecodeCompleteConfig =
                                     , roomAlias = "#comments_anotherblog.example.com_anotherCommentSection:example.com"
                                     , pageSize = 2
                                     , loginEnabled = False
+                                    , guestPostingEnabled = False
                                     }
                             ]
                             ( conf, sess )
