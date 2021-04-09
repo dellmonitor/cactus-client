@@ -79,7 +79,7 @@ viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, edit
                         [ href <| matrixDotToUrl roomAlias ]
                         [ button
                             [ class "cactus-button" ]
-                            [ text "Comment using a Matrix client" ]
+                            [ text "Log in" ]
                         ]
                     , sendButton
                     ]
