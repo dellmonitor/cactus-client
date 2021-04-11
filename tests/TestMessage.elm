@@ -23,3 +23,12 @@ testTimeSinceText =
                 timeSinceText (Time.millisToPosix 257126400000) (Time.millisToPosix 1000)
                     |> Expect.equal "8 years ago"
         ]
+
+
+testFormatTimeAsString : Test
+testFormatTimeAsString =
+    describe "Messages.formatTimeAsString"
+        [ test "February 24th, 1978" <|
+            \_ ->
+                formatTimeAsString (Time.millisToPosix 257149546000) Time.utc |> Expect.equal "February 24th, 1978 06:25:46"
+        ]

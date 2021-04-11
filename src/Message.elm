@@ -4,6 +4,7 @@ module Message exposing
     , Message(..)
     , RoomEvent(..)
     , decodeMessages
+    , formatTimeAsString
     , getMessages
     , messageEvents
     , timeSinceText
@@ -12,8 +13,10 @@ module Message exposing
 
 import Accessibility exposing (Html, a, div, img, p, text)
 import ApiUtils exposing (thumbnailFromMxc)
+import DateFormat
 import Dict exposing (Dict)
 import Duration
+import Html exposing (span)
 import Html.Attributes exposing (class, href, src)
 import Http
 import Json.Decode as JD
@@ -254,6 +257,28 @@ timeSinceText now then_ =
     (String.fromInt <| floor <| unitfun diff) ++ " " ++ unitname ++ " ago"
 
 
+formatTimeAsString : Time.Posix -> Time.Zone -> String
+formatTimeAsString time timezone =
+    let
+        timeFormatter : Time.Zone -> Time.Posix -> String
+        timeFormatter =
+            DateFormat.format
+                [ DateFormat.monthNameFull
+                , DateFormat.text " "
+                , DateFormat.dayOfMonthSuffix
+                , DateFormat.text ", "
+                , DateFormat.yearNumber
+                , DateFormat.text " "
+                , DateFormat.hourMilitaryFixed
+                , DateFormat.text ":"
+                , DateFormat.minuteFixed
+                , DateFormat.text ":"
+                , DateFormat.secondFixed
+                ]
+    in
+    timeFormatter timezone time
+
+
 viewMessageEvent : String -> Time.Posix -> Dict String Member -> Event Message -> Html msg
 viewMessageEvent defaultHomeserverUrl time members messageEvent =
     let
@@ -275,6 +300,10 @@ viewMessageEvent defaultHomeserverUrl time members messageEvent =
         timeStr =
             timeSinceText time messageEvent.originServerTs
 
+        timeUtc : String
+        timeUtc =
+            formatTimeAsString messageEvent.originServerTs Time.utc
+
         body : Html msg
         body =
             viewMessage defaultHomeserverUrl displayname messageEvent.content
@@ -290,7 +319,11 @@ viewMessageEvent defaultHomeserverUrl time members messageEvent =
                     [ a [ href matrixDotToUrl ] [ text displayname ] ]
                 , p
                     [ class "cactus-comment-time" ]
-                    [ text timeStr ]
+                    [ text timeStr
+                    , span
+                        [ class "cactus-comment-time-tooltip" ]
+                        [ text timeUtc ]
+                    ]
                 ]
             , --  body
               div [ class "cactus-comment-body" ] [ body ]
