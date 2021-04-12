@@ -4,6 +4,8 @@ module Message exposing
     , Message(..)
     , RoomEvent(..)
     , decodeMessages
+    , formatTimeAsIsoUtcString
+    , formatTimeAsUtcString
     , getMessages
     , messageEvents
     , timeSinceText
@@ -12,9 +14,11 @@ module Message exposing
 
 import Accessibility exposing (Html, a, div, img, p, text)
 import ApiUtils exposing (thumbnailFromMxc)
+import DateFormat
 import Dict exposing (Dict)
 import Duration
-import Html.Attributes exposing (class, href, src)
+import Html exposing (span)
+import Html.Attributes exposing (class, datetime, href, src, title)
 import Http
 import Json.Decode as JD
 import Maybe.Extra
@@ -254,6 +258,56 @@ timeSinceText now then_ =
     (String.fromInt <| floor <| unitfun diff) ++ " " ++ unitname ++ " ago"
 
 
+formatTimeAsUtcString : Time.Posix -> String
+formatTimeAsUtcString time =
+    let
+        -- Format: Sun Mar 14 16:23:15 2021 UTC
+        timeFormatter : Time.Zone -> Time.Posix -> String
+        timeFormatter =
+            DateFormat.format
+                [ DateFormat.dayOfWeekNameAbbreviated
+                , DateFormat.text " "
+                , DateFormat.monthNameAbbreviated
+                , DateFormat.text " "
+                , DateFormat.dayOfMonthFixed
+                , DateFormat.text " "
+                , DateFormat.hourMilitaryFixed
+                , DateFormat.text ":"
+                , DateFormat.minuteFixed
+                , DateFormat.text ":"
+                , DateFormat.secondFixed
+                , DateFormat.text " "
+                , DateFormat.yearNumber
+                , DateFormat.text " UTC"
+                ]
+    in
+    timeFormatter Time.utc time
+
+
+formatTimeAsIsoUtcString : Time.Posix -> String
+formatTimeAsIsoUtcString time =
+    let
+        -- Format: 2020-12-03T02:05:16+00:00
+        timeFormatter : Time.Zone -> Time.Posix -> String
+        timeFormatter =
+            DateFormat.format
+                [ DateFormat.yearNumber
+                , DateFormat.text "-"
+                , DateFormat.monthFixed
+                , DateFormat.text "-"
+                , DateFormat.dayOfMonthFixed
+                , DateFormat.text "T"
+                , DateFormat.hourMilitaryFixed
+                , DateFormat.text ":"
+                , DateFormat.minuteFixed
+                , DateFormat.text ":"
+                , DateFormat.secondFixed
+                , DateFormat.text "+00:00"
+                ]
+    in
+    timeFormatter Time.utc time
+
+
 viewMessageEvent : String -> Time.Posix -> Dict String Member -> Event Message -> Html msg
 viewMessageEvent defaultHomeserverUrl time members messageEvent =
     let
@@ -275,6 +329,14 @@ viewMessageEvent defaultHomeserverUrl time members messageEvent =
         timeStr =
             timeSinceText time messageEvent.originServerTs
 
+        timeUtc : String
+        timeUtc =
+            formatTimeAsUtcString messageEvent.originServerTs
+
+        timeUtcIso : String
+        timeUtcIso =
+            formatTimeAsIsoUtcString messageEvent.originServerTs
+
         body : Html msg
         body =
             viewMessage defaultHomeserverUrl displayname messageEvent.content
@@ -288,8 +350,8 @@ viewMessageEvent defaultHomeserverUrl time members messageEvent =
                 [ p
                     [ class "cactus-comment-displayname" ]
                     [ a [ href matrixDotToUrl ] [ text displayname ] ]
-                , p
-                    [ class "cactus-comment-time" ]
+                , Accessibility.time
+                    [ class "cactus-comment-time", title timeUtc, datetime timeUtcIso ]
                     [ text timeStr ]
                 ]
             , --  body
