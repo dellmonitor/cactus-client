@@ -219,6 +219,7 @@ div.cactus-view-more {
 .cactus-comment-body > * {
   /* text or media content of comment */
   margin: 0;
+  white-space: pre-line;
 }
 
 
