@@ -14,7 +14,9 @@ import Room
     exposing
         ( Direction(..)
         , Room
+        , RoomId
         , commentCount
+        , extractRoomId
         , getInitialRoom
         , getNewerMessages
         , getOlderMessages
@@ -136,11 +138,11 @@ type Msg
       -- Message Fetching
     | GotRoom (Result Session.Error ( Session, Room ))
     | ViewMore Session Room
-    | GotMessages Session Room Direction (Result Session.Error GetMessagesResponse)
+    | GotMessages Session Direction (Result Session.Error GetMessagesResponse)
       -- Editor
     | EditComment String
-    | SendComment Session Room
-    | SentComment Session Room (Result Session.Error ())
+    | SendComment Session RoomId
+    | SentComment Session (Result Session.Error ())
       -- Login
     | ShowLogin
     | HideLogin
@@ -160,7 +162,7 @@ update msg model_ =
                 {- Get more comments if needed -}
                 fillComments session room =
                     if commentCount room < model.showComments then
-                        Task.attempt (GotMessages session room Older) <|
+                        Task.attempt (GotMessages session Older) <|
                             getOlderMessages session room
 
                     else
@@ -169,7 +171,9 @@ update msg model_ =
             Tuple.mapFirst GoodConfig <|
                 case msg of
                     Tick now ->
-                        ( { model | now = now }, Cmd.none )
+                        ( { model | now = now }
+                        , Cmd.none
+                        )
 
                     CloseError id ->
                         ( { model | errors = List.filter (\e -> e.id /= id) model.errors }
@@ -195,35 +199,40 @@ update msg model_ =
                         , Cmd.none
                         )
 
-                    GotMessages session room dir (Ok newMsgs) ->
+                    GotMessages session dir (Ok newMsgs) ->
                         -- got more messages. result of the "ViewMore"-button request
                         let
-                            newRoom =
-                                (case dir of
+                            mergefun =
+                                case dir of
                                     Newer ->
                                         mergeNewerMessages
 
                                     Older ->
                                         mergeOlderMessages
-                                )
-                                    room
-                                    newMsgs
+
+                            newRoom : Maybe Room
+                            newRoom =
+                                Maybe.map
+                                    (\r -> mergefun r newMsgs)
+                                    model.room
 
                             newModel =
                                 { model
-                                    | room = Just <| newRoom
-                                    , gotAllComments = newMsgs.chunk == []
+                                    | room = newRoom
+                                    , gotAllComments = List.isEmpty newMsgs.chunk
                                 }
                         in
                         ( newModel
-                        , if not newModel.gotAllComments then
-                            fillComments session newRoom
+                        , case ( newRoom, newModel.gotAllComments ) of
+                            ( Just r, False ) ->
+                                -- we have room, and still want to backfill more comments
+                                fillComments session r
 
-                          else
-                            Cmd.none
+                            _ ->
+                                Cmd.none
                         )
 
-                    GotMessages _ _ _ (Err (Session.Error code error)) ->
+                    GotMessages _ _ (Err (Session.Error code error)) ->
                         -- http error while getting more comments
                         ( { model | errors = addError model.errors <| code ++ " " ++ error }
                         , Cmd.none
@@ -237,7 +246,7 @@ update msg model_ =
                                 model.showComments + model.config.pageSize
                         in
                         ( { model | showComments = newShowComments }
-                        , Task.attempt (GotMessages session room Older) <|
+                        , Task.attempt (GotMessages session Older) <|
                             getOlderMessages session room
                         )
 
@@ -247,33 +256,34 @@ update msg model_ =
                         , Cmd.none
                         )
 
-                    SendComment session room ->
+                    SendComment session roomId ->
                         -- user hit send button
                         let
                             ( sendTask, newSession ) =
-                                sendComment session room model.editorContent
+                                sendComment session roomId model.editorContent
                         in
                         ( { model
                             | editorContent = ""
                             , session = Just newSession
-                            , room = Just room
                           }
                         , Cmd.batch
                             [ -- send message
-                              Task.attempt (SentComment session room) sendTask
+                              Task.attempt (SentComment session) sendTask
 
                             -- store session with updated txnId
                             , storeSessionCmd newSession
                             ]
                         )
 
-                    SentComment session room (Ok ()) ->
+                    SentComment session (Ok ()) ->
                         ( model
-                        , Task.attempt (GotMessages session room Newer) <|
-                            getNewerMessages session room
+                        , model.room
+                            |> Maybe.map
+                                (getNewerMessages session >> Task.attempt (GotMessages session Newer))
+                            |> Maybe.withDefault Cmd.none
                         )
 
-                    SentComment _ _ (Err (Session.Error code error)) ->
+                    SentComment _ (Err (Session.Error code error)) ->
                         ( { model | errors = addError model.errors <| code ++ " " ++ error }
                         , Cmd.none
                         )
@@ -444,8 +454,7 @@ view model_ =
         GoodConfig model ->
             let
                 errors =
-                    div [] <|
-                        List.map viewError model.errors
+                    div [] <| List.map viewError model.errors
 
                 loginPopup =
                     case model.loginForm of
@@ -465,7 +474,7 @@ view model_ =
                         { showLoginMsg = ShowLogin
                         , logoutMsg = LogOut
                         , editMsg = EditComment
-                        , sendMsg = Maybe.map2 SendComment model.session model.room
+                        , sendMsg = Maybe.map2 SendComment model.session <| Maybe.map extractRoomId model.room
                         , session = model.session
                         , roomAlias = model.config.roomAlias
                         , editorContent = model.editorContent

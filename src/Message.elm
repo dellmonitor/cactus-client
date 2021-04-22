@@ -6,7 +6,6 @@ module Message exposing
     , decodeMessages
     , formatTimeAsIsoUtcString
     , formatTimeAsUtcString
-    , getMessages
     , messageEvents
     , timeSinceText
     , viewMessageEvent
@@ -84,21 +83,6 @@ type alias GetMessagesResponse =
     , end : String
     , chunk : List RoomEvent
     }
-
-
-getMessages : Session -> { roomId : String, dir : String, from : String } -> Task Session.Error GetMessagesResponse
-getMessages session { roomId, dir, from } =
-    authenticatedRequest
-        session
-        { method = "GET"
-        , path = [ "rooms", roomId, "messages" ]
-        , params =
-            [ Url.Builder.string "dir" dir
-            , Url.Builder.string "from" from
-            ]
-        , responseDecoder = decodeMessages
-        , body = Http.emptyBody
-        }
 
 
 decodeMessages : JD.Decoder { start : String, end : String, chunk : List RoomEvent }

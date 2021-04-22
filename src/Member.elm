@@ -1,4 +1,4 @@
-module Member exposing (Member, getJoinedMembers)
+module Member exposing (Member, decodeMemberResponse)
 
 import Dict exposing (Dict)
 import Http
@@ -12,18 +12,6 @@ type alias Member =
     , avatarUrl : Maybe String
     , userId : String
     }
-
-
-getJoinedMembers : Session -> String -> Task Session.Error (Dict String Member)
-getJoinedMembers session roomId =
-    authenticatedRequest
-        session
-        { method = "GET"
-        , path = [ "rooms", roomId, "members" ]
-        , params = []
-        , responseDecoder = decodeMemberResponse
-        , body = Http.emptyBody
-        }
 
 
 decodeMemberResponse : JD.Decoder (Dict String Member)

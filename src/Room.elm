@@ -1,11 +1,14 @@
 module Room exposing
     ( Direction(..)
     , Room
+    , RoomId
     , commentCount
+    , extractRoomId
     , getInitialRoom
     , getNewerMessages
     , getOlderMessages
     , getRoomAsGuest
+    , getRoomId
     , joinRoom
     , mergeNewerMessages
     , mergeOlderMessages
@@ -18,17 +21,18 @@ import Dict exposing (Dict)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
-import Member exposing (Member, getJoinedMembers)
-import Message exposing (GetMessagesResponse, RoomEvent(..), decodeMessages, getMessages, messageEvents, viewMessageEvent)
+import Member exposing (Member, decodeMemberResponse)
+import Message exposing (GetMessagesResponse, RoomEvent(..), decodeMessages, messageEvents, viewMessageEvent)
 import Session exposing (Kind(..), Session, authenticatedRequest, incrementTransactionId, registerGuest, sessionKind, transactionId)
 import Task exposing (Task)
 import Time
+import Url.Builder
 
 
 type Room
     = Room
         { roomAlias : String
-        , roomId : String
+        , roomId : RoomId
         , events : List RoomEvent
         , start : String
         , end : String
@@ -36,7 +40,19 @@ type Room
         }
 
 
+type RoomId
+    = RoomId String
+
+
+{-| Get the roomId field of a room record
+-}
+extractRoomId : Room -> RoomId
+extractRoomId (Room r) =
+    r.roomId
+
+
 {-| Count the number of renderable messages in the room
+Used to determine if we should fetch more
 -}
 commentCount : Room -> Int
 commentCount (Room room) =
@@ -150,22 +166,22 @@ getInitialRoom session roomAlias =
 
 {-| Make a GET request to resolve a roomId from a given roomAlias.
 -}
-getRoomId : Session -> String -> Task Session.Error String
+getRoomId : Session -> String -> Task Session.Error RoomId
 getRoomId session roomAlias =
     authenticatedRequest
         session
         { method = "GET"
         , path = [ "directory", "room", roomAlias ]
         , params = []
-        , responseDecoder = JD.field "room_id" JD.string
+        , responseDecoder = JD.field "room_id" JD.string |> JD.map RoomId
         , body = Http.emptyBody
         }
 
 
 {-| Get initial room events and sync tokens to get further messages
 -}
-getInitialSync : Session -> String -> Task Session.Error { chunk : List RoomEvent, start : String, end : String }
-getInitialSync session roomId =
+getInitialSync : Session -> RoomId -> Task Session.Error { chunk : List RoomEvent, start : String, end : String }
+getInitialSync session (RoomId roomId) =
     authenticatedRequest
         session
         { method = "GET"
@@ -196,18 +212,39 @@ type Direction
     | Newer
 
 
+getMessages : Session -> RoomId -> Direction -> String -> Task Session.Error GetMessagesResponse
+getMessages session (RoomId roomId) dir from =
+    authenticatedRequest
+        session
+        { method = "GET"
+        , path = [ "rooms", roomId, "messages" ]
+        , params =
+            [ Url.Builder.string "from" from
+            , Url.Builder.string "dir" <|
+                case dir of
+                    Older ->
+                        "b"
+
+                    Newer ->
+                        "f"
+            ]
+        , responseDecoder = decodeMessages
+        , body = Http.emptyBody
+        }
+
+
 {-| Get more messages, scanning backwards from the earliest event in the room
 -}
 getOlderMessages : Session -> Room -> Task Session.Error GetMessagesResponse
 getOlderMessages session (Room room) =
-    getMessages session { roomId = room.roomId, dir = "b", from = room.start }
+    getMessages session room.roomId Older room.start
 
 
 {-| Get more messages, scanning forwards from the earliest event in the room
 -}
 getNewerMessages : Session -> Room -> Task Session.Error GetMessagesResponse
 getNewerMessages session (Room room) =
-    getMessages session { roomId = room.roomId, dir = "f", from = room.end }
+    getMessages session room.roomId Newer room.end
 
 
 joinRoom : Session -> String -> Task Session.Error ()
@@ -222,16 +259,16 @@ joinRoom session roomIdOrAlias =
         }
 
 
-sendComment : Session -> Room -> String -> ( Task Session.Error (), Session )
-sendComment session room comment =
+sendComment : Session -> RoomId -> String -> ( Task Session.Error (), Session )
+sendComment session roomId comment =
     ( case sessionKind session of
         Guest ->
             -- join room, send message
-            joinAndSend session room comment
+            joinAndSend session roomId comment
 
         User ->
             -- user is already joined, just send message
-            sendMessage session room comment
+            sendMessage session roomId comment
       -- increment transaction Id (idempotency measure)
     , incrementTransactionId session
     )
@@ -239,16 +276,16 @@ sendComment session room comment =
 
 {-| Join a room before sending a comment into the room
 -}
-joinAndSend : Session -> Room -> String -> Task Session.Error ()
-joinAndSend session (Room room) comment =
-    joinRoom session room.roomId
-        |> Task.andThen (\_ -> sendMessage session (Room room) comment)
+joinAndSend : Session -> RoomId -> String -> Task Session.Error ()
+joinAndSend session (RoomId roomId) comment =
+    joinRoom session roomId
+        |> Task.andThen (\_ -> sendMessage session (RoomId roomId) comment)
 
 
 {-| Send a message to the room
 -}
-sendMessage : Session -> Room -> String -> Task Session.Error ()
-sendMessage session (Room room) comment =
+sendMessage : Session -> RoomId -> String -> Task Session.Error ()
+sendMessage session (RoomId roomId) comment =
     -- post a message
     let
         eventType =
@@ -263,7 +300,7 @@ sendMessage session (Room room) comment =
     authenticatedRequest
         session
         { method = "PUT"
-        , path = [ "rooms", room.roomId, "send", eventType, String.fromInt txnId ]
+        , path = [ "rooms", roomId, "send", eventType, String.fromInt txnId ]
         , params = []
         , responseDecoder = JD.succeed ()
         , body =
@@ -272,4 +309,16 @@ sendMessage session (Room room) comment =
                     [ ( "msgtype", JE.string msgtype )
                     , ( "body", JE.string comment )
                     ]
+        }
+
+
+getJoinedMembers : Session -> RoomId -> Task Session.Error (Dict String Member)
+getJoinedMembers session (RoomId roomId) =
+    authenticatedRequest
+        session
+        { method = "GET"
+        , path = [ "rooms", roomId, "members" ]
+        , params = []
+        , responseDecoder = decodeMemberResponse
+        , body = Http.emptyBody
         }
