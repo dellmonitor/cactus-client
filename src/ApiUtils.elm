@@ -128,8 +128,8 @@ thumbnailFromMxc homeserverUrl mxcUrl =
         (\sn mid ->
             mediaEndpoint homeserverUrl
                 [ "thumbnail", sn, mid ]
-                [ Url.Builder.int "width" 32
-                , Url.Builder.int "height" 32
+                [ Url.Builder.int "width" 64
+                , Url.Builder.int "height" 64
                 , Url.Builder.string "method" "crop"
                 ]
         )

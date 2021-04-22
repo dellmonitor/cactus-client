@@ -86,5 +86,5 @@ testThumbnailFromMxc =
         [ test "Test user avatar" <|
             \_ ->
                 thumbnailFromMxc "https://matrix.org" "mxc://olli.ng/sWMkCgSyfhXzCoqWqzImfrFO"
-                    |> Expect.equal (Just "https://matrix.org/_matrix/media/r0/thumbnail/olli.ng/sWMkCgSyfhXzCoqWqzImfrFO?width=32&height=32&method=crop")
+                    |> Expect.equal (Just "https://matrix.org/_matrix/media/r0/thumbnail/olli.ng/sWMkCgSyfhXzCoqWqzImfrFO?width=64&height=64&method=crop")
         ]
