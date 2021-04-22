@@ -17,7 +17,6 @@ import ApiUtils exposing (thumbnailFromMxc)
 import DateFormat
 import Dict exposing (Dict)
 import Duration
-import Html exposing (span)
 import Html.Attributes exposing (class, datetime, href, src, title)
 import Http
 import Json.Decode as JD
@@ -255,7 +254,11 @@ timeSinceText now then_ =
         ( unitname, unitfun ) =
             biggestUnitGreaterThanOne allTimeUnits
     in
-    (String.fromInt <| floor <| unitfun diff) ++ " " ++ unitname ++ " ago"
+    if Duration.inSeconds diff > 0 then
+        (String.fromInt <| floor <| unitfun diff) ++ " " ++ unitname ++ " ago"
+
+    else
+        "just now"
 
 
 formatTimeAsUtcString : Time.Posix -> String

@@ -22,6 +22,10 @@ testTimeSinceText =
             \_ ->
                 timeSinceText (Time.millisToPosix 257126400000) (Time.millisToPosix 1000)
                     |> Expect.equal "8 years ago"
+        , test "just now" <|
+            \_ ->
+                timeSinceText (Time.millisToPosix 0) (Time.millisToPosix 100)
+                    |> Expect.equal "just now"
         ]
 
 
