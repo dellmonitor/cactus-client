@@ -17,7 +17,6 @@ import DateFormat
 import Dict exposing (Dict)
 import Duration
 import Html.Attributes exposing (class, datetime, href, src, title)
-import Http
 import Json.Decode as JD
 import Maybe.Extra
 import Member exposing (Member)
@@ -26,10 +25,7 @@ import Message.File exposing (FileData, decodeFile, viewFile)
 import Message.FormattedText exposing (FormattedText(..), decodeFormattedText, viewFormattedText)
 import Message.Image exposing (ImageData, decodeImage, viewImage)
 import Message.Video exposing (VideoData, decodeVideo, viewVideo)
-import Session exposing (Session, authenticatedRequest)
-import Task exposing (Task)
 import Time
-import Url.Builder
 
 
 type RoomEvent

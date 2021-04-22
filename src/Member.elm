@@ -1,10 +1,7 @@
 module Member exposing (Member, decodeMemberResponse)
 
 import Dict exposing (Dict)
-import Http
 import Json.Decode as JD
-import Session exposing (Session, authenticatedRequest)
-import Task exposing (Task)
 
 
 type alias Member =
