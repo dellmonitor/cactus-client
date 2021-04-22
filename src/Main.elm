@@ -4,10 +4,12 @@ import Accessibility exposing (Html, b, button, div, p, text)
 import Accessibility.Aria exposing (errorMessage)
 import ApiUtils exposing (makeRoomAlias)
 import Browser
+import Duration exposing (Duration)
 import Editor exposing (viewEditor)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Json.Decode as JD
+import Json.Decode.Pipeline exposing (optional, required)
 import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
 import Message exposing (GetMessagesResponse, Message(..))
 import Room
@@ -46,7 +48,7 @@ main =
         { init = init
         , update = update
         , view = view
-        , subscriptions = \_ -> Time.every 5000 Tick
+        , subscriptions = subscriptions
         }
 
 
@@ -63,6 +65,24 @@ type Model
         , errors : List Error
         , now : Time.Posix
         }
+
+
+subscriptions : Model -> Sub Msg
+subscriptions m =
+    case m of
+        GoodConfig model ->
+            let
+                updatems =
+                    Duration.inMilliseconds model.config.updateInterval
+            in
+            if updatems > 0 then
+                Time.every updatems Tick
+
+            else
+                Sub.none
+
+        _ ->
+            Sub.none
 
 
 init : JD.Value -> ( Model, Cmd Msg )
@@ -171,8 +191,17 @@ update msg model_ =
             Tuple.mapFirst GoodConfig <|
                 case msg of
                     Tick now ->
-                        ( { model | now = now }
-                        , Cmd.none
+                        ( -- update time
+                          { model | now = now }
+                          -- get more messages on each tick
+                        , Maybe.map2
+                            (\s r ->
+                                getNewerMessages s r
+                                    |> Task.attempt (GotMessages s Newer)
+                            )
+                            model.session
+                            model.room
+                            |> Maybe.withDefault Cmd.none
                         )
 
                     CloseError id ->
@@ -349,6 +378,7 @@ type alias Flags =
     , pageSize : Maybe Int
     , loginEnabled : Maybe Bool
     , guestPostingEnabled : Maybe Bool
+    , updateInterval : Maybe Float
     }
 
 
@@ -358,6 +388,7 @@ type alias StaticConfig =
     , pageSize : Int
     , loginEnabled : Bool
     , guestPostingEnabled : Bool
+    , updateInterval : Duration
     }
 
 
@@ -369,21 +400,23 @@ parseFlags flags =
         (flags.pageSize |> Maybe.withDefault 10)
         (flags.loginEnabled |> Maybe.withDefault True)
         (flags.guestPostingEnabled |> Maybe.withDefault True)
+        (flags.updateInterval |> Maybe.withDefault 0 |> Duration.seconds)
     , flags.storedSession
     )
 
 
 decodeFlags : JD.Decoder Flags
 decodeFlags =
-    JD.map8 Flags
-        (JD.field "defaultHomeserverUrl" JD.string)
-        (JD.field "serverName" JD.string)
-        (JD.field "siteName" JD.string)
-        (JD.field "commentSectionId" decodeCommentSectionId)
-        (JD.field "storedSession" <| JD.nullable decodeStoredSession)
-        (JD.maybe <| JD.field "pageSize" JD.int)
-        (JD.maybe <| JD.field "loginEnabled" JD.bool)
-        (JD.maybe <| JD.field "guestPostingEnabled" JD.bool)
+    JD.succeed Flags
+        |> required "defaultHomeserverUrl" JD.string
+        |> required "serverName" JD.string
+        |> required "siteName" JD.string
+        |> required "commentSectionId" decodeCommentSectionId
+        |> optional "storedSession" (JD.nullable decodeStoredSession) Nothing
+        |> optional "pageSize" (JD.map Just JD.int) Nothing
+        |> optional "loginEnabled" (JD.map Just JD.bool) Nothing
+        |> optional "guestPostingEnabled" (JD.map Just JD.bool) Nothing
+        |> optional "updateInterval" (JD.map Just JD.float) Nothing
 
 
 decodeCommentSectionId : JD.Decoder String

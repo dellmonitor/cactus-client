@@ -1,5 +1,6 @@
 module TestConfig exposing (..)
 
+import Duration
 import Expect exposing (Expectation)
 import Json.Decode as JD
 import Main exposing (..)
@@ -43,6 +44,7 @@ testDecodeMinimalConfig =
                                     , pageSize = 10
                                     , loginEnabled = True
                                     , guestPostingEnabled = True
+                                    , updateInterval = Duration.seconds 0
                                     }
                             ]
                             ( conf, sess )
@@ -61,6 +63,7 @@ completeValidJson =
         "pageSize": 2,
         "loginEnabled": false,
         "guestPostingEnabled": false,
+        "updateInterval": 500,
         "storedSession": {
           "homeserverUrl": "https://example.com:8448",
           "kind": "guest",
@@ -95,6 +98,7 @@ testDecodeCompleteConfig =
                                     , pageSize = 2
                                     , loginEnabled = False
                                     , guestPostingEnabled = False
+                                    , updateInterval = Duration.seconds 500.0
                                     }
                             ]
                             ( conf, sess )
