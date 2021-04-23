@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.0
+
+- Make comment time a semantic `time` element (Thanks to @hectorjsmith for !4).
+- Add hover text to comment time (Thanks to @hectorjsmith for !4).
+- Show "just now" instead of negative seconds if message timestamp is ahead of the client's time
+- Add ability fetch new messages periodically
+- New config option: `updateInterval`, which controls how often to fetch new messages.
+- Change thumbnail size from 32x32 to 64x64.
+- Stylesheet: allow linebreaks in comments.
+
 ## 0.7.0
 
 - New configuration option: `loginEnabled` changes the login button to be a matrix.to link, if set to false (default is true).
