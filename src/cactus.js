@@ -20,4 +20,11 @@ function initComments(config) {
   app.ports.storeSession.subscribe(s => localStorage.setItem("cactus-session", s));
 }
 
+// Allow specifying config using data-* attributes on the script tag
+if ("node" in document.currentScript?.dataset) {
+  var config = Object.assign({}, document.currentScript.dataset);
+  config["node"] = document.querySelector(config["node"]);
+  initComments(config);
+}
+
 window.initComments = initComments;
