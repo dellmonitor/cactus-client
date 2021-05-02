@@ -5,7 +5,7 @@ import Accessibility.Aria exposing (errorMessage)
 import ApiUtils exposing (makeRoomAlias)
 import Browser
 import Duration exposing (Duration)
-import Editor exposing (viewEditor)
+import Editor exposing (Editor, setContent, viewEditor)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Json.Decode as JD
@@ -56,7 +56,7 @@ type Model
     = BadConfig String
     | GoodConfig
         { config : StaticConfig
-        , editorContent : String
+        , editor : Editor
         , session : Maybe Session
         , room : Maybe Room
         , loginForm : Maybe LoginForm
@@ -98,7 +98,7 @@ init flags =
         Ok ( config, session ) ->
             ( GoodConfig
                 { config = config
-                , editorContent = ""
+                , editor = { displayname = "Anonymous", comment = "" }
                 , session = session
                 , room = Nothing
                 , loginForm = Nothing
@@ -281,7 +281,7 @@ update msg model_ =
 
                     EditComment str ->
                         -- user changes text in comment box
-                        ( { model | editorContent = str }
+                        ( { model | editor = setContent model.editor str }
                         , Cmd.none
                         )
 
@@ -289,10 +289,10 @@ update msg model_ =
                         -- user hit send button
                         let
                             ( sendTask, newSession ) =
-                                sendComment session roomId model.editorContent
+                                sendComment session roomId model.editor.comment
                         in
                         ( { model
-                            | editorContent = ""
+                            | editor = setContent model.editor ""
                             , session = Just newSession
                           }
                         , Cmd.batch
@@ -504,13 +504,13 @@ view model_ =
 
                 editor =
                     viewEditor
-                        { showLoginMsg = ShowLogin
+                        { session = model.session
+                        , editor = model.editor
+                        , showLoginMsg = ShowLogin
                         , logoutMsg = LogOut
                         , editMsg = EditComment
                         , sendMsg = Maybe.map2 SendComment model.session <| Maybe.map extractRoomId model.room
-                        , session = model.session
                         , roomAlias = model.config.roomAlias
-                        , editorContent = model.editorContent
                         , loginEnabled = model.config.loginEnabled
                         , guestPostingEnabled = model.config.guestPostingEnabled
                         }

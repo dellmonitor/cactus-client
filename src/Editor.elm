@@ -1,6 +1,6 @@
-module Editor exposing (viewEditor)
+module Editor exposing (Editor, setContent, viewEditor)
 
-import Accessibility exposing (Html, a, button, div, labelHidden, text, textarea)
+import Accessibility exposing (Html, a, button, div, inputText, labelHidden, text, textarea)
 import ApiUtils exposing (matrixDotToUrl)
 import Html.Attributes exposing (class, disabled, href, placeholder, value)
 import Html.Events exposing (onClick, onInput)
@@ -13,19 +13,30 @@ import Session exposing (Kind(..), Session, getUserId, isUser)
 -}
 
 
+type alias Editor =
+    { comment : String
+    , displayname : String
+    }
+
+
+setContent : Editor -> String -> Editor
+setContent editor content =
+    { editor | comment = content }
+
+
 viewEditor :
-    { showLoginMsg : msg
+    { session : Maybe Session
+    , editor : Editor
+    , showLoginMsg : msg
     , logoutMsg : msg
     , editMsg : String -> msg
     , sendMsg : Maybe msg
-    , session : Maybe Session
     , roomAlias : String
-    , editorContent : String
     , loginEnabled : Bool
     , guestPostingEnabled : Bool
     }
     -> Html msg
-viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, editorContent, loginEnabled, guestPostingEnabled } =
+viewEditor { session, editor, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, loginEnabled, guestPostingEnabled } =
     let
         commentEditor enabled =
             labelHidden
@@ -34,7 +45,7 @@ viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, edit
                 (text "Comment Editor")
                 (textarea
                     [ class "cactus-editor-textarea"
-                    , value editorContent
+                    , value editor.comment
                     , onInput editMsg
                     , placeholder "Add a comment"
                     , disabled <| not enabled
@@ -43,14 +54,36 @@ viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, edit
                 )
 
         sendButton =
-            viewSendButton sendMsg session editorContent
+            viewSendButton sendMsg session editor.comment
 
         loginButton =
-            loginOrLogoutButton
-                { loginMsg = showLoginMsg
-                , logoutMsg = logoutMsg
-                , session = session
-                }
+            if loginEnabled then
+                loginOrLogoutButton
+                    { loginMsg = showLoginMsg
+                    , logoutMsg = logoutMsg
+                    , session = session
+                    }
+
+            else
+                a
+                    [ href <| matrixDotToUrl roomAlias ]
+                    [ button [ class "cactus-button" ] [ text "Log in" ] ]
+
+        buttonDiv =
+            div [ class "cactus-editor-buttons" ] [ loginButton, sendButton ]
+
+        displaynameInput =
+            if Maybe.map (isUser >> not) session |> Maybe.withDefault True then
+                div [ class "cactus-editor-username" ] <|
+                    [ labelHidden
+                        "Username"
+                        []
+                        (text "Username")
+                        (inputText editor.displayname [])
+                    ]
+
+            else
+                text ""
     in
     div [ class "cactus-editor" ] <|
         case ( loginEnabled, guestPostingEnabled ) of
@@ -59,34 +92,27 @@ viewEditor { session, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, edit
                 [ commentEditor True
                 , div
                     [ class "cactus-editor-below" ]
-                    [ loginButton, sendButton ]
+                    [ displaynameInput, buttonDiv ]
                 ]
 
             ( True, False ) ->
-                -- disable guest posting
+                -- disable guest posting, also disables username field
                 [ commentEditor <| (Maybe.map isUser session |> Maybe.withDefault False)
                 , div
                     [ class "cactus-editor-below" ]
-                    [ loginButton, sendButton ]
+                    [ buttonDiv ]
                 ]
 
             ( False, True ) ->
-                -- replace login button with matrix.to button
+                -- disable login (replace login button with matrix.to button)
                 [ commentEditor True
                 , div
                     [ class "cactus-editor-below" ]
-                    [ a
-                        [ href <| matrixDotToUrl roomAlias ]
-                        [ button
-                            [ class "cactus-button" ]
-                            [ text "Log in" ]
-                        ]
-                    , sendButton
-                    ]
+                    [ displaynameInput, buttonDiv ]
                 ]
 
             ( False, False ) ->
-                -- only show matrix.to button
+                -- no posting. only show matrix.to button
                 [ a
                     [ href <| matrixDotToUrl roomAlias ]
                     [ button
@@ -133,13 +159,13 @@ loginOrLogoutButton { loginMsg, logoutMsg, session } =
 
 
 viewSendButton : Maybe msg -> Maybe Session -> String -> Html msg
-viewSendButton msg auth editorContent =
+viewSendButton msg session editorContent =
     let
         -- button is disabled if there is no session
         -- or if editor is empty
         isDisabled : Bool
         isDisabled =
-            (auth == Nothing) || (String.length editorContent == 0)
+            (session == Nothing) || (String.length editorContent == 0)
 
         attrs =
             [ class "cactus-button"
@@ -153,12 +179,13 @@ viewSendButton msg auth editorContent =
                    )
 
         postButtonString =
-            case auth of
-                Nothing ->
-                    -- greyed out, since it is disabled
-                    "Post"
+            case ( Maybe.map isUser session, Maybe.map getUserId session ) of
+                ( Just True, Just userid ) ->
+                    -- when signed in: show matrix user id on button
+                    "Post as " ++ userid
 
-                Just session ->
-                    "Post as " ++ getUserId session
+                _ ->
+                    -- when unauthenticated or guest
+                    "Post"
     in
     button attrs [ text postButtonString ]
