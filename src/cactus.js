@@ -21,10 +21,11 @@ function initComments(config) {
 }
 
 // Allow specifying config using data-* attributes on the script tag
-if ("node" in document.currentScript?.dataset) {
-  var config = Object.assign({}, document.currentScript.dataset);
-  config["node"] = document.querySelector(config["node"]);
-  initComments(config);
+// The script tag will be replaced by Cactus Comments div
+if (document.currentScript?.dataset) {
+  initComments(Object.assign({
+    node: document.currentScript
+  }, document.currentScript.dataset));
 }
 
 window.initComments = initComments;
