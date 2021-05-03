@@ -21,8 +21,8 @@ function initComments(config) {
 }
 
 // Allow specifying config using data-* attributes on the script tag
-// The script tag will be replaced by Cactus Comments div
-if (document.currentScript?.dataset) {
+// The script tag will be replaced by Cactus Comments box
+if (document.currentScript?.dataset?.defaultHomeserverUrl) {
   initComments(Object.assign({
     node: document.currentScript
   }, document.currentScript.dataset));
