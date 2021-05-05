@@ -18,12 +18,23 @@ module Room exposing
 
 import Accessibility exposing (Html, div)
 import Dict exposing (Dict)
+import Event exposing (GetMessagesResponse, RoomEvent(..), decodePaginatedEvents, messageEvents)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
-import Member exposing (Member, decodeMemberResponse)
-import Message exposing (GetMessagesResponse, RoomEvent(..), decodeMessages, messageEvents, viewMessageEvent)
-import Session exposing (Kind(..), Session, authenticatedRequest, incrementTransactionId, registerGuest, sessionKind, transactionId)
+import Member exposing (MemberData, decodeMember)
+import Message exposing (decodeMessage, viewMessageEvent)
+import Session
+    exposing
+        ( Kind(..)
+        , Session
+        , authenticatedRequest
+        , getUserId
+        , incrementTransactionId
+        , registerGuest
+        , sessionKind
+        , transactionId
+        )
 import Task exposing (Task)
 import Time
 import Url.Builder
@@ -36,7 +47,7 @@ type Room
         , events : List RoomEvent
         , start : String
         , end : String
-        , members : Dict String Member
+        , members : Dict String MemberData
         }
 
 
@@ -187,7 +198,7 @@ getInitialSync session (RoomId roomId) =
         { method = "GET"
         , path = [ "rooms", roomId, "initialSync" ]
         , params = []
-        , responseDecoder = JD.field "messages" decodeMessages
+        , responseDecoder = JD.field "messages" decodePaginatedEvents
         , body = Http.emptyBody
         }
 
@@ -199,7 +210,16 @@ viewRoomEvents : String -> Room -> Int -> Time.Posix -> Html msg
 viewRoomEvents homeserverUrl (Room room) count now =
     div [] <|
         List.map
-            (viewMessageEvent homeserverUrl now room.members)
+            (\e ->
+                viewMessageEvent
+                    homeserverUrl
+                    now
+                    e.originServerTs
+                    e.sender
+                    -- TODO: Maybe Member from room state events
+                    Nothing
+                    e.content
+            )
             (messageEvents room.events |> List.take count)
 
 
@@ -228,7 +248,7 @@ getMessages session (RoomId roomId) dir from =
                     Newer ->
                         "f"
             ]
-        , responseDecoder = decodeMessages
+        , responseDecoder = decodePaginatedEvents
         , body = Http.emptyBody
         }
 
@@ -312,7 +332,7 @@ sendMessage session (RoomId roomId) comment =
         }
 
 
-getJoinedMembers : Session -> RoomId -> Task Session.Error (Dict String Member)
+getJoinedMembers : Session -> RoomId -> Task Session.Error (Dict String MemberData)
 getJoinedMembers session (RoomId roomId) =
     authenticatedRequest
         session
@@ -322,3 +342,18 @@ getJoinedMembers session (RoomId roomId) =
         , responseDecoder = decodeMemberResponse
         , body = Http.emptyBody
         }
+
+
+decodeMemberEvent : JD.Decoder ( String, MemberData )
+decodeMemberEvent =
+    JD.map2 (\s m -> ( s, m ))
+        (JD.field "state_key" JD.string)
+        (JD.field "content" decodeMember)
+
+
+decodeMemberResponse : JD.Decoder (Dict String MemberData)
+decodeMemberResponse =
+    JD.field "chunk"
+        (JD.list decodeMemberEvent
+            |> JD.andThen (Dict.fromList >> JD.succeed)
+        )

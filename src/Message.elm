@@ -1,12 +1,8 @@
 module Message exposing
-    ( Event
-    , GetMessagesResponse
-    , Message(..)
-    , RoomEvent(..)
-    , decodeMessages
+    ( Message(..)
+    , decodeMessage
     , formatTimeAsIsoUtcString
     , formatTimeAsUtcString
-    , messageEvents
     , timeSinceText
     , viewMessageEvent
     )
@@ -19,31 +15,13 @@ import Duration
 import Html.Attributes exposing (class, datetime, href, src, title)
 import Json.Decode as JD
 import Maybe.Extra
-import Member exposing (Member)
+import Member exposing (MemberData)
 import Message.Audio exposing (AudioData, decodeAudio, viewAudio)
 import Message.File exposing (FileData, decodeFile, viewFile)
 import Message.FormattedText exposing (FormattedText(..), decodeFormattedText, viewFormattedText)
 import Message.Image exposing (ImageData, decodeImage, viewImage)
 import Message.Video exposing (VideoData, decodeVideo, viewVideo)
 import Time
-
-
-type RoomEvent
-    = MessageEvent (Event Message)
-    | StateEvent (Event State)
-    | UnsupportedEvent (Event ())
-
-
-type alias Event a =
-    { eventType : String
-    , content : a
-    , sender : String
-    , originServerTs : Time.Posix
-    }
-
-
-type State
-    = Created String
 
 
 type Message
@@ -56,103 +34,6 @@ type Message
     | Audio AudioData
     | Location
     | UnsupportedMessageType
-
-
-messageEvents : List RoomEvent -> List (Event Message)
-messageEvents roomEvents =
-    -- filter room events for message events
-    List.foldl
-        (\roomEvent msgs ->
-            case roomEvent of
-                MessageEvent msg ->
-                    msg :: msgs
-
-                _ ->
-                    msgs
-        )
-        []
-        roomEvents
-
-
-type alias GetMessagesResponse =
-    { start : String
-    , end : String
-    , chunk : List RoomEvent
-    }
-
-
-decodeMessages : JD.Decoder { start : String, end : String, chunk : List RoomEvent }
-decodeMessages =
-    JD.map3
-        (\start end chunk -> { start = start, end = end, chunk = chunk })
-        (JD.field "start" JD.string)
-        (JD.field "end" JD.string)
-        (JD.field "chunk" <| JD.list decodeRoomEvent)
-
-
-decodeRoomEvent : JD.Decoder RoomEvent
-decodeRoomEvent =
-    let
-        makeRoomEvent : (String -> a -> String -> Time.Posix -> RoomEvent) -> JD.Decoder a -> JD.Decoder RoomEvent
-        makeRoomEvent constructor contentDecoder =
-            JD.map4
-                constructor
-                (JD.field "type" JD.string)
-                (JD.field "content" contentDecoder)
-                (JD.field "sender" JD.string)
-                (JD.field "origin_server_ts" JD.int |> JD.map Time.millisToPosix)
-    in
-    JD.oneOf
-        [ -- switch on room event type,
-          JD.field "type" JD.string
-            |> JD.andThen
-                (\eventType ->
-                    case eventType of
-                        "m.room.message" ->
-                            makeRoomEvent
-                                (\t msg s ots ->
-                                    MessageEvent
-                                        { eventType = t
-                                        , content = msg
-                                        , sender = s
-                                        , originServerTs = ots
-                                        }
-                                )
-                                decodeMessage
-
-                        "m.room.create" ->
-                            makeRoomEvent
-                                (\t msg s ots ->
-                                    StateEvent
-                                        { eventType = t
-                                        , content = msg
-                                        , sender = s
-                                        , originServerTs = ots
-                                        }
-                                )
-                                decodeCreate
-
-                        _ ->
-                            JD.fail ("Unsupported event type: " ++ eventType)
-                )
-
-        -- on failure: return unsupported event
-        , makeRoomEvent
-            (\t msg s ots ->
-                UnsupportedEvent
-                    { eventType = t
-                    , content = msg
-                    , sender = s
-                    , originServerTs = ots
-                    }
-            )
-            (JD.succeed ())
-        ]
-
-
-decodeCreate : JD.Decoder State
-decodeCreate =
-    JD.map Created <| JD.field "creator" JD.string
 
 
 decodeMessage : JD.Decoder Message
@@ -291,42 +172,38 @@ formatTimeAsIsoUtcString time =
     timeFormatter Time.utc time
 
 
-viewMessageEvent : String -> Time.Posix -> Dict String Member -> Event Message -> Html msg
-viewMessageEvent defaultHomeserverUrl time members messageEvent =
+viewMessageEvent : String -> Time.Posix -> Time.Posix -> String -> Maybe MemberData -> Message -> Html msg
+viewMessageEvent defaultHomeserverUrl now messageTime senderId sender message =
     let
-        member : Maybe Member
-        member =
-            Dict.get messageEvent.sender members
-
         displayname : String
         displayname =
-            member
-                |> Maybe.map (\m -> Maybe.withDefault messageEvent.sender m.displayname)
-                |> Maybe.withDefault messageEvent.sender
+            sender
+                |> Maybe.map (\m -> Maybe.withDefault senderId m.displayname)
+                |> Maybe.withDefault senderId
 
         matrixDotToUrl : String
         matrixDotToUrl =
-            "https://matrix.to/#/" ++ messageEvent.sender
+            "https://matrix.to/#/" ++ senderId
 
         timeStr : String
         timeStr =
-            timeSinceText time messageEvent.originServerTs
+            timeSinceText now messageTime
 
         timeUtc : String
         timeUtc =
-            formatTimeAsUtcString messageEvent.originServerTs
+            formatTimeAsUtcString messageTime
 
         timeUtcIso : String
         timeUtcIso =
-            formatTimeAsIsoUtcString messageEvent.originServerTs
+            formatTimeAsIsoUtcString messageTime
 
         body : Html msg
         body =
-            viewMessage defaultHomeserverUrl displayname messageEvent.content
+            viewMessage defaultHomeserverUrl displayname message
     in
     div [ class "cactus-comment" ]
         [ -- avatar image
-          viewAvatar defaultHomeserverUrl member
+          viewAvatar defaultHomeserverUrl sender
         , div [ class "cactus-comment-content" ]
             -- name and time
             [ div [ class "cactus-comment-header" ]
@@ -343,7 +220,7 @@ viewMessageEvent defaultHomeserverUrl time members messageEvent =
         ]
 
 
-viewAvatar : String -> Maybe Member -> Html msg
+viewAvatar : String -> Maybe MemberData -> Html msg
 viewAvatar homeserverUrl member =
     let
         avatarUrl : Maybe String

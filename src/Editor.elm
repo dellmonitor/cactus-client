@@ -1,4 +1,4 @@
-module Editor exposing (Editor, setContent, viewEditor)
+module Editor exposing (Editor, setContent, setName, viewEditor)
 
 import Accessibility exposing (Html, a, button, div, inputText, labelHidden, text, textarea)
 import ApiUtils exposing (matrixDotToUrl)
@@ -24,6 +24,11 @@ setContent editor content =
     { editor | comment = content }
 
 
+setName : Editor -> String -> Editor
+setName editor name =
+    { editor | displayname = name }
+
+
 viewEditor :
     { session : Maybe Session
     , editor : Editor
@@ -31,12 +36,13 @@ viewEditor :
     , logoutMsg : msg
     , editMsg : String -> msg
     , sendMsg : Maybe msg
+    , nameMsg : String -> msg
     , roomAlias : String
     , loginEnabled : Bool
     , guestPostingEnabled : Bool
     }
     -> Html msg
-viewEditor { session, editor, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAlias, loginEnabled, guestPostingEnabled } =
+viewEditor { session, editor, showLoginMsg, logoutMsg, editMsg, sendMsg, nameMsg, roomAlias, loginEnabled, guestPostingEnabled } =
     let
         commentEditor enabled =
             labelHidden
@@ -76,10 +82,14 @@ viewEditor { session, editor, showLoginMsg, logoutMsg, editMsg, sendMsg, roomAli
             if Maybe.map (isUser >> not) session |> Maybe.withDefault True then
                 div [ class "cactus-editor-username" ] <|
                     [ labelHidden
-                        "Username"
+                        "Name"
                         []
-                        (text "Username")
-                        (inputText editor.displayname [])
+                        (text "Name")
+                        (inputText editor.displayname
+                            [ placeholder "Name"
+                            , onInput nameMsg
+                            ]
+                        )
                     ]
 
             else

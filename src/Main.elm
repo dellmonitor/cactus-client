@@ -5,13 +5,15 @@ import Accessibility.Aria exposing (errorMessage)
 import ApiUtils exposing (makeRoomAlias)
 import Browser
 import Duration exposing (Duration)
-import Editor exposing (Editor, setContent, viewEditor)
+import Editor exposing (Editor, setContent, setName, viewEditor)
+import Event exposing (GetMessagesResponse)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Json.Decode as JD
 import Json.Decode.Pipeline exposing (optional, required)
 import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
-import Message exposing (GetMessagesResponse, Message(..))
+import Member exposing (setDisplayname)
+import Message exposing (Message(..))
 import Room
     exposing
         ( Direction(..)
@@ -98,7 +100,7 @@ init flags =
         Ok ( config, session ) ->
             ( GoodConfig
                 { config = config
-                , editor = { displayname = "Anonymous", comment = "" }
+                , editor = { displayname = "", comment = "" }
                 , session = session
                 , room = Nothing
                 , loginForm = Nothing
@@ -161,6 +163,7 @@ type Msg
     | GotMessages Session Direction (Result Session.Error GetMessagesResponse)
       -- Editor
     | EditComment String
+    | EditName String
     | SendComment Session RoomId
     | SentComment Session (Result Session.Error ())
       -- Login
@@ -285,6 +288,12 @@ update msg model_ =
                         , Cmd.none
                         )
 
+                    EditName str ->
+                        -- user changes text in comment box
+                        ( { model | editor = setName model.editor str }
+                        , Cmd.none
+                        )
+
                     SendComment session roomId ->
                         -- user hit send button
                         let
@@ -297,7 +306,22 @@ update msg model_ =
                           }
                         , Cmd.batch
                             [ -- send message
-                              Task.attempt (SentComment session) sendTask
+                              Task.attempt (SentComment session) <|
+                                case sessionKind session of
+                                    User ->
+                                        sendTask
+
+                                    Guest ->
+                                        let
+                                            displayname =
+                                                if model.editor.displayname == "" then
+                                                    "Anonymous"
+
+                                                else
+                                                    model.editor.displayname
+                                        in
+                                        setDisplayname session model.editor.displayname
+                                            |> Task.andThen (\() -> sendTask)
 
                             -- store session with updated txnId
                             , storeSessionCmd newSession
@@ -509,6 +533,7 @@ view model_ =
                         , showLoginMsg = ShowLogin
                         , logoutMsg = LogOut
                         , editMsg = EditComment
+                        , nameMsg = EditName
                         , sendMsg = Maybe.map2 SendComment model.session <| Maybe.map extractRoomId model.room
                         , roomAlias = model.config.roomAlias
                         , loginEnabled = model.config.loginEnabled
