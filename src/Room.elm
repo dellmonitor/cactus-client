@@ -18,7 +18,7 @@ module Room exposing
 
 import Accessibility exposing (Html, div)
 import Dict exposing (Dict)
-import Event exposing (GetMessagesResponse, RoomEvent(..), decodePaginatedEvents, messageEvents)
+import Event exposing (GetMessagesResponse, RoomEvent(..), decodePaginatedEvents, latestMemberDataBefore, messageEvents)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
@@ -97,8 +97,8 @@ sortByTime events =
                     MessageEvent msgEvent ->
                         .originServerTs msgEvent |> Time.posixToMillis
 
-                    StateEvent stEvent ->
-                        .originServerTs stEvent |> Time.posixToMillis
+                    MemberEvent _ mEvent ->
+                        .originServerTs mEvent |> Time.posixToMillis
 
                     UnsupportedEvent uEvt ->
                         .originServerTs uEvt |> Time.posixToMillis
@@ -211,13 +211,19 @@ viewRoomEvents homeserverUrl (Room room) count now =
     div [] <|
         List.map
             (\e ->
+                let
+                    member : Maybe MemberData
+                    member =
+                        latestMemberDataBefore room.events e.originServerTs e.sender
+                            |> Maybe.map Just
+                            |> Maybe.withDefault (Dict.get e.sender room.members)
+                in
                 viewMessageEvent
                     homeserverUrl
                     now
                     e.originServerTs
                     e.sender
-                    -- TODO: Maybe Member from room state events
-                    Nothing
+                    member
                     e.content
             )
             (messageEvents room.events |> List.take count)

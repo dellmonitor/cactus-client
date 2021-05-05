@@ -1,4 +1,4 @@
-module Event exposing (Event, GetMessagesResponse, RoomEvent(..), decodePaginatedEvents, messageEvents)
+module Event exposing (Event, GetMessagesResponse, RoomEvent(..), decodePaginatedEvents, latestMemberDataBefore, messageEvents)
 
 import Json.Decode as JD
 import Member exposing (MemberData, decodeMember)
@@ -8,7 +8,7 @@ import Time
 
 type RoomEvent
     = MessageEvent (Event Message)
-    | StateEvent (Event State)
+    | MemberEvent String (Event MemberData)
     | UnsupportedEvent (Event ())
 
 
@@ -18,10 +18,6 @@ type alias Event a =
     , sender : String
     , originServerTs : Time.Posix
     }
-
-
-type State
-    = Member String MemberData
 
 
 type alias GetMessagesResponse =
@@ -47,20 +43,40 @@ messageEvents roomEvents =
         roomEvents
 
 
-stateEvents : List RoomEvent -> List (Event State)
-stateEvents roomEvents =
+memberEvents : List RoomEvent -> List ( String, Event MemberData )
+memberEvents roomEvents =
     -- filter room events for state events
     List.foldl
         (\roomEvent xs ->
             case roomEvent of
-                StateEvent x ->
-                    x :: xs
+                MemberEvent uid data ->
+                    ( uid, data ) :: xs
 
                 _ ->
                     xs
         )
         []
         roomEvents
+
+
+{-| Get the latest event with `MemberData` that is before a given timestamp.
+-}
+latestMemberDataBefore : List RoomEvent -> Time.Posix -> String -> Maybe MemberData
+latestMemberDataBefore events time userid =
+    events
+        |> memberEvents
+        -- must match userid
+        |> List.filter (Tuple.first >> (==) userid)
+        -- no longer need userid
+        |> List.map Tuple.second
+        -- must be before `time`
+        |> List.filter (\e -> Time.posixToMillis e.originServerTs <= Time.posixToMillis time)
+        -- sort by reversed timestamp
+        |> List.sortBy (.originServerTs >> Time.posixToMillis >> (*) -1)
+        -- get top result
+        |> List.head
+        -- only member data
+        |> Maybe.map .content
 
 
 decodePaginatedEvents : JD.Decoder { start : String, end : String, chunk : List RoomEvent }
@@ -108,9 +124,9 @@ decodeRoomEvent =
                                     (\uid ->
                                         makeRoomEvent
                                             (\t mdata s ots ->
-                                                StateEvent
+                                                MemberEvent uid
                                                     { eventType = t
-                                                    , content = Member uid mdata
+                                                    , content = mdata
                                                     , sender = s
                                                     , originServerTs = ots
                                                     }
