@@ -429,6 +429,43 @@ parseFlags flags =
     )
 
 
+decodeIntOrStr : JD.Decoder (Maybe Int)
+decodeIntOrStr =
+    JD.oneOf
+        [ JD.int |> JD.map Just
+        , JD.string |> JD.map String.toInt
+        ]
+
+
+decodeFloatOrStr : JD.Decoder (Maybe Float)
+decodeFloatOrStr =
+    JD.oneOf
+        [ JD.float |> JD.map Just
+        , JD.string |> JD.map String.toFloat
+        ]
+
+
+decodeBoolOrStr : JD.Decoder (Maybe Bool)
+decodeBoolOrStr =
+    JD.oneOf
+        [ JD.bool |> JD.map Just
+        , JD.string
+            |> JD.andThen
+                (\x ->
+                    case String.toLower x of
+                        "true" ->
+                            JD.succeed True
+
+                        "false" ->
+                            JD.succeed False
+
+                        _ ->
+                            JD.fail ""
+                )
+            |> JD.map Just
+        ]
+
+
 decodeFlags : JD.Decoder Flags
 decodeFlags =
     JD.succeed Flags
@@ -437,10 +474,10 @@ decodeFlags =
         |> required "siteName" JD.string
         |> required "commentSectionId" decodeCommentSectionId
         |> optional "storedSession" (JD.nullable decodeStoredSession) Nothing
-        |> optional "pageSize" (JD.map Just JD.int) Nothing
-        |> optional "loginEnabled" (JD.map Just JD.bool) Nothing
-        |> optional "guestPostingEnabled" (JD.map Just JD.bool) Nothing
-        |> optional "updateInterval" (JD.map Just JD.float) Nothing
+        |> optional "pageSize" decodeIntOrStr Nothing
+        |> optional "loginEnabled" decodeBoolOrStr Nothing
+        |> optional "guestPostingEnabled" decodeBoolOrStr Nothing
+        |> optional "updateInterval" decodeFloatOrStr Nothing
 
 
 decodeCommentSectionId : JD.Decoder String

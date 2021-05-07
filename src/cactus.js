@@ -9,6 +9,11 @@ function initComments(config) {
   var node = config['node']
   delete config['node']
 
+  // if node is string, use query selector to find dom node
+  if (typeof(node) == "string") {
+    node = document.querySelector(node);
+  }
+
   // make a comments section in DOM element `node`
   // initialize with provided config
   var app = Elm.Main.init({

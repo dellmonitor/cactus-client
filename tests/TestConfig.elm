@@ -75,6 +75,16 @@ completeValidJson =
     """
 
 
+completeValidJsonDecoded =
+    { defaultHomeserverUrl = "https://example.com:8448"
+    , roomAlias = "#comments_anotherblog.example.com_anotherCommentSection:example.com"
+    , pageSize = 2
+    , loginEnabled = False
+    , guestPostingEnabled = False
+    , updateInterval = Duration.seconds 500.0
+    }
+
+
 testDecodeCompleteConfig : Test
 testDecodeCompleteConfig =
     let
@@ -92,14 +102,54 @@ testDecodeCompleteConfig =
                         Expect.all
                             [ \( _, s ) -> Expect.notEqual s Nothing
                             , \( c, _ ) ->
-                                Expect.equal c
-                                    { defaultHomeserverUrl = "https://example.com:8448"
-                                    , roomAlias = "#comments_anotherblog.example.com_anotherCommentSection:example.com"
-                                    , pageSize = 2
-                                    , loginEnabled = False
-                                    , guestPostingEnabled = False
-                                    , updateInterval = Duration.seconds 500.0
-                                    }
+                                Expect.equal c completeValidJsonDecoded
+                            ]
+                            ( conf, sess )
+                    )
+                |> Result.withDefault (Expect.fail "Configuration did not decode")
+
+
+completeValidStringyJson : String
+completeValidStringyJson =
+    """
+      {
+        "defaultHomeserverUrl": "https://example.com:8448",
+        "serverName": "example.com",
+        "siteName": "anotherblog.example.com",
+        "commentSectionId": "anotherCommentSection",
+        "pageSize": "2",
+        "loginEnabled": "false",
+        "guestPostingEnabled": "false",
+        "updateInterval": "500",
+        "storedSession": {
+          "homeserverUrl": "https://example.com:8448",
+          "kind": "guest",
+          "txnId": 0,
+          "userId": "@1234:example.com",
+          "accessToken": "abcdVerySecret"
+        }
+      }
+    """
+
+
+testDecodeCompleteStringyConfig : Test
+testDecodeCompleteStringyConfig =
+    let
+        result : Result JD.Error ( StaticConfig, Maybe Session.Session )
+        result =
+            completeValidStringyJson
+                |> JD.decodeString decodeFlags
+                |> Result.map parseFlags
+    in
+    test "Decode complete configuration JSON with only strings" <|
+        \_ ->
+            result
+                |> Result.map
+                    (\( conf, sess ) ->
+                        Expect.all
+                            [ \( _, s ) -> Expect.notEqual s Nothing
+                            , \( c, _ ) ->
+                                Expect.equal c completeValidJsonDecoded
                             ]
                             ( conf, sess )
                     )
