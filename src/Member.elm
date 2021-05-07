@@ -1,40 +1,75 @@
-module Member exposing (Member, decodeMemberResponse)
+module Member exposing (MemberData, decodeMember, setDisplayname)
 
-import Dict exposing (Dict)
+import Http
 import Json.Decode as JD
+import Json.Encode as JE
+import Session exposing (Session, authenticatedRequest, getUserId)
+import Task exposing (Task)
 
 
-type alias Member =
-    { displayname : Maybe String
+type alias MemberData =
+    { membership : Membership
+    , displayname : Maybe String
     , avatarUrl : Maybe String
-    , userId : String
     }
 
 
-decodeMemberResponse : JD.Decoder (Dict String Member)
-decodeMemberResponse =
-    (JD.field "chunk" <| JD.list decodeMemberEvent)
-        |> JD.andThen
-            (\roomMembers ->
-                roomMembers
-                    |> List.map (\rm -> ( rm.userId, rm ))
-                    |> Dict.fromList
-                    |> JD.succeed
-            )
+type Membership
+    = Invite
+    | Join
+    | Leave
+    | Ban
+    | Knock
 
 
-decodeMemberEvent : JD.Decoder Member
-decodeMemberEvent =
-    (JD.field "content" <| decodeMemberContent)
-        |> JD.andThen
-            (\content ->
-                JD.field "state_key" JD.string
-                    |> JD.andThen (\uid -> JD.succeed <| Member content.displayname content.avatarUrl uid)
-            )
-
-
-decodeMemberContent : JD.Decoder { displayname : Maybe String, avatarUrl : Maybe String }
-decodeMemberContent =
-    JD.map2 (\dn au -> { displayname = dn, avatarUrl = au })
+decodeMember : JD.Decoder MemberData
+decodeMember =
+    JD.map3
+        (\ms dn au ->
+            { membership = ms
+            , displayname = dn
+            , avatarUrl = au
+            }
+        )
+        (JD.field "membership" decodeMembership)
         (JD.maybe <| JD.field "displayname" JD.string)
         (JD.maybe <| JD.field "avatar_url" JD.string)
+
+
+decodeMembership : JD.Decoder Membership
+decodeMembership =
+    JD.string
+        |> JD.andThen
+            (\m ->
+                case m of
+                    "invite" ->
+                        JD.succeed Invite
+
+                    "join" ->
+                        JD.succeed Join
+
+                    "leave" ->
+                        JD.succeed Leave
+
+                    "ban" ->
+                        JD.succeed Ban
+
+                    "knock" ->
+                        JD.succeed Knock
+
+                    _ ->
+                        JD.fail <| "Invalid membership field: " ++ m
+            )
+
+
+{-| Set display name for a user
+-}
+setDisplayname : Session -> String -> Task Session.Error ()
+setDisplayname session displayname =
+    authenticatedRequest session
+        { method = "PUT"
+        , path = [ "profile", getUserId session, "displayname" ]
+        , params = []
+        , responseDecoder = JD.succeed ()
+        , body = Http.jsonBody <| JE.object [ ( "displayname", JE.string displayname ) ]
+        }
