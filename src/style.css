@@ -78,6 +78,7 @@ div.cactus-view-more {
 
 .cactus-editor-name > span > input {
   background-color: inherit;
+  color: inherit;
   width: 100%;
   padding: 0.2em;
   font-size: 1em;
