@@ -320,7 +320,7 @@ update msg model_ =
                                                 else
                                                     model.editor.displayname
                                         in
-                                        setDisplayname session model.editor.displayname
+                                        setDisplayname session displayname
                                             |> Task.andThen (\() -> sendTask)
 
                             -- store session with updated txnId
