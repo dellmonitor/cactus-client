@@ -54,7 +54,7 @@ viewEditorHelper { loginEnabled, guestPostingEnabled, session } =
         , sendMsg = Nothing
         , session = session
         , roomAlias = "#room:alias"
-        , editor = { comment = "Hello, world!", displayname = "Anonymous" }
+        , editor = { comment = "Hello, world!", name = "Anonymous" }
         , loginEnabled = loginEnabled
         , guestPostingEnabled = guestPostingEnabled
         }

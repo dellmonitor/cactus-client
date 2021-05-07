@@ -100,7 +100,7 @@ init flags =
         Ok ( config, session ) ->
             ( GoodConfig
                 { config = config
-                , editor = { displayname = "", comment = "" }
+                , editor = { name = "", comment = "" }
                 , session = session
                 , room = Nothing
                 , loginForm = Nothing
@@ -314,11 +314,11 @@ update msg model_ =
                                     Guest ->
                                         let
                                             displayname =
-                                                if model.editor.displayname == "" then
+                                                if model.editor.name == "" then
                                                     "Anonymous"
 
                                                 else
-                                                    model.editor.displayname
+                                                    model.editor.name
                                         in
                                         setDisplayname session displayname
                                             |> Task.andThen (\() -> sendTask)

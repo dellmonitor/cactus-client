@@ -15,7 +15,7 @@ import Session exposing (Kind(..), Session, getUserId, isUser)
 
 type alias Editor =
     { comment : String
-    , displayname : String
+    , name : String
     }
 
 
@@ -26,7 +26,7 @@ setContent editor content =
 
 setName : Editor -> String -> Editor
 setName editor name =
-    { editor | displayname = name }
+    { editor | name = name }
 
 
 viewEditor :
@@ -78,14 +78,14 @@ viewEditor { session, editor, showLoginMsg, logoutMsg, editMsg, sendMsg, nameMsg
         buttonDiv =
             div [ class "cactus-editor-buttons" ] [ loginButton, sendButton ]
 
-        displaynameInput =
+        nameInput =
             if Maybe.map (isUser >> not) session |> Maybe.withDefault True then
-                div [ class "cactus-editor-username" ] <|
+                div [ class "cactus-editor-name" ] <|
                     [ labelHidden
                         "Name"
                         []
                         (text "Name")
-                        (inputText editor.displayname
+                        (inputText editor.name
                             [ placeholder "Name"
                             , onInput nameMsg
                             ]
@@ -102,7 +102,7 @@ viewEditor { session, editor, showLoginMsg, logoutMsg, editMsg, sendMsg, nameMsg
                 [ commentEditor True
                 , div
                     [ class "cactus-editor-below" ]
-                    [ displaynameInput, buttonDiv ]
+                    [ nameInput, buttonDiv ]
                 ]
 
             ( True, False ) ->
@@ -118,7 +118,7 @@ viewEditor { session, editor, showLoginMsg, logoutMsg, editMsg, sendMsg, nameMsg
                 [ commentEditor True
                 , div
                     [ class "cactus-editor-below" ]
-                    [ displaynameInput, buttonDiv ]
+                    [ nameInput, buttonDiv ]
                 ]
 
             ( False, False ) ->
