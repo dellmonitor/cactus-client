@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0
+
+- Comment sections can now be initialized using `data-*` attributes on the `script` tag (Thanks to @NicolaiSoeborg for !5).
+- Allow using strings for any config parameter, including booleans and numbers.
+- Users can now set a displayname when commenting as a guest.
+- Some styling improvements for text inputs.
+
 ## 0.8.0
 
 - Make comment time a semantic `time` element (Thanks to @hectorjsmith for !4).
