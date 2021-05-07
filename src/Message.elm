@@ -10,7 +10,6 @@ module Message exposing
 import Accessibility exposing (Html, a, div, img, p, text)
 import ApiUtils exposing (thumbnailFromMxc)
 import DateFormat
-import Dict exposing (Dict)
 import Duration
 import Html.Attributes exposing (class, datetime, href, src, title)
 import Json.Decode as JD

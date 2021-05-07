@@ -23,13 +23,12 @@ import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import Member exposing (MemberData, decodeMember)
-import Message exposing (decodeMessage, viewMessageEvent)
+import Message exposing (viewMessageEvent)
 import Session
     exposing
         ( Kind(..)
         , Session
         , authenticatedRequest
-        , getUserId
         , incrementTransactionId
         , registerGuest
         , sessionKind
