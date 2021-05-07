@@ -3,7 +3,6 @@
      and then visit localhost:8080 -->
 <head>
   <link rel="stylesheet" type="text/css" href="../src/style.css"/>
-  <script type="text/javascript" src="../src/cactus.js"></script>
   <style>
     body {
       font-family: "Helvetica", "Arial", sans-serif;
@@ -33,23 +32,37 @@
 </head>
 <body class="light">
   <button onClick="toggleDarkMode()">Toggle Dark Mode</button>
+  <h1>Comments</h1>
+  <div id="my-comments"></div>
 
-  <div>
-    <h1>Comments</h1>
-    <div id="my-comments"></div>
-  </div>
-  <script>
-    initComments({
-      node: document.getElementById("my-comments"),
-      defaultHomeserverUrl: "https://matrix.cactus.chat:8448",
-      serverName: "cactus.chat",
-      siteName: "my-blog",
-      commentSectionId: "example-page", // another id: all-event-types
-      // the fiels below are optional
-      loginEnabled: true,
-      guestPostingEnabled: true,
-      pageSize: 10,
-      updateInterval: 0,
-    })
+  <script type="text/javascript" src="../src/cactus.js"
+          data-node="#my-comments"
+          data-default-homeserver-url="https://matrix.cactus.chat:8448"
+          data-server-name="cactus.chat"
+          data-site-name="my-blog"
+          data-comment-section-id="example-page"
+
+          data-page-size=10
+          data-login-enabled=true
+          data-guest-posting-enabled=true
+          data-update-interval=30.0>
   </script>
+
+  <!-- The element above is equivalent to:
+    <script type="text/javascript" src="../src/cactus.js"></script>
+    <script>
+      initComments({
+        node: "#my-comments",
+        defaultHomeserverUrl: "https://matrix.cactus.chat:8448",
+        serverName: "cactus.chat",
+        siteName: "my-blog",
+        commentSectionId: "example-page", // another id: all-event-types
+
+        pageSize: 10,
+        loginEnabled: true,
+        guestPostingEnabled: true,
+        updateInterval: 30.0,
+      })
+    </script>
+  -->
 </body>
