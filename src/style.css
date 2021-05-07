@@ -51,6 +51,7 @@ div.cactus-view-more {
   height: 10rem;
   background-color: inherit;
   color: inherit;
+  font: inherit;
 }
 
 .cactus-editor-textarea::placeholder {
