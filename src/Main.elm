@@ -1,16 +1,15 @@
-module Main exposing (Flags, StaticConfig, decodeFlags, main, parseFlags)
+module Main exposing (main)
 
 import Accessibility exposing (Html, b, button, div, p, text)
 import Accessibility.Aria exposing (errorMessage)
-import ApiUtils exposing (makeRoomAlias)
 import Browser
+import Config exposing (StaticConfig, parseConfig)
 import Duration exposing (Duration)
-import Editor exposing (Editor, setContent, setName, viewEditor)
+import Editor exposing (Editor)
 import Event exposing (GetMessagesResponse)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Json.Decode as JD
-import Json.Decode.Pipeline exposing (optional, required)
 import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
 import Member exposing (setDisplayname)
 import Message exposing (Message(..))
@@ -92,27 +91,19 @@ init flags =
     let
         parsedFlags : Result JD.Error ( StaticConfig, Maybe Session )
         parsedFlags =
-            flags
-                |> JD.decodeValue decodeFlags
-                |> Result.map parseFlags
+            parseConfig flags
     in
     case parsedFlags of
         Ok ( config, session ) ->
             ( GoodConfig
                 { config = config
-                , editor = { name = "", comment = "" }
+                , editor = Editor.init
                 , session = session
                 , room = Nothing
                 , loginForm = Nothing
                 , showComments = config.pageSize
                 , gotAllComments = False
-                , errors =
-                    case parsedFlags of
-                        Ok _ ->
-                            []
-
-                        Err err ->
-                            [ { id = 0, message = JD.errorToString err } ]
+                , errors = []
                 , now = Time.millisToPosix 0 -- shitty default value
                 }
             , Cmd.batch
@@ -157,19 +148,18 @@ joinIfUser session roomAlias =
 type Msg
     = Tick Time.Posix
     | CloseError Int
+      -- LoginForm
+    | EditLogin LoginForm
+    | ShowLogin
+    | HideLogin
+      -- Editor
+    | EditorMsg Editor.Msg
       -- Message Fetching
     | GotRoom (Result Session.Error ( Session, Room ))
     | ViewMore Session Room
     | GotMessages Session Direction (Result Session.Error GetMessagesResponse)
-      -- Editor
-    | EditComment String
-    | EditName String
     | SendComment Session RoomId
     | SentComment Session (Result Session.Error ())
-      -- Login
-    | ShowLogin
-    | HideLogin
-    | EditLogin LoginForm
     | Login LoginForm
     | LogOut
 
@@ -211,6 +201,9 @@ update msg model_ =
                         ( { model | errors = List.filter (\e -> e.id /= id) model.errors }
                         , Cmd.none
                         )
+
+                    EditorMsg m ->
+                        ( { model | editor = Editor.update m model.editor }, Cmd.none )
 
                     GotRoom (Ok ( session, room )) ->
                         -- got initial room, when loading page first time
@@ -282,26 +275,14 @@ update msg model_ =
                             getOlderMessages session room
                         )
 
-                    EditComment str ->
-                        -- user changes text in comment box
-                        ( { model | editor = setContent model.editor str }
-                        , Cmd.none
-                        )
-
-                    EditName str ->
-                        -- user changes text in comment box
-                        ( { model | editor = setName model.editor str }
-                        , Cmd.none
-                        )
-
                     SendComment session roomId ->
                         -- user hit send button
                         let
                             ( sendTask, newSession ) =
-                                sendComment session roomId model.editor.comment
+                                sendComment session roomId <| Editor.getComment model.editor
                         in
                         ( { model
-                            | editor = setContent model.editor ""
+                            | editor = Editor.clear model.editor
                             , session = Just newSession
                           }
                         , Cmd.batch
@@ -312,15 +293,7 @@ update msg model_ =
                                         sendTask
 
                                     Guest ->
-                                        let
-                                            displayname =
-                                                if model.editor.name == "" then
-                                                    "Anonymous"
-
-                                                else
-                                                    model.editor.name
-                                        in
-                                        setDisplayname session displayname
+                                        setDisplayname session (Editor.getName model.editor)
                                             |> Task.andThen (\() -> sendTask)
 
                             -- store session with updated txnId
@@ -390,118 +363,6 @@ update msg model_ =
 
 
 
--- CONFIG
-
-
-type alias Flags =
-    { defaultHomeserverUrl : String
-    , serverName : String
-    , siteName : String
-    , commentSectionId : String
-    , storedSession : Maybe Session
-    , pageSize : Maybe Int
-    , loginEnabled : Maybe Bool
-    , guestPostingEnabled : Maybe Bool
-    , updateInterval : Maybe Float
-    }
-
-
-type alias StaticConfig =
-    { defaultHomeserverUrl : String
-    , roomAlias : String
-    , pageSize : Int
-    , loginEnabled : Bool
-    , guestPostingEnabled : Bool
-    , updateInterval : Duration
-    }
-
-
-parseFlags : Flags -> ( StaticConfig, Maybe Session )
-parseFlags flags =
-    ( StaticConfig
-        flags.defaultHomeserverUrl
-        (makeRoomAlias flags)
-        (flags.pageSize |> Maybe.withDefault 10)
-        (flags.loginEnabled |> Maybe.withDefault True)
-        (flags.guestPostingEnabled |> Maybe.withDefault True)
-        (flags.updateInterval |> Maybe.withDefault 0 |> Duration.seconds)
-    , flags.storedSession
-    )
-
-
-decodeIntOrStr : JD.Decoder (Maybe Int)
-decodeIntOrStr =
-    JD.oneOf
-        [ JD.int |> JD.map Just
-        , JD.string |> JD.map String.toInt
-        ]
-
-
-decodeFloatOrStr : JD.Decoder (Maybe Float)
-decodeFloatOrStr =
-    JD.oneOf
-        [ JD.float |> JD.map Just
-        , JD.string |> JD.map String.toFloat
-        ]
-
-
-decodeBoolOrStr : JD.Decoder (Maybe Bool)
-decodeBoolOrStr =
-    JD.oneOf
-        [ JD.bool |> JD.map Just
-        , JD.string
-            |> JD.andThen
-                (\x ->
-                    case String.toLower x of
-                        "true" ->
-                            JD.succeed True
-
-                        "false" ->
-                            JD.succeed False
-
-                        _ ->
-                            JD.fail ""
-                )
-            |> JD.map Just
-        ]
-
-
-decodeFlags : JD.Decoder Flags
-decodeFlags =
-    JD.succeed Flags
-        |> required "defaultHomeserverUrl" JD.string
-        |> required "serverName" JD.string
-        |> required "siteName" JD.string
-        |> required "commentSectionId" decodeCommentSectionId
-        |> optional "storedSession" (JD.nullable decodeStoredSession) Nothing
-        |> optional "pageSize" decodeIntOrStr Nothing
-        |> optional "loginEnabled" decodeBoolOrStr Nothing
-        |> optional "guestPostingEnabled" decodeBoolOrStr Nothing
-        |> optional "updateInterval" decodeFloatOrStr Nothing
-
-
-decodeCommentSectionId : JD.Decoder String
-decodeCommentSectionId =
-    JD.string
-        |> JD.andThen
-            (\csid ->
-                if String.contains "_" csid then
-                    JD.fail "commentSectionId can't contain underscores"
-
-                else
-                    JD.succeed csid
-            )
-        |> JD.andThen
-            (\csid ->
-                if String.contains " " csid then
-                    JD.fail "commentSectionId can't contain spaces"
-
-                else
-                    JD.succeed csid
-            )
-
-
-
 -- ERRORS
 
 
@@ -564,17 +425,16 @@ view model_ =
                             text ""
 
                 editor =
-                    viewEditor
+                    Editor.view
+                        model.editor
                         { session = model.session
-                        , editor = model.editor
-                        , showLoginMsg = ShowLogin
-                        , logoutMsg = LogOut
-                        , editMsg = EditComment
-                        , nameMsg = EditName
-                        , sendMsg = Maybe.map2 SendComment model.session <| Maybe.map extractRoomId model.room
                         , roomAlias = model.config.roomAlias
                         , loginEnabled = model.config.loginEnabled
                         , guestPostingEnabled = model.config.guestPostingEnabled
+                        , msgmap = EditorMsg
+                        , showLogin = ShowLogin
+                        , logout = LogOut
+                        , send = Maybe.map2 SendComment model.session <| Maybe.map extractRoomId model.room
                         }
             in
             div [ class "cactus-container" ] <|

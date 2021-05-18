@@ -1,11 +1,25 @@
 module TestConfig exposing (..)
 
+import Config exposing (StaticConfig, decodeFlags, makeRoomAlias, parseFlags)
 import Duration
 import Expect exposing (Expectation)
 import Json.Decode as JD
-import Main exposing (..)
 import Session
 import Test exposing (..)
+
+
+testMakeRoomAlias : Test
+testMakeRoomAlias =
+    describe "Test makeRoomAlias"
+        [ test "makeRoomAlias with realistic values" <|
+            \_ ->
+                makeRoomAlias { siteName = "myblog", commentSectionId = "october-blogpost", serverName = "matrix.example.com" }
+                    |> Expect.equal "#comments_myblog_october-blogpost:matrix.example.com"
+        , test "makeRoomAlias with other values..." <|
+            \_ ->
+                makeRoomAlias { siteName = "a", commentSectionId = "b", serverName = "c" }
+                    |> Expect.equal "#comments_a_b:c"
+        ]
 
 
 minimalValidJson : String

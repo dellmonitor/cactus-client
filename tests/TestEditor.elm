@@ -1,6 +1,6 @@
 module TestEditor exposing (..)
 
-import Editor exposing (viewEditor)
+import Editor
 import Expect exposing (Expectation)
 import Html exposing (Html)
 import Html.Attributes exposing (class, disabled, href)
@@ -13,7 +13,7 @@ import Test.Html.Selector as Selector
 
 type NoOp
     = NoOp
-    | NoOpStr String
+    | EditorMsg Editor.Msg
 
 
 guestSession : Result JD.Error Session.Session
@@ -46,17 +46,16 @@ userSession =
 
 viewEditorHelper : { loginEnabled : Bool, guestPostingEnabled : Bool, session : Maybe Session.Session } -> Html NoOp
 viewEditorHelper { loginEnabled, guestPostingEnabled, session } =
-    viewEditor
-        { showLoginMsg = NoOp
-        , logoutMsg = NoOp
-        , editMsg = NoOpStr
-        , nameMsg = NoOpStr
-        , sendMsg = Nothing
-        , session = session
+    Editor.view
+        (Editor.Editor { comment = "Hello, world!", name = "Anonymous" })
+        { session = session
         , roomAlias = "#room:alias"
-        , editor = { comment = "Hello, world!", name = "Anonymous" }
         , loginEnabled = loginEnabled
         , guestPostingEnabled = guestPostingEnabled
+        , msgmap = EditorMsg
+        , showLogin = NoOp
+        , logout = NoOp
+        , send = Nothing
         }
 
 

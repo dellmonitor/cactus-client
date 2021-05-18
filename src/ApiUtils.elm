@@ -1,21 +1,9 @@
-module ApiUtils exposing (clientEndpoint, httpFromMxc, makeRoomAlias, matrixDotToUrl, mediaEndpoint, serverNameFromId, thumbnailFromMxc)
+module ApiUtils exposing (clientEndpoint, httpFromMxc, matrixDotToUrl, mediaEndpoint, serverNameFromId, thumbnailFromMxc)
 
 import Parser exposing ((|.), (|=), Parser)
 import Set
 import Url exposing (percentEncode)
 import Url.Builder exposing (QueryParameter, crossOrigin)
-
-
-{-| Make a matrix room alias given a sitename, a unique id for the comments
-section, and a matrix homeserver servername.
-
-    makeRoomAlias { siteName = "myblog", commentSectionId = "october-blogpost", serverName = "matrix.example.com" }
-        == "#comments_myblog.com_october-blogpost:matrix.example.com"
-
--}
-makeRoomAlias : { a | siteName : String, commentSectionId : String, serverName : String } -> String
-makeRoomAlias { siteName, commentSectionId, serverName } =
-    "#comments_" ++ siteName ++ "_" ++ commentSectionId ++ ":" ++ serverName
 
 
 

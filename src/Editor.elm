@@ -1,4 +1,4 @@
-module Editor exposing (Editor, setContent, setName, viewEditor)
+module Editor exposing (Editor(..), Msg, clear, getComment, getName, init, update, view)
 
 import Accessibility exposing (Html, a, button, div, inputText, labelHidden, text, textarea)
 import ApiUtils exposing (matrixDotToUrl)
@@ -13,36 +13,66 @@ import Session exposing (Kind(..), Session, getUserId, isUser)
 -}
 
 
-type alias Editor =
-    { comment : String
-    , name : String
-    }
+type Editor
+    = Editor
+        { comment : String
+        , name : String
+        }
 
 
-setContent : Editor -> String -> Editor
-setContent editor content =
-    { editor | comment = content }
+type Msg
+    = EditComment String
+    | EditName String
 
 
-setName : Editor -> String -> Editor
-setName editor name =
-    { editor | name = name }
+clear : Editor -> Editor
+clear (Editor editor) =
+    Editor { editor | comment = "" }
 
 
-viewEditor :
-    { session : Maybe Session
-    , editor : Editor
-    , showLoginMsg : msg
-    , logoutMsg : msg
-    , editMsg : String -> msg
-    , sendMsg : Maybe msg
-    , nameMsg : String -> msg
-    , roomAlias : String
-    , loginEnabled : Bool
-    , guestPostingEnabled : Bool
-    }
+getComment : Editor -> String
+getComment (Editor editor) =
+    editor.comment
+
+
+getName : Editor -> String
+getName (Editor editor) =
+    if editor.name == "" then
+        "Anonymous"
+
+    else
+        editor.name
+
+
+init : Editor
+init =
+    Editor { comment = "", name = "" }
+
+
+update : Msg -> Editor -> Editor
+update msg (Editor editor) =
+    case msg of
+        EditComment comment ->
+            Editor { editor | comment = comment }
+
+        EditName name ->
+            Editor { editor | name = name }
+
+
+view :
+    Editor
+    ->
+        { session : Maybe Session
+        , roomAlias : String
+        , loginEnabled : Bool
+        , guestPostingEnabled : Bool
+        , msgmap : Msg -> msg
+        , showLogin : msg
+        , logout : msg
+        , send : Maybe msg
+        }
     -> Html msg
-viewEditor { session, editor, showLoginMsg, logoutMsg, editMsg, sendMsg, nameMsg, roomAlias, loginEnabled, guestPostingEnabled } =
+view (Editor editor) { session, roomAlias, loginEnabled, guestPostingEnabled, msgmap, showLogin, logout, send } =
     let
         commentEditor enabled =
             labelHidden
@@ -52,7 +82,7 @@ viewEditor { session, editor, showLoginMsg, logoutMsg, editMsg, sendMsg, nameMsg
                 (textarea
                     [ class "cactus-editor-textarea"
                     , value editor.comment
-                    , onInput editMsg
+                    , onInput <| EditComment >> msgmap
                     , placeholder "Add a comment"
                     , disabled <| not enabled
                     ]
@@ -60,13 +90,13 @@ viewEditor { session, editor, showLoginMsg, logoutMsg, editMsg, sendMsg, nameMsg
                 )
 
         sendButton =
-            viewSendButton sendMsg session editor.comment
+            viewSendButton session send editor.comment
 
         loginButton =
             if loginEnabled then
                 loginOrLogoutButton
-                    { loginMsg = showLoginMsg
-                    , logoutMsg = logoutMsg
+                    { loginMsg = showLogin
+                    , logoutMsg = logout
                     , session = session
                     }
 
@@ -87,7 +117,7 @@ viewEditor { session, editor, showLoginMsg, logoutMsg, editMsg, sendMsg, nameMsg
                         (text "Name")
                         (inputText editor.name
                             [ placeholder "Name"
-                            , onInput nameMsg
+                            , onInput <| EditName >> msgmap
                             ]
                         )
                     ]
@@ -168,8 +198,8 @@ loginOrLogoutButton { loginMsg, logoutMsg, session } =
             loginButton
 
 
-viewSendButton : Maybe msg -> Maybe Session -> String -> Html msg
-viewSendButton msg session editorContent =
+viewSendButton : Maybe Session -> Maybe msg -> String -> Html msg
+viewSendButton session msg editorContent =
     let
         -- button is disabled if there is no session
         -- or if editor is empty
@@ -183,9 +213,12 @@ viewSendButton msg session editorContent =
             , disabled isDisabled
             ]
                 -- append onClick message if we can
-                ++ (msg
-                        |> Maybe.map (\m -> [ onClick m ])
-                        |> Maybe.withDefault []
+                ++ (case ( isDisabled, session, msg ) of
+                        ( False, Just s, Just m ) ->
+                            [ onClick m ]
+
+                        _ ->
+                            []
                    )
 
         postButtonString =
