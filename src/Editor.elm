@@ -212,13 +212,11 @@ viewSendButton session msg editorContent =
             , class "cactus-send-button"
             , disabled isDisabled
             ]
-                -- append onClick message if we can
-                ++ (case ( isDisabled, session, msg ) of
-                        ( False, Just s, Just m ) ->
-                            [ onClick m ]
-
-                        _ ->
-                            []
+                -- append onClick msg if we can
+                ++ (msg
+                        |> Maybe.map onClick
+                        |> Maybe.map List.singleton
+                        |> Maybe.withDefault []
                    )
 
         postButtonString =
