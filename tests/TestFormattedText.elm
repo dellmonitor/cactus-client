@@ -6,7 +6,7 @@ import Hex
 import Html exposing (p)
 import Html.Attributes exposing (height, src, width)
 import Html.Parser
-import Message.FormattedText exposing (FormattedText(..), cleanHtmlNode, viewFormattedText)
+import Message.FormattedText exposing (FormattedText(..), cleanHtml, viewFormattedText)
 import Set exposing (Set)
 import Test exposing (..)
 import Test.Html.Query as Query
@@ -145,7 +145,7 @@ goodDataMxTest attr cssprop =
                         _ ->
                             Expect.fail "not found here"
             in
-            cleanHtmlNode "https://lol.com" dirtyImg
+            cleanHtml "https://lol.com" dirtyImg
                 |> findStyle
         )
 
@@ -179,14 +179,14 @@ testTagWhitelist : Test
 testTagWhitelist =
     describe "Test html sanitization"
         [ fuzz (Fuzz.oneOf [ nestedElementFuzzer 100, wideElementFuzzer ])
-            "Check that cleanHtmlNode keeps all tags in whitelist"
+            "Check that cleanHtml keeps all tags in whitelist"
             (\input ->
                 -- result contains all the valid input tags
                 Expect.equal
                     -- valid tags from input + div
                     (allElementTags input |> Set.intersect tagWhitelist |> Set.insert "div")
                     -- all tags from output + div
-                    (cleanHtmlNode "https://cactus.chat" input |> allElementTags |> Set.insert "div")
+                    (cleanHtml "https://cactus.chat" input |> allElementTags |> Set.insert "div")
             )
         ]
 

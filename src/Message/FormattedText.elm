@@ -1,4 +1,4 @@
-module Message.FormattedText exposing (FormattedText(..), cleanHtmlNode, decodeFormattedText, viewFormattedText)
+module Message.FormattedText exposing (FormattedText(..), cleanHtml, decodeFormattedText, viewFormattedText)
 
 import Accessibility exposing (Html, div, p, text)
 import ApiUtils exposing (httpFromMxc)
@@ -122,31 +122,38 @@ Removes tags and attributes not in whitelist.
 Transforms mxc urls to http urls, and color tags to css attributes.
 
 -}
-cleanHtmlNode : String -> Html.Parser.Node -> Html.Parser.Node
-cleanHtmlNode homeserverUrl node =
-    -- TODO: observe max depth as recommended by C/S spec
-    case node of
-        Html.Parser.Text str ->
-            -- raw text gets to stay
-            Html.Parser.Text str
+cleanHtml : String -> Html.Parser.Node -> Html.Parser.Node
+cleanHtml homeserverUrl node_ =
+    let
+        cleanHtmlNode depth node =
+            if depth > 100 then
+                Html.Parser.Text ""
 
-        Html.Parser.Comment str ->
-            -- keep comments also
-            Html.Parser.Comment str
+            else
+                case node of
+                    Html.Parser.Text str ->
+                        -- raw text gets to stay
+                        Html.Parser.Text str
 
-        Html.Parser.Element tag attrs children ->
-            (if Set.member tag tagWhitelist then
-                -- tag in whitelist - process
-                Html.Parser.Element tag (cleanAttributes homeserverUrl tag attrs)
+                    Html.Parser.Comment str ->
+                        -- keep comments also
+                        Html.Parser.Comment str
 
-             else
-                -- element not in whitelist.
-                -- remove attributes and replace with div
-                Html.Parser.Element "div" []
-            )
-            <|
-                -- keep child elements in both cases
-                List.map (cleanHtmlNode homeserverUrl) children
+                    Html.Parser.Element tag attrs children ->
+                        (if Set.member tag tagWhitelist then
+                            -- tag in whitelist - process
+                            Html.Parser.Element tag (cleanAttributes homeserverUrl tag attrs)
+
+                         else
+                            -- element not in whitelist.
+                            -- remove attributes and replace with div
+                            Html.Parser.Element "div" []
+                        )
+                        <|
+                            -- keep child elements in both cases
+                            List.map (cleanHtmlNode <| depth + 1) children
+    in
+    cleanHtmlNode 0 node_
 
 
 cleanAttributes : String -> String -> List ( String, String ) -> List ( String, String )
@@ -321,4 +328,4 @@ viewFormattedText homeserverUrl fmt =
             p [] [ text str ]
 
         Html nodes ->
-            div [] (List.map (cleanHtmlNode homeserverUrl) nodes |> Html.Parser.Util.toVirtualDom)
+            div [] (List.map (cleanHtml homeserverUrl) nodes |> Html.Parser.Util.toVirtualDom)
