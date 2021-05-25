@@ -31,8 +31,6 @@ type Message
     | File FileData
     | Video VideoData
     | Audio AudioData
-    | Location
-    | UnsupportedMessageType
 
 
 decodeMessage : JD.Decoder Message
@@ -62,11 +60,8 @@ decodeMessage =
                     "m.video" ->
                         JD.map Video decodeVideo
 
-                    "m.location" ->
-                        JD.succeed UnsupportedMessageType
-
                     _ ->
-                        JD.succeed UnsupportedMessageType
+                        JD.fail <| "Unsupported msgtype: " ++ mt
             )
 
 
@@ -272,7 +267,3 @@ viewMessage homeserverUrl displayname message =
 
         Video video ->
             viewVideo homeserverUrl video
-
-        _ ->
-            -- TODO: this shouldn't be a thing
-            p [] [ text "unsupported message event" ]
