@@ -10,8 +10,7 @@ module Room exposing
     , getRoomAsGuest
     , getRoomId
     , joinRoom
-    , mergeNewerMessages
-    , mergeOlderMessages
+    , mergeMessages
     , sendComment
     , viewRoomEvents
     )
@@ -67,6 +66,16 @@ Used to determine if we should fetch more
 commentCount : Room -> Int
 commentCount (Room room) =
     List.length <| messageEvents room.events
+
+
+mergeMessages : Room -> Direction -> { a | start : String, end : String, chunk : List RoomEvent } -> Room
+mergeMessages room dir newMessages =
+    case dir of
+        Newer ->
+            mergeNewerMessages room newMessages
+
+        Older ->
+            mergeOlderMessages room newMessages
 
 
 mergeOlderMessages : Room -> { a | start : String, end : String, chunk : List RoomEvent } -> Room

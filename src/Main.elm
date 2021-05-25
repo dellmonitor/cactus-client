@@ -4,7 +4,7 @@ import Accessibility exposing (Html, b, button, div, p, text)
 import Accessibility.Aria exposing (errorMessage)
 import Browser
 import Config exposing (StaticConfig, parseConfig)
-import Duration exposing (Duration)
+import Duration
 import Editor exposing (Editor)
 import Event exposing (GetMessagesResponse)
 import Html.Attributes exposing (class)
@@ -24,8 +24,7 @@ import Room
         , getNewerMessages
         , getOlderMessages
         , joinRoom
-        , mergeNewerMessages
-        , mergeOlderMessages
+        , mergeMessages
         , sendComment
         , viewRoomEvents
         )
@@ -33,7 +32,6 @@ import Session
     exposing
         ( Kind(..)
         , Session
-        , decodeStoredSession
         , getHomeserverUrl
         , registerGuest
         , sessionKind
@@ -156,8 +154,8 @@ type Msg
     | EditorMsg Editor.Msg
       -- Message Fetching
     | GotRoom (Result Session.Error ( Session, Room ))
-    | ViewMore Session Room
     | GotMessages Session Direction (Result Session.Error GetMessagesResponse)
+    | ViewMore Session Room
     | SendComment Session RoomId
     | SentComment Session (Result Session.Error ())
     | Login LoginForm
@@ -227,18 +225,10 @@ update msg model_ =
                     GotMessages session dir (Ok newMsgs) ->
                         -- got more messages. result of the "ViewMore"-button request
                         let
-                            mergefun =
-                                case dir of
-                                    Newer ->
-                                        mergeNewerMessages
-
-                                    Older ->
-                                        mergeOlderMessages
-
                             newRoom : Maybe Room
                             newRoom =
                                 Maybe.map
-                                    (\r -> mergefun r newMsgs)
+                                    (\r -> mergeMessages r dir newMsgs)
                                     model.room
 
                             newModel =
