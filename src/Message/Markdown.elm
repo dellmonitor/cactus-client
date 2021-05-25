@@ -2,27 +2,33 @@ module Message.Markdown exposing (markdownToHtmlString)
 
 import Html.String as Html exposing (Html)
 import Html.String.Attributes as Attr
-import Markdown.Block as Block exposing (Block)
+import Markdown.Block as Block
 import Markdown.Html
 import Markdown.Parser
 import Markdown.Renderer exposing (Renderer)
-import Parser
-import Parser.Advanced
 
 
 markdownToHtmlString : String -> Maybe String
-markdownToHtmlString str =
-    str
+markdownToHtmlString mdstr =
+    mdstr
         -- parse markdown
         |> (Markdown.Parser.parse >> Result.toMaybe)
         -- render to Html.String
         |> Maybe.map (Markdown.Renderer.render renderer >> Result.toMaybe)
         -- flatten nested maybe
         |> Maybe.withDefault Nothing
-        -- List Html.String -> List String
-        |> Maybe.map (List.map (Html.toString 0))
-        -- List String -> String
-        |> Maybe.map (String.join "")
+        -- List Html.String -> String
+        |> Maybe.map (List.map (Html.toString 0) >> String.join "")
+        -- if the html is just the input wrapped in p tags,
+        -- then the input didn't actually have any html
+        |> Maybe.andThen
+            (\htmlstr ->
+                if htmlstr == "<p>" ++ mdstr ++ "</p>" then
+                    Nothing
+
+                else
+                    Just htmlstr
+            )
 
 
 renderer : Renderer (Html msg)
