@@ -23,6 +23,7 @@ import Json.Decode as JD
 import Json.Encode as JE
 import Member exposing (MemberData, decodeMember)
 import Message exposing (viewMessageEvent)
+import Message.Markdown
 import Session
     exposing
         ( Kind(..)
