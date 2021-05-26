@@ -74,22 +74,24 @@ comment was posted.
 
     timeSince (Time.millisToPosix 4000) (Time.millisToPosix 1000) == "3 seconds ago"
 
+    timeSince (Time.millisToPosix 2000) (Time.millisToPosix 1000) == "1 second ago"
+
 -}
 timeSinceText : Time.Posix -> Time.Posix -> String
 timeSinceText now then_ =
     let
-        diff =
+        age =
             Duration.from then_ now
 
         allTimeUnits : List ( String, Duration.Duration -> Float )
         allTimeUnits =
-            [ ( "years", Duration.inJulianYears )
-            , ( "months", Duration.inJulianYears >> (*) 12 )
-            , ( "weeks", Duration.inWeeks )
-            , ( "days", Duration.inDays )
-            , ( "hours", Duration.inHours )
-            , ( "minutes", Duration.inMinutes )
-            , ( "seconds", Duration.inSeconds )
+            [ ( "year", Duration.inJulianYears )
+            , ( "month", Duration.inJulianYears >> (*) 12 )
+            , ( "week", Duration.inWeeks )
+            , ( "day", Duration.inDays )
+            , ( "hour", Duration.inHours )
+            , ( "minute", Duration.inMinutes )
+            , ( "second", Duration.inSeconds )
             ]
 
         biggestUnitGreaterThanOne : List ( String, Duration.Duration -> Float ) -> ( String, Duration.Duration -> Float )
@@ -97,7 +99,7 @@ timeSinceText now then_ =
             -- expects the unit list to be sorted by size
             case timeunits of
                 ( name, unit ) :: rest ->
-                    if unit diff > 1 then
+                    if unit age >= 1 then
                         ( name, unit )
 
                     else
@@ -106,14 +108,28 @@ timeSinceText now then_ =
                 [] ->
                     ( "seconds", Duration.inSeconds )
 
-        ( unitname, unitfun ) =
+        ( unitbasename, unitfun ) =
             biggestUnitGreaterThanOne allTimeUnits
+
+        value : Int
+        value =
+            -- integer value to use
+            unitfun age |> floor
+
+        unitname : String
+        unitname =
+            -- do plural conjugation
+            if value == 1 then
+                unitbasename
+
+            else
+                unitbasename ++ "s"
     in
-    if Duration.inSeconds diff > 0 then
-        (String.fromInt <| floor <| unitfun diff) ++ " " ++ unitname ++ " ago"
+    if Duration.inSeconds age < 1 then
+        "just now"
 
     else
-        "just now"
+        String.fromInt value ++ " " ++ unitname ++ " ago"
 
 
 formatTimeAsUtcString : Time.Posix -> String
