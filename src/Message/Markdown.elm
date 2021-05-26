@@ -31,12 +31,15 @@ markdownToHtmlString mdstr =
             )
 
 
-{-| This is a copy of the `defaultHtmlRenderer` from the
-dillonkearns/elm-markdown v6.0.1.
-(<https://github.com/dillonkearns/elm-markdown/blob/6.0.1/src/Markdown/Renderer.elm>)
+{-| This is a modified version of the `defaultHtmlRenderer` from dillonkearns/elm-markdown v6.0.1.
+See: <https://github.com/dillonkearns/elm-markdown/blob/6.0.1/src/Markdown/Renderer.elm>
 
-The only change is that this module imports zwilias/elm-html-string as `Html`,
-so this returns a Html.String.Html value, which (unlike Html.Html) can be converted to a string.
+The most important change is that this module imports zwilias/elm-html-string as `Html`,
+so this renderer produces a Html.String.Html value, which (unlike Html.Html) can be converted to a string.
+
+This renderer also has a few omissions compared to `Markdown.Html.Renderer.defaultHtmlRenderer`,
+so as to prevent it from producing elements that aren't explicitly allowed in the Matrix C/S spec.
+See: <https://matrix.org/docs/spec/client_server/r0.6.1#m-room-message-msgtypes>
 
 -}
 renderer : Renderer (Html msg)
@@ -64,22 +67,16 @@ renderer =
     , paragraph = Html.p []
     , hardLineBreak = Html.br [] []
     , blockQuote = Html.blockquote []
-    , strong =
-        \children -> Html.strong [] children
-    , emphasis =
-        \children -> Html.em [] children
-    , strikethrough =
-        \children -> Html.del [] children
-    , codeSpan =
-        \content -> Html.code [] [ Html.text content ]
+    , strong = \children -> Html.strong [] children
+    , emphasis = \children -> Html.em [] children
+    , strikethrough = \children -> Html.del [] children
+    , codeSpan = \content -> Html.code [] [ Html.text content ]
     , link =
         \link content ->
             case link.title of
                 Just title ->
                     Html.a
-                        [ Attr.href link.destination
-                        , Attr.title title
-                        ]
+                        [ Attr.href link.destination ]
                         content
 
                 Nothing ->
@@ -101,8 +98,7 @@ renderer =
                         , Attr.alt imageInfo.alt
                         ]
                         []
-    , text =
-        Html.text
+    , text = Html.text
     , unorderedList =
         \items ->
             Html.ul []
@@ -110,30 +106,8 @@ renderer =
                     |> List.map
                         (\item ->
                             case item of
-                                Block.ListItem task children ->
-                                    let
-                                        checkbox =
-                                            case task of
-                                                Block.NoTask ->
-                                                    Html.text ""
-
-                                                Block.IncompleteTask ->
-                                                    Html.input
-                                                        [ Attr.disabled True
-                                                        , Attr.checked False
-                                                        , Attr.type_ "checkbox"
-                                                        ]
-                                                        []
-
-                                                Block.CompletedTask ->
-                                                    Html.input
-                                                        [ Attr.disabled True
-                                                        , Attr.checked True
-                                                        , Attr.type_ "checkbox"
-                                                        ]
-                                                        []
-                                    in
-                                    Html.li [] (checkbox :: children)
+                                Block.ListItem _ children ->
+                                    Html.li [] children
                         )
                 )
     , orderedList =
@@ -176,48 +150,6 @@ renderer =
     , tableHeader = Html.thead []
     , tableBody = Html.tbody []
     , tableRow = Html.tr []
-    , tableHeaderCell =
-        \maybeAlignment ->
-            let
-                attrs =
-                    maybeAlignment
-                        |> Maybe.map
-                            (\alignment ->
-                                case alignment of
-                                    Block.AlignLeft ->
-                                        "left"
-
-                                    Block.AlignCenter ->
-                                        "center"
-
-                                    Block.AlignRight ->
-                                        "right"
-                            )
-                        |> Maybe.map Attr.align
-                        |> Maybe.map List.singleton
-                        |> Maybe.withDefault []
-            in
-            Html.th attrs
-    , tableCell =
-        \maybeAlignment ->
-            let
-                attrs =
-                    maybeAlignment
-                        |> Maybe.map
-                            (\alignment ->
-                                case alignment of
-                                    Block.AlignLeft ->
-                                        "left"
-
-                                    Block.AlignCenter ->
-                                        "center"
-
-                                    Block.AlignRight ->
-                                        "right"
-                            )
-                        |> Maybe.map Attr.align
-                        |> Maybe.map List.singleton
-                        |> Maybe.withDefault []
-            in
-            Html.td attrs
+    , tableHeaderCell = \_ -> Html.th []
+    , tableCell = \_ -> Html.td []
     }
