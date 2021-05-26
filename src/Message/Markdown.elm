@@ -31,6 +31,14 @@ markdownToHtmlString mdstr =
             )
 
 
+{-| This is a copy of the `defaultHtmlRenderer` from the
+dillonkearns/elm-markdown v6.0.1.
+(<https://github.com/dillonkearns/elm-markdown/blob/6.0.1/src/Markdown/Renderer.elm>)
+
+The only change is that this module imports zwilias/elm-html-string as `Html`,
+so this returns a Html.String.Html value, which (unlike Html.Html) can be converted to a string.
+
+-}
 renderer : Renderer (Html msg)
 renderer =
     { heading =
