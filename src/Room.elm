@@ -23,6 +23,7 @@ import Json.Decode as JD
 import Json.Encode as JE
 import Member exposing (MemberData, decodeMember)
 import Message exposing (viewMessageEvent)
+import Message.Markdown exposing (markdownToHtmlString)
 import Session
     exposing
         ( Kind(..)
@@ -316,7 +317,10 @@ joinAndSend session (RoomId roomId) comment =
         |> Task.andThen (\_ -> sendMessage session (RoomId roomId) comment)
 
 
-{-| Send a message to the room
+{-| Send a message to the room.
+
+If the `comment` string is markdown, transform it into a HTML string and send it as `org.matrix.custom.html`.
+
 -}
 sendMessage : Session -> RoomId -> String -> Task Session.Error ()
 sendMessage session (RoomId roomId) comment =
@@ -327,6 +331,16 @@ sendMessage session (RoomId roomId) comment =
 
         msgtype =
             "m.text"
+
+        formattedBody =
+            markdownToHtmlString comment
+                |> Maybe.map
+                    (\s ->
+                        [ ( "format", JE.string "org.matrix.custom.html" )
+                        , ( "formatted_body", JE.string s )
+                        ]
+                    )
+                |> Maybe.withDefault []
 
         txnId =
             transactionId session
@@ -340,9 +354,11 @@ sendMessage session (RoomId roomId) comment =
         , body =
             Http.jsonBody <|
                 JE.object
-                    [ ( "msgtype", JE.string msgtype )
-                    , ( "body", JE.string comment )
-                    ]
+                    ([ ( "msgtype", JE.string msgtype )
+                     , ( "body", JE.string comment )
+                     ]
+                        ++ formattedBody
+                    )
         }
 
 
