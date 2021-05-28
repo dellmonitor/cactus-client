@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.0
+
+- Allow commenting with Markdown.
+- Pluralize time units properly.
+- Enforce maximum nesting depth of 100 when sanitizing `org.matrix.custom.html`-formatted messages.
+
 ## 0.9.0
 
 - Comment sections can now be initialized using `data-*` attributes on the `script` tag (Thanks to @NicolaiSoeborg for !5).
