@@ -1,4 +1,14 @@
-module ApiUtils exposing (clientEndpoint, httpFromMxc, matrixDotToUrl, mediaEndpoint, serverNameFromId, thumbnailFromMxc)
+module ApiUtils exposing
+    ( UserId
+    , clientEndpoint
+    , httpFromMxc
+    , matrixDotToUrl
+    , mediaEndpoint
+    , parseUserId
+    , serverNameFromId
+    , thumbnailFromMxc
+    , toString
+    )
 
 import Parser exposing ((|.), (|=), Parser)
 import Set
@@ -63,6 +73,58 @@ serverNameFromId id =
 
     else
         Nothing
+
+
+
+-- USERID
+
+
+{-| User Id parsing implemented based on the identifier grammar described in the spec:
+<https://matrix.org/docs/spec/appendices#identifier-grammar>
+-}
+type UserId
+    = UserId String String
+
+
+toString : UserId -> String
+toString (UserId localpart serverpart) =
+    "@" ++ localpart ++ ":" ++ serverpart
+
+
+parseUserId : String -> Maybe UserId
+parseUserId =
+    String.toLower
+        >> Parser.run userIdParser
+        >> Result.toMaybe
+
+
+validLocalpartChar : Char -> Bool
+validLocalpartChar c =
+    Char.isLower c
+        || Char.isDigit c
+        || List.member c [ '-', '.', '=', '_', '/' ]
+
+
+validServernameChar : Char -> Bool
+validServernameChar c =
+    Char.isAlphaNum c || List.member c [ '.', '-', ':' ]
+
+
+userIdParser : Parser UserId
+userIdParser =
+    Parser.succeed UserId
+        |. Parser.token "@"
+        |= Parser.variable
+            { start = validLocalpartChar
+            , inner = validLocalpartChar
+            , reserved = Set.empty
+            }
+        |. Parser.token ":"
+        |= Parser.variable
+            { start = validServernameChar
+            , inner = validServernameChar
+            , reserved = Set.empty
+            }
 
 
 

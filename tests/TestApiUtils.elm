@@ -1,6 +1,6 @@
 module TestApiUtils exposing (..)
 
-import ApiUtils exposing (clientEndpoint, matrixDotToUrl, mediaEndpoint, serverNameFromId, thumbnailFromMxc)
+import ApiUtils exposing (clientEndpoint, matrixDotToUrl, mediaEndpoint, parseUserId, serverNameFromId, thumbnailFromMxc, toString)
 import Expect exposing (Expectation)
 import Test exposing (..)
 import Url.Builder
@@ -73,4 +73,35 @@ testThumbnailFromMxc =
             \_ ->
                 thumbnailFromMxc "https://matrix.org" "mxc://olli.ng/sWMkCgSyfhXzCoqWqzImfrFO"
                     |> Expect.equal (Just "https://matrix.org/_matrix/media/r0/thumbnail/olli.ng/sWMkCgSyfhXzCoqWqzImfrFO?width=64&height=64&method=crop")
+        ]
+
+
+testParseUserId : Test
+testParseUserId =
+    describe "Test parseUserId"
+        [ test "Parse @asbjorn:olli.ng" <|
+            \_ ->
+                parseUserId "@asbjorn:olli.ng"
+                    |> Maybe.map toString
+                    |> Expect.equal (Just "@asbjorn:olli.ng")
+        , test "Parse @ASBJORN:OLLI.NG" <|
+            \_ ->
+                parseUserId "@ASBJORN:OLLI.NG"
+                    |> Maybe.map toString
+                    |> Expect.equal (Just "@asbjorn:olli.ng")
+        , test "Parse @dev1:localhost:8008" <|
+            \_ ->
+                parseUserId "@dev1:localhost:8008"
+                    |> Maybe.map toString
+                    |> Expect.equal (Just "@dev1:localhost:8008")
+        , test "Parse invalid userid: @💀:🐻" <|
+            \_ ->
+                parseUserId "@💀:🐻"
+                    |> Maybe.map toString
+                    |> Expect.equal Nothing
+        , test "Parse invalid userid: foobar" <|
+            \_ ->
+                parseUserId "foobar"
+                    |> Maybe.map toString
+                    |> Expect.equal Nothing
         ]
