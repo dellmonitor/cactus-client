@@ -7,10 +7,11 @@ import Config exposing (StaticConfig, parseConfig)
 import Duration
 import Editor exposing (Editor)
 import Event exposing (GetMessagesResponse)
+import Html
 import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
 import Json.Decode as JD
-import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
+import LoginForm exposing (FormState(..), LoginForm, initLoginForm, showLogin, updateLoginForm, viewLoginForm)
 import Member exposing (setDisplayname)
 import Message exposing (Message(..))
 import Room
@@ -58,7 +59,7 @@ type Model
         , editor : Editor
         , session : Maybe Session
         , room : Maybe Room
-        , loginForm : Maybe LoginForm
+        , loginForm : LoginForm
         , showComments : Int
         , gotAllComments : Bool
         , errors : List Error
@@ -98,7 +99,7 @@ init flags =
                 , editor = Editor.init
                 , session = session
                 , room = Nothing
-                , loginForm = Nothing
+                , loginForm = initLoginForm
                 , showComments = config.pageSize
                 , gotAllComments = False
                 , errors = []
@@ -146,11 +147,8 @@ joinIfUser session roomAlias =
 type Msg
     = Tick Time.Posix
     | CloseError Int
-      -- LoginForm
-    | EditLogin LoginForm
     | ShowLogin
-    | HideLogin
-      -- Editor
+    | LoginMsg LoginForm.Msg
     | EditorMsg Editor.Msg
       -- Message Fetching
     | GotRoom (Result Session.Error ( Session, Room ))
@@ -158,7 +156,6 @@ type Msg
     | ViewMore Session Room
     | SendComment Session RoomId
     | SentComment Session (Result Session.Error ())
-    | Login LoginForm
     | LogOut
 
 
@@ -208,7 +205,6 @@ update msg model_ =
                         ( { model
                             | session = Just session
                             , room = Just room
-                            , loginForm = Nothing
                           }
                         , Cmd.batch <|
                             [ storeSessionCmd session
@@ -304,20 +300,33 @@ update msg model_ =
                         , Cmd.none
                         )
 
+                    LoginMsg loginmsg ->
+                        let
+                            ( form, cmd, sess ) =
+                                updateLoginForm model.loginForm loginmsg
+
+                            joinAndGetRoom =
+                                -- if updateLoginForm returned a session,
+                                -- join the room and fetch the room again
+                                sess
+                                    |> Maybe.map
+                                        (\s ->
+                                            joinRoom s model.config.roomAlias
+                                                |> Task.andThen
+                                                    (\_ ->
+                                                        getInitialRoom s model.config.roomAlias
+                                                            |> Task.map (Tuple.pair s)
+                                                    )
+                                                |> Task.attempt GotRoom
+                                        )
+                                    |> Maybe.withDefault Cmd.none
+                        in
+                        ( { model | loginForm = form }
+                        , Cmd.batch [ Cmd.map LoginMsg cmd, joinAndGetRoom ]
+                        )
+
                     ShowLogin ->
-                        ( { model | loginForm = Just initLoginForm }
-                        , Cmd.none
-                        )
-
-                    HideLogin ->
-                        ( { model | loginForm = Nothing }
-                        , Cmd.none
-                        )
-
-                    EditLogin form ->
-                        ( { model | loginForm = Just form }
-                        , Cmd.none
-                        )
+                        ( { model | loginForm = showLogin model.loginForm }, Cmd.none )
 
                     LogOut ->
                         ( model
@@ -327,26 +336,6 @@ update msg model_ =
                                     (\sess ->
                                         getInitialRoom sess model.config.roomAlias
                                             |> Task.map (Tuple.pair sess)
-                                    )
-                            )
-                        )
-
-                    Login form ->
-                        let
-                            ( newForm, loginTask ) =
-                                loginWithForm form
-                        in
-                        ( { model | loginForm = Just newForm }
-                        , Task.attempt GotRoom <|
-                            (loginTask
-                                |> Task.andThen
-                                    (\session ->
-                                        joinRoom session model.config.roomAlias
-                                            |> Task.andThen
-                                                (\_ ->
-                                                    getInitialRoom session model.config.roomAlias
-                                                        |> Task.map (\room -> ( session, room ))
-                                                )
                                     )
                             )
                         )
@@ -409,17 +398,8 @@ view model_ =
                         text ""
 
                 loginPopup =
-                    case model.loginForm of
-                        Just loginForm ->
-                            viewLoginForm loginForm
-                                model.config.roomAlias
-                                { submitMsg = Login
-                                , hideMsg = HideLogin
-                                , editMsg = EditLogin
-                                }
-
-                        Nothing ->
-                            text ""
+                    viewLoginForm model.loginForm model.config.roomAlias
+                        |> Html.map LoginMsg
 
                 editor =
                     Editor.view

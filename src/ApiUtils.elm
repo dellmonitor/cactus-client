@@ -2,16 +2,21 @@ module ApiUtils exposing
     ( UserId
     , clientEndpoint
     , httpFromMxc
+    , lookupHomeserverUrl
     , matrixDotToUrl
     , mediaEndpoint
     , parseUserId
     , serverNameFromId
     , thumbnailFromMxc
     , toString
+    , username
     )
 
+import Http
+import Json.Decode as JD
 import Parser exposing ((|.), (|=), Parser)
 import Set
+import Task exposing (Task)
 import Url exposing (percentEncode)
 import Url.Builder exposing (QueryParameter, crossOrigin)
 
@@ -98,6 +103,11 @@ parseUserId =
         >> Result.toMaybe
 
 
+username : UserId -> String
+username (UserId name _) =
+    name
+
+
 validLocalpartChar : Char -> Bool
 validLocalpartChar c =
     Char.isLower c
@@ -125,6 +135,46 @@ userIdParser =
             , inner = validServernameChar
             , reserved = Set.empty
             }
+
+
+
+-- SERVER DISCOVERY
+
+
+lookupHomeserverUrl : UserId -> Task String String
+lookupHomeserverUrl (UserId _ servername) =
+    let
+        url =
+            "https://" ++ servername ++ "/.well-known/matrix/client"
+    in
+    Http.task
+        { method = "GET"
+        , url = url
+        , headers = []
+        , body = Http.emptyBody
+        , timeout = Nothing
+        , resolver =
+            Http.stringResolver <|
+                \resp ->
+                    case resp of
+                        Http.GoodStatus_ _ body ->
+                            let
+                                decoded : Result JD.Error String
+                                decoded =
+                                    JD.decodeString
+                                        (JD.field "m.homeserver" (JD.field "base_url" JD.string))
+                                        body
+                            in
+                            case decoded of
+                                Ok result ->
+                                    Ok result
+
+                                Err err ->
+                                    Err <| JD.errorToString err
+
+                        _ ->
+                            Err <| "Failed getting " ++ url
+        }
 
 
 
