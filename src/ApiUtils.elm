@@ -159,11 +159,22 @@ lookupHomeserverUrl (UserId _ servername) =
                     case resp of
                         Http.GoodStatus_ _ body ->
                             let
+                                dropTrailingSlash : String -> String
+                                dropTrailingSlash str =
+                                    if String.endsWith "/" str then
+                                        String.dropRight 1 str
+
+                                    else
+                                        str
+
+                                decoder : JD.Decoder String
+                                decoder =
+                                    JD.field "m.homeserver" (JD.field "base_url" JD.string)
+                                        |> JD.map dropTrailingSlash
+
                                 decoded : Result JD.Error String
                                 decoded =
-                                    JD.decodeString
-                                        (JD.field "m.homeserver" (JD.field "base_url" JD.string))
-                                        body
+                                    JD.decodeString decoder body
                             in
                             case decoded of
                                 Ok result ->
