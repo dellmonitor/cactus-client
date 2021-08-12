@@ -96,11 +96,11 @@ toString (UserId localpart serverpart) =
     "@" ++ localpart ++ ":" ++ serverpart
 
 
-parseUserId : String -> Maybe UserId
+parseUserId : String -> Result String UserId
 parseUserId =
     String.toLower
         >> Parser.run userIdParser
-        >> Result.toMaybe
+        >> Result.mapError (\_ -> "UserId not in format: @user:example.com")
 
 
 username : UserId -> String
@@ -135,6 +135,7 @@ userIdParser =
             , inner = validServernameChar
             , reserved = Set.empty
             }
+        |. Parser.end
 
 
 
