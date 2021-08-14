@@ -19,12 +19,20 @@
   gap: 0.5em;
 }
 
+/* todo: use a class */
+.cactus-editor>span {
+  display: flex;
+}
+
 .cactus-editor-textarea {
-  width: 100%;
+  display: flex;
+  flex: 1;
   height: 10rem;
-  background-color: inherit;
   border-radius: 0.4em;
   border: solid 1px rgba(127, 127, 127, 0.5);
+  padding: 0.5em;
+  /* todo: remove after using all: unset */
+  background-color: inherit;
   color: inherit;
   font: inherit;
 }
