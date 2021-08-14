@@ -149,7 +149,23 @@
 /*
  * ***** COMMENTS LIST *****
  */
- /* a comment */
+/* comments container */
+/* todo: use a class */
+.cactus-container>div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+}
+
+/* comments */
+/* todo: use a class */
+.cactus-container>div:last-child>div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+}
+
+/* a comment */
 .cactus-comment {
   display: flex;
   flex-direction: row;
@@ -273,7 +289,6 @@
 
 /* contains the view-more button */
 div.cactus-view-more {
-  padding-top: 1em;
   text-align: center;
 }
 
