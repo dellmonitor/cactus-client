@@ -199,32 +199,34 @@
   color: white;
 }
 
-/* stuff left of the avatar: header and body */
+/* header and body */
 .cactus-comment-content {
   display: flex;
   flex-direction: column;
+  gap: 0.5em;
 }
 
 /* user name and posting time */
 .cactus-comment-header {
   display: flex;
-}
-
-.cactus-comment-header > p {
-  margin: 0;
-  margin-bottom: 0.5em;
+  gap: 0.5em;
+  flex-wrap: wrap;
 }
 
 /* user name */
 .cactus-comment-displayname {
+  /* todo: remove after using all: unset */
+  margin: 0;
   font-weight: bold;
-  padding-right: 0.5rem;
 }
 
 /* dont style link */
+/* todo: use a class name, or better replace displayname paragraph with it */
 .cactus-comment-displayname > a {
+  /* todo: remove after using all: unset */
   text-decoration: none;
   color: inherit;
+  cursor: pointer;
 }
 
 /* comment posting time  */
