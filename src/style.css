@@ -236,8 +236,6 @@
 
 /* text or media content of comment */
 .cactus-comment-body > * {
-  margin: 0;
-  white-space: pre-line;
 }
 
 /* body for different message types */
