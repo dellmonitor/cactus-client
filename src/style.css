@@ -176,10 +176,13 @@
 
 /* avatar beside comment content */
 .cactus-comment-avatar {
+  display: flex;
 }
 
 /* the avatar image */
+/* todo: use a class */
 .cactus-comment-avatar > * {
+  /* todo: remove after using all: unset */
   margin: 0;
   width: 2.5rem;
   height: 2.5rem;
@@ -187,11 +190,13 @@
 }
 
 /* in case of no avatar */
+/* todo: use a class same as above */
 .cactus-comment-avatar > p {
+  display: flex;
+  justify-content: center;
+  align-items: center;
   background: black;
   color: white;
-  text-align: center;
-  line-height: 2.5rem;
 }
 
 /* stuff left of the avatar: header and body */
