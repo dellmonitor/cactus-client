@@ -3,6 +3,9 @@
  */
  /* container that contains everything */
 .cactus-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
 }
 
 
@@ -153,7 +156,6 @@
   padding-left: 0;
   padding-right: 0;
   padding-bottom: 0;
-  padding-top: 1em;
   border-bottom-width: 1px;
   border-bottom-style: solid;
   border-bottom-color: rgba(127, 127, 127, 0.2);
