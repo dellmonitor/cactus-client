@@ -1,47 +1,16 @@
+/*
+ * ***** CONTAINER *****
+ */
+ /* container that contains everything */
 .cactus-container {
-  /* everything */
-}
-
-.cactus-error {
-  background-color: darkred;
-  color: white;
-  color: #ff0000;
-  border-radius: 0.4em;
-  padding: 0.4em;
-  margin-top: 0.4em;
 }
 
 
 /*
- * BUTTONS
+ * ***** EDITOR SECTION *****
  */
-.cactus-button {
-  /* used on all buttons */
-  font-size: 1em;
-  font-weight: bold;
-  border-radius: 0.4em;
-  border: 2em;
-  padding: 0.6em 1em 0.6em 1em;
-  margin: 0;
-}
-
-.cactus-button:hover:not([disabled]) {
-  opacity: 0.8;
-  cursor: pointer;
-}
-
-div.cactus-view-more {
-  /* contains the view-more button */
-  padding-top: 1em;
-  text-align: center;
-}
-
-
-/*
- * COMMENT EDITOR SECTION
- */
+ /* comment text field, plus send and login buttons */
 .cactus-editor {
-  /* comment text field, plus send and login buttons */
   display: flex;
   flex-direction: column;
 }
@@ -62,8 +31,8 @@ div.cactus-view-more {
   font-size: 1.5em;
 }
 
+/* "use a matrix client", comment button, and login button */
 .cactus-editor-below {
-  /* "use a matrix client", comment button, and login button */
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -89,11 +58,10 @@ div.cactus-view-more {
   font-size: 1em;
 }
 
+/* div with login and send buttons  */
 .cactus-editor-buttons {
-  /* div with login and send buttons  */
   flex-grow: 9999; /* as flexbox child */
   flex-shrink: 1;
-
   display: flex; /* as flexbox parent */
   justify-content: flex-end;
 }
@@ -101,30 +69,30 @@ div.cactus-view-more {
 .cactus-login-button, .cactus-logout-button {
   margin-left: 0.5em;
 }
+
 .cactus-send-button {
   margin-left: 0.5em;
 }
+
+/* only used when guestPostingEnabled=false and loginEnabled=false */
 .cactus-matrixdotto-only {
-  /* only used when guestPostingEnabled=false and loginEnabled=false */
   width: 100%;
 }
 
 
 /*
- * LOGIN FORM
+ * ***** LOGIN FORM *****
  */
+ /* pop-up login form */
 .cactus-login-form {
-  /* pop-up login form */
   padding: 2rem;
   border-radius: 0.5em;
   background-color: white;
   box-shadow: 0 0 1em #0005;
   z-index: 1;
-
   display: flex;
   flex-direction: column;
   align-content: space-between;
-
   /* place statically in viewport */
   position: fixed;
   left: 50%;
@@ -151,13 +119,12 @@ div.cactus-view-more {
   width: 100%;
 }
 
+/* "back" and "log in" buttons in the login form */
 .cactus-login-buttons {
-  /* "back" and "log in" buttons in the login form */
   display: flex;
   align-content: stretch;
   padding-top: 1em;
   padding-bottom: 1em;
-
   --gap: 1em;
   margin: calc(-1 * var(--gap)) 0 0 calc(-1 * var(--gap));
 }
@@ -166,22 +133,21 @@ div.cactus-view-more {
   flex: 1;
   margin: var(--gap) 0 0 var(--gap);
   padding: 0.6em 0 0.6em 0;
-
   border-radius: 0.5em;
   border: 1px;
 }
 
+/* "Use a Matrix client" button */
 .cactus-matrixdotto-button {
-  /* "Use a Matrix client" button */
   width: 100%;
 }
 
 
 /*
- * COMMENTS
+ * ***** COMMENTS LIST *****
  */
+ /* a comment */
 .cactus-comment {
-  /* a comment */
   display: flex;
   flex-direction: row;
   padding-left: 0;
@@ -193,87 +159,131 @@ div.cactus-view-more {
   border-bottom-color: rgba(127, 127, 127, 0.2);
 }
 
+/* avatar beside comment content */
 .cactus-comment-avatar {
-  /* avatar beside comment content */
   padding-left: 0;
   padding-right: 1rem;
 }
 
+/* the avatar image */
 .cactus-comment-avatar > * {
-  /* the avatar image */
   margin: 0;
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 50%;
 }
 
+/* in case of no avatar */
 .cactus-comment-avatar > p {
-  /* in case of no avatar */
   background: black;
   color: white;
   text-align: center;
   line-height: 2.5rem;
 }
 
+/* stuff left of the avatar: header and body */
 .cactus-comment-content {
-  /* stuff left of the avatar: header and body */
   display: flex;
   flex-direction: column;
 }
 
+/* user name and posting time */
 .cactus-comment-header {
-  /* user name and posting time */
   display: flex;
 }
+
 .cactus-comment-header > p {
   margin: 0;
   margin-bottom: 0.5em;
 }
 
+/* user name */
 .cactus-comment-displayname {
-  /* user name */
   font-weight: bold;
   padding-right: 0.5rem;
 }
 
+/* dont style link */
 .cactus-comment-displayname > a {
-  /* dont style link */
   text-decoration: none;
   color: inherit;
 }
 
+/* comment posting time  */
 .cactus-comment-time {
-  /* comment posting time  */
   opacity: 0.7;
 }
 
+/* text or media content of comment */
 .cactus-comment-body > * {
-  /* text or media content of comment */
   margin: 0;
   white-space: pre-line;
 }
 
-
 /* body for different message types */
 .cactus-message-text {
 }
+
 .cactus-message-text > p {
   margin-top: 0em;
 }
+
 .cactus-message-emote {
   padding-top: 0.5em;
   opacity: 0.7;
 }
+
 .cactus-message-image {
   max-width: 100%;
   height: auto;
 }
+
 .cactus-message-audio {
 }
+
 .cactus-message-file {
   line-height: 3em;
   margin-left: 1em;
 }
+
 .cactus-message-video {
   max-width: 100%;
+}
+
+
+/*
+ * ***** BUTTONS *****
+ */
+ /* used on all buttons */
+ .cactus-button {
+  font-size: 1em;
+  font-weight: bold;
+  border-radius: 0.4em;
+  border: 2em;
+  padding: 0.6em 1em 0.6em 1em;
+  margin: 0;
+}
+
+.cactus-button:hover:not([disabled]) {
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+/* contains the view-more button */
+div.cactus-view-more {
+  padding-top: 1em;
+  text-align: center;
+}
+
+
+/*
+ * ***** OTHER *****
+ */
+.cactus-error {
+  background-color: darkred;
+  color: white;
+  color: #ff0000;
+  border-radius: 0.4em;
+  padding: 0.4em;
+  margin-top: 0.4em;
 }
