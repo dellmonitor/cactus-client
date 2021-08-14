@@ -16,6 +16,7 @@
 .cactus-editor {
   display: flex;
   flex-direction: column;
+  gap: 0.5em;
 }
 
 .cactus-editor-textarea {
@@ -40,10 +41,6 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-}
-
-.cactus-editor-below > * {
-  margin-top: 0.5em;
 }
 
 .cactus-editor-name {
