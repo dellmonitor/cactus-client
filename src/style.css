@@ -169,18 +169,13 @@
 .cactus-comment {
   display: flex;
   flex-direction: row;
-  padding-left: 0;
-  padding-right: 0;
-  padding-bottom: 0;
-  border-bottom-width: 1px;
-  border-bottom-style: solid;
-  border-bottom-color: rgba(127, 127, 127, 0.2);
+  gap: 1em;
+  padding-block-end: 0.5em;
+  border-block-end: 1px solid rgba(127, 127, 127, 0.2);
 }
 
 /* avatar beside comment content */
 .cactus-comment-avatar {
-  padding-left: 0;
-  padding-right: 1rem;
 }
 
 /* the avatar image */
