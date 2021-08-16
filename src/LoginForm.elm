@@ -93,9 +93,9 @@ viewLoginForm (LoginForm form) roomAlias { editMsg, submitMsg, hideMsg } =
 
         clientLink =
             a
-                [ class "cactus-button"
+                [ href <| matrixDotToUrl roomAlias
+                , class "cactus-button"
                 , class "cactus-matrixdotto-button"
-                , href <| matrixDotToUrl roomAlias
                 ]
                 [ text "Log in" ]
 
