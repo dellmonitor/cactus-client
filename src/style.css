@@ -278,20 +278,10 @@ when guestPostingEnabled=false and loginEnabled=false */
 }
 
 /* "Use a Matrix client" button */
-/* todo: use on anchor directly without button in it */
 .cactus-matrixdotto-button {
-  flex: 1;
   justify-content: center;
-}
-
-/* dont style link */
-/* todo: use .cactus-matrixdotto-button here when button is removed */
-.cactus-login-form > a {
-  display: flex;
-  cursor: pointer;
   /* todo: remove after using all: unset */
   text-decoration: none;
-  color: inherit;
 }
 
 
