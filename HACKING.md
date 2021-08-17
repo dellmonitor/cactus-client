@@ -23,11 +23,13 @@ Run `nix-shell` to enter the environment.
 ## Running Locally
 
 The `examples/dev.html` file is small example page, which runs the code you have in `src/`.
-You can serve it on `localhost:8080` by running:
+You can serve it by running:
 
 ```sh
 $ npm run dev
 ```
+
+By default, Parcel will serve it on all interfaces, meaning you can access it on `localhost:8080` on the same device or on your local network on `DEVICE_IP:8080`.
 
 It uses the public [matrix.cactus.chat](https://matrix.cactus.chat:8448) homeserver and
 [appservice](https://gitlab.com/cactus-comments/cactus-appservice).
