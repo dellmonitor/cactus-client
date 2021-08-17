@@ -106,8 +106,6 @@
 
 /* todo: use a class */
 .cactus-editor-name > span > input {
-  display: flex;
-  flex: 1;
   inline-size: 100%;
   border-radius: 0.4em;
   border: solid 1px rgba(127, 127, 127, 0.5);
@@ -193,14 +191,14 @@ when guestPostingEnabled=false and loginEnabled=false */
 }
 
 /* todo: use a class */
-/* todo: remove browser dependency */
 .cactus-login-field > input {
-  flex: 1;
   inline-size: 100%;
   border-radius: 0.4em;
   border: solid 1px rgba(127, 127, 127, 0.5);
   padding: 0.5em;
   /* todo: remove after using all: unset */
+  background-color: inherit;
+  color: inherit;
   font-size: inherit;
 }
 
