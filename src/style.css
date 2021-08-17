@@ -192,19 +192,10 @@
 
 /* "Use a Matrix client" button
 when guestPostingEnabled=false and loginEnabled=false */
-/* todo: use on anchor directly without button in it */
 .cactus-matrixdotto-only {
-}
-
-/* dont style link */
-/* todo: use .cactus-matrixdotto-only here when button is removed */
-.cactus-editor > a:first-child {
-  display: flex;
-  justify-content: center;
-  cursor: pointer;
+  align-self: center;
   /* todo: remove after using all: unset */
   text-decoration: none;
-  color: inherit;
 }
 
 
