@@ -356,13 +356,6 @@ when guestPostingEnabled=false and loginEnabled=false */
 /* user name */
 .cactus-comment-displayname {
   font-weight: bold;
-  /* todo: remove after using all: unset */
-  margin: 0;
-}
-
-/* dont style link */
-/* todo: use a class name, or better replace displayname paragraph with it */
-.cactus-comment-displayname > a {
   cursor: pointer;
   /* todo: remove after using all: unset */
   text-decoration: none;
