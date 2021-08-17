@@ -198,7 +198,7 @@ when guestPostingEnabled=false and loginEnabled=false */
   padding: 0.5em;
   /* todo: remove after using all: unset */
   background-color: inherit;
-  color: inherit;
+  /* color: inherit; */
   font-size: inherit;
 }
 
@@ -372,7 +372,7 @@ when guestPostingEnabled=false and loginEnabled=false */
   font-weight: bold;
   border-radius: 0.4em;
   /* todo: remove after using all: unset */
-  color: inherit;
+  /* color: inherit; */
   font-size: inherit;
   border: none;
 }
