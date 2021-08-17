@@ -10,6 +10,46 @@
 
 
 /*
+ * ***** ERROR *****
+ */
+/* error message */
+.cactus-error {
+  padding: 0.5em;
+  padding-inline-end: 1.5em;
+  border: 2px solid red;
+  border-radius: 0.4em;
+  /* for absolutely positioned close button */
+  position: relative;
+}
+
+/* close button */
+.cactus-error-close {
+  position: absolute;
+  right: 0;
+  top: 0;
+  transform: translate(+5%, -20%);
+  font-size: 1.5em;
+  color: rgb(180, 180, 180);
+  /* todo: remove after using all: unset */
+  background-color: inherit;
+  border: none;
+}
+
+.cactus-error-close:hover:not([disabled]) {
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+/* error message */
+.cactus-error-text {
+  color: #ff0000;
+  font-weight: bold;
+  /* todo: remove after using all: unset */
+  margin: 0;
+}
+
+
+/*
  * ***** EDITOR SECTION *****
  */
  /* comment text field, plus send and login buttons */
@@ -344,17 +384,4 @@ when guestPostingEnabled=false and loginEnabled=false */
 .cactus-view-more {
   display: flex;
   justify-content: center;
-}
-
-
-/*
- * ***** OTHER *****
- */
-.cactus-error {
-  background-color: darkred;
-  color: white;
-  color: #ff0000;
-  border-radius: 0.4em;
-  padding: 0.4em;
-  margin-top: 0.4em;
 }
