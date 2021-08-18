@@ -397,6 +397,9 @@ when guestPostingEnabled=false and loginEnabled=false */
 .cactus-comment-avatar-placeholder::before {
   content: "?"
 }
+.cactus-comment-avatar-placeholder::before {
+  content: "?"
+}
 
 /* header and body */
 .cactus-comment-content {
