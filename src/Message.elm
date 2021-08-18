@@ -248,7 +248,7 @@ viewAvatar homeserverUrl member =
                 [ img "user avatar image" [ src url ] ]
 
             Nothing ->
-                [ p [] [ text "?" ] ]
+                [ div [ class "cactus-comment-avatar-placeholder" ] [] ]
 
 
 viewMessage : String -> String -> Message -> Html msg

@@ -321,13 +321,15 @@ when guestPostingEnabled=false and loginEnabled=false */
 }
 
 /* in case of no avatar */
-/* todo: use a class same as above */
-.cactus-comment-avatar > p {
+.cactus-comment-avatar-placeholder {
   display: flex;
   justify-content: center;
   align-items: center;
   background-color: var(--cactus-border-color);
   color: var(--cactus-text-color--soft);
+}
+.cactus-comment-avatar-placeholder::before {
+  content: "?"
 }
 
 /* header and body */
