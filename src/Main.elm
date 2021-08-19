@@ -401,7 +401,12 @@ view model_ =
         GoodConfig model ->
             let
                 errors =
-                    div [] <| List.map viewError model.errors
+                    if List.length model.errors > 0 then
+                        div [ class "cactus-errors" ] <|
+                            List.map viewError model.errors
+
+                    else
+                        text ""
 
                 loginPopup =
                     case model.loginForm of
