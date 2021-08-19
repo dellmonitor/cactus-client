@@ -1,13 +1,13 @@
 module Main exposing (main)
 
-import Accessibility exposing (Html, b, button, div, p, text)
+import Accessibility exposing (Html, button, div, p, text)
 import Accessibility.Aria exposing (errorMessage)
 import Browser
 import Config exposing (StaticConfig, parseConfig)
 import Duration
 import Editor exposing (Editor)
 import Event exposing (GetMessagesResponse)
-import Html.Attributes exposing (class)
+import Html.Attributes exposing (class, attribute)
 import Html.Events exposing (onClick)
 import Json.Decode as JD
 import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
@@ -378,11 +378,13 @@ viewError : Error -> Html Msg
 viewError { id, message } =
     div [ class "cactus-error", errorMessage message ]
         [ button
-            [ class "cactus-button"
+            [ class "cactus-error-close"
+            , attribute "aria-label" "close"
             , onClick <| CloseError id
             ]
-            [ text "X" ]
-        , b [] [ text <| " Error: " ++ message ]
+            [ text "×" ]
+        , p [ class "cactus-error-text"]
+            [ text <| " Error: " ++ message ]
         ]
 
 
