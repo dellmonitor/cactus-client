@@ -435,7 +435,7 @@ view model_ =
                 , editor
                 , case ( model.room, model.session ) of
                     ( Just room, Just session ) ->
-                        div []
+                        div [ class "cactus-comments-container" ]
                             [ viewRoomEvents
                                 (getHomeserverUrl session)
                                 room

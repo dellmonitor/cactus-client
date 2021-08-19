@@ -280,16 +280,14 @@ when guestPostingEnabled=false and loginEnabled=false */
  * ***** COMMENTS LIST *****
  */
 /* comments container */
-/* todo: use a class */
-.cactus-container>div:last-child {
+.cactus-comments-container {
   display: flex;
   flex-direction: column;
   gap: 1em;
 }
 
-/* comments */
-/* todo: use a class */
-.cactus-container>div:last-child>div:first-child {
+/* comments list */
+.cactus-comments-list {
   display: flex;
   flex-direction: column;
   gap: 0.5em;
