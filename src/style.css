@@ -121,7 +121,7 @@
 .cactus-editor-textarea {
   display: flex;
   flex: 1;
-  height: 10rem;
+  height: 9rem;
   border-radius: var(--cactus-border-radius);
   border: solid var(--cactus-border-width) var(--cactus-border-color);
   padding: 0.5em;
