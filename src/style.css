@@ -80,8 +80,9 @@
 /* close button */
 .cactus-error-close {
   position: absolute;
-  right: 0;
-  top: 0;
+  right: 0.2em;
+  top: 0em;
+  scale: 2;
   color: var(--cactus-button-color);
   /* todo: remove after using all: unset */
   background-color: transparent;
