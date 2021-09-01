@@ -11,7 +11,7 @@ import Html
 import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
 import Json.Decode as JD
-import LoginForm exposing (FormState(..), LoginForm, initLoginForm, showLogin, updateLoginForm, viewLoginForm)
+import LoginForm exposing (LoginForm, initLoginForm, showLogin, updateLoginForm, viewLoginForm)
 import Member exposing (setDisplayname)
 import Message exposing (Message(..))
 import Room
@@ -146,17 +146,19 @@ joinIfUser session roomAlias =
 
 type Msg
     = Tick Time.Posix
+      -- UI Stuff
     | CloseError Int
     | ShowLogin
+    | LogOut
     | LoginMsg LoginForm.Msg
     | EditorMsg Editor.Msg
       -- Message Fetching
     | GotRoom (Result Session.Error ( Session, Room ))
     | GotMessages Session Direction (Result Session.Error GetMessagesResponse)
     | ViewMore Session Room
+      -- Sending
     | SendComment Session RoomId
     | SentComment Session (Result Session.Error ())
-    | LogOut
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -290,8 +292,7 @@ update msg model_ =
                     SentComment session (Ok ()) ->
                         ( model
                         , model.room
-                            |> Maybe.map
-                                (getNewerMessages session >> Task.attempt (GotMessages session Newer))
+                            |> Maybe.map (getNewerMessages session >> Task.attempt (GotMessages session Newer))
                             |> Maybe.withDefault Cmd.none
                         )
 
@@ -302,13 +303,14 @@ update msg model_ =
 
                     LoginMsg loginmsg ->
                         let
-                            ( form, cmd, sess ) =
+                            ( form, formCmd, newSession ) =
                                 updateLoginForm model.loginForm loginmsg
 
+                            joinAndGetRoom : Cmd Msg
                             joinAndGetRoom =
                                 -- if updateLoginForm returned a session,
                                 -- join the room and fetch the room again
-                                sess
+                                newSession
                                     |> Maybe.map
                                         (\s ->
                                             joinRoom s model.config.roomAlias
@@ -320,9 +322,28 @@ update msg model_ =
                                                 |> Task.attempt GotRoom
                                         )
                                     |> Maybe.withDefault Cmd.none
+
+                            storeSession : Cmd Msg
+                            storeSession =
+                                newSession
+                                    |> Maybe.map storeSessionCmd
+                                    |> Maybe.withDefault Cmd.none
                         in
-                        ( { model | loginForm = form }
-                        , Cmd.batch [ Cmd.map LoginMsg cmd, joinAndGetRoom ]
+                        ( { model
+                            | loginForm = form
+                            , session =
+                                case newSession of
+                                    Just _ ->
+                                        newSession
+
+                                    Nothing ->
+                                        model.session
+                          }
+                        , Cmd.batch
+                            [ Cmd.map LoginMsg formCmd
+                            , joinAndGetRoom
+                            , storeSession
+                            ]
                         )
 
                     ShowLogin ->

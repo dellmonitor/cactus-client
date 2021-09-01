@@ -1,7 +1,8 @@
-module LoginForm exposing (FormState(..), LoginForm, Msg, initLoginForm, showLogin, updateLoginForm, viewLoginForm)
+module LoginForm exposing (LoginForm, Msg, initLoginForm, showLogin, updateLoginForm, viewLoginForm)
 
 import Accessibility exposing (Html, a, button, div, h3, inputText, labelBefore, p, text)
 import ApiUtils exposing (UserId, lookupHomeserverUrl, matrixDotToUrl, parseUserId, username)
+import Html
 import Html.Attributes exposing (class, disabled, href, placeholder, required, type_)
 import Html.Events exposing (onClick, onInput)
 import Session exposing (Session, login)
@@ -15,7 +16,7 @@ import Task exposing (Task)
 type LoginForm
     = LoginForm
         { userIdField : String
-        , userIdError : Maybe String
+        , userId : Result String UserId
         , passwordField : String
         , homeserverUrlField : Maybe String
         , loginError : Maybe LoginError
@@ -33,7 +34,7 @@ initLoginForm : LoginForm
 initLoginForm =
     LoginForm
         { userIdField = ""
-        , userIdError = Nothing
+        , userId = Err "User ID must not be empty"
         , passwordField = ""
         , homeserverUrlField = Nothing
         , loginError = Nothing
@@ -64,19 +65,11 @@ updateLoginForm (LoginForm form) msg =
             updateState { form | homeserverUrlField = Just homeserverUrl }
 
         EditUserId userIdStr ->
-            -- parse userid and show error if relevant
-            let
-                userId : Maybe UserId
-                userId =
-                    parseUserId userIdStr
-            in
+            -- parse userid
             updateState
                 { form
                     | userIdField = userIdStr
-                    , userIdError =
-                        Maybe.map
-                            (\_ -> "User ID should be in the format: @user:server.com")
-                            userId
+                    , userId = parseUserId userIdStr
                 }
 
         HideLogin ->
@@ -137,23 +130,46 @@ showLogin (LoginForm form) =
 -- VIEW
 
 
+{-| A single text field input,
+with optional errors and appropriate ARIA tags
+-}
+textField :
+    { name : String
+    , value : String
+    , placeholder : String
+    , msgf : String -> Msg
+    , attrs : List (Html.Attribute Msg)
+    , error : Maybe String
+    }
+    -> Html Msg
+textField params =
+    labelBefore
+        [ class "cactus-login-field" ]
+        (text params.name)
+    <|
+        div []
+            [ -- the actual text field
+              inputText params.value <|
+                (params.attrs
+                    ++ [ placeholder params.name
+                       , onInput params.msgf
+                       , required True
+                       ]
+                 -- TODO: aria fields
+                )
+            , -- optional error
+              params.error
+                -- TODO: style this
+                |> Maybe.map (text >> List.singleton >> p [])
+                |> Maybe.withDefault (text "")
+            ]
+
+
 {-| HTML view for a login form.
 -}
 viewLoginForm : LoginForm -> String -> Html Msg
 viewLoginForm (LoginForm form) roomAlias =
     let
-        textField { name, value, msgf, attrs } =
-            labelBefore
-                [ class "cactus-login-field" ]
-                (p [] [ text name ])
-                (inputText value <|
-                    [ placeholder name
-                    , onInput msgf
-                    , required True
-                    ]
-                        ++ attrs
-                )
-
         username =
             textField
                 { name = "User ID"
@@ -161,6 +177,13 @@ viewLoginForm (LoginForm form) roomAlias =
                 , value = form.userIdField
                 , msgf = EditUserId
                 , attrs = []
+                , error =
+                    case form.userId of
+                        Err e ->
+                            Just e
+
+                        _ ->
+                            Nothing
                 }
 
         password =
@@ -170,6 +193,7 @@ viewLoginForm (LoginForm form) roomAlias =
                 , value = form.passwordField
                 , msgf = EditPassword
                 , attrs = [ type_ "password" ]
+                , error = Nothing
                 }
 
         homeserverUrl =
@@ -179,6 +203,7 @@ viewLoginForm (LoginForm form) roomAlias =
                 , value = form.homeserverUrlField |> Maybe.withDefault ""
                 , msgf = EditHomeserverUrl
                 , attrs = []
+                , error = Nothing
                 }
 
         backButton =
@@ -193,12 +218,9 @@ viewLoginForm (LoginForm form) roomAlias =
                 ([ class "cactus-button"
                  , disabled <| not (form.state == Ready)
                  ]
-                    ++ (case parseUserId form.userIdField of
-                            Just uid ->
-                                [ onClick <| Login uid ]
-
-                            _ ->
-                                []
+                    ++ (form.userId
+                            |> Result.map (Login >> onClick >> List.singleton)
+                            |> Result.withDefault []
                        )
                 )
                 [ text <|
