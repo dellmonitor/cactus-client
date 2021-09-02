@@ -321,11 +321,11 @@ imgAttributes homeserverUrl attrs =
 -- VIEW
 
 
-viewFormattedText : String -> FormattedText -> Html msg
+viewFormattedText : String -> FormattedText -> List (Html msg)
 viewFormattedText homeserverUrl fmt =
     case fmt of
         Plain str ->
-            p [] [ text str ]
+            [ p [] [ text str ] ]
 
         Html nodes ->
-            div [] (List.map (cleanHtml homeserverUrl) nodes |> Html.Parser.Util.toVirtualDom)
+            List.map (cleanHtml homeserverUrl) nodes |> Html.Parser.Util.toVirtualDom

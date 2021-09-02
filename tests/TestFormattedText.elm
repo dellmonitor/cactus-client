@@ -3,7 +3,7 @@ module TestFormattedText exposing (..)
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer)
 import Hex
-import Html exposing (p)
+import Html exposing (div, p)
 import Html.Attributes exposing (height, src, width)
 import Html.Parser
 import Message.FormattedText exposing (FormattedText(..), cleanHtml, viewFormattedText)
@@ -20,16 +20,19 @@ testViewFormattedText =
         [ test "Test Plain text" <|
             \_ ->
                 (viewFormattedText "https://my.homeserver.tld" <| Plain "just some text")
+                    |> div []
                     |> Query.fromHtml
                     |> Query.has [ tag "p", text "just some text" ]
         , test "Plain text with script" <|
             \_ ->
                 (viewFormattedText "https://my.homeserver.tld" <| Plain "<script>this will not run</script>")
+                    |> div []
                     |> Query.fromHtml
                     |> Query.has [ tag "p", text "<script>this will not run</script>" ]
         , test "Plain text with escaped script" <|
             \_ ->
                 (viewFormattedText "https://my.homeserver.tld" <| Plain "<script>this will not run</script>")
+                    |> div []
                     |> Query.fromHtml
                     |> Query.hasNot [ tag "script" ]
         , test "Clean image" <|
@@ -43,6 +46,7 @@ testViewFormattedText =
             in
             \_ ->
                 viewFormattedText "https://my.homeserver.tld" cleanImg
+                    |> div []
                     |> Query.fromHtml
                     |> Query.has
                         [ tag "img"
@@ -61,6 +65,7 @@ testViewFormattedText =
 
                 fmtHtml =
                     viewFormattedText "https://my.homeserver.tld" dirtyImg
+                        |> div []
                         |> Query.fromHtml
             in
             Expect.all
@@ -84,6 +89,7 @@ badDataMxTest attr cssprop =
                     Html [ Html.Parser.Element "font" [ ( attr, str ) ] [] ]
             in
             viewFormattedText "https://my.homeserver.tld" dirtyImg
+                |> div []
                 |> Query.fromHtml
                 |> Expect.all
                     [ Query.hasNot [ style cssprop str ]

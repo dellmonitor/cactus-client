@@ -255,7 +255,7 @@ viewMessage homeserverUrl displayname message =
         Text fmt ->
             div
                 [ class "cactus-message-text" ]
-                [ viewFormattedText homeserverUrl fmt ]
+                (viewFormattedText homeserverUrl fmt)
 
         Emote (Plain str) ->
             div
@@ -265,12 +265,12 @@ viewMessage homeserverUrl displayname message =
         Emote fmt ->
             div
                 [ class "cactus-message-text" ]
-                [ viewFormattedText homeserverUrl fmt ]
+                (viewFormattedText homeserverUrl fmt)
 
         Notice fmt ->
             div
                 [ class "cactus-message-text" ]
-                [ viewFormattedText homeserverUrl fmt ]
+                (viewFormattedText homeserverUrl fmt)
 
         Image image ->
             viewImage homeserverUrl image
