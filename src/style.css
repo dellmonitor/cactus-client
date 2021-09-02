@@ -3,13 +3,13 @@
  */
 /* automatic / manual light mode */
 :root, :root.light {
-  --cactus-text-color--passive: hsl(0, 0%, 60%);
-  --cactus-background-color--active: hsl(0, 0%, 98%);
+  --cactus-text-color--soft: hsl(0, 0%, 60%);
+  --cactus-background-color--strong: hsl(0, 0%, 98%);
   --cactus-border-color: hsl(0, 0%, 85%);
   --cactus-box-shadow-color: hsl(0, 0%, 20%, 0.3);
   --cactus-button-color: hsl(0, 0%, 80%);
-  --cactus-button-color--active: hsl(0, 0%, 75%);
-  --cactus-button-color--moreactive: hsl(0, 0%, 70%);
+  --cactus-button-color--strong: hsl(0, 0%, 75%);
+  --cactus-button-color--stronger: hsl(0, 0%, 70%);
   /* unchanged variables */
   --cactus-border-width: 1px;
   --cactus-border-radius: 0.4em;
@@ -22,26 +22,26 @@
 /* ❗️ keep these rules in sync with the manual dark mode below! */
 @media (prefers-color-scheme: dark) {
   :root {
-    --cactus-text-color--passive: hsl(0, 0%, 80%);
-    --cactus-background-color--active: hsl(0, 0%, 10%);
+    --cactus-text-color--soft: hsl(0, 0%, 80%);
+    --cactus-background-color--strong: hsl(0, 0%, 10%);
     --cactus-border-color: hsl(0, 0%, 20%);
     --cactus-box-shadow-color: hsl(0, 0%, 10%, 1);
     --cactus-button-color: hsl(0, 0%, 25%);
-    --cactus-button-color--active: hsl(0, 0%, 30%);
-    --cactus-button-color--moreactive: hsl(0, 0%, 35%);
+    --cactus-button-color--strong: hsl(0, 0%, 30%);
+    --cactus-button-color--stronger: hsl(0, 0%, 35%);
   }
 }
 
 /* manual dark mode 
 /* ❗️ keep these rules in sync with the automatic dark mode above! */
 :root.dark {
-    --cactus-text-color--passive: hsl(0, 0%, 80%);
-    --cactus-background-color--active: hsl(0, 0%, 10%);
+    --cactus-text-color--soft: hsl(0, 0%, 80%);
+    --cactus-background-color--strong: hsl(0, 0%, 10%);
     --cactus-border-color: hsl(0, 0%, 20%);
     --cactus-box-shadow-color: hsl(0, 0%, 10%, 1);
     --cactus-button-color: hsl(0, 0%, 25%);
-    --cactus-button-color--active: hsl(0, 0%, 30%);
-    --cactus-button-color--moreactive: hsl(0, 0%, 35%);
+    --cactus-button-color--strong: hsl(0, 0%, 30%);
+    --cactus-button-color--stronger: hsl(0, 0%, 35%);
   }
 
 
@@ -85,12 +85,12 @@
 }
 
 .cactus-error-close:hover:not([disabled]) {
-  color: var(--cactus-button-color--active);
+  color: var(--cactus-button-color--strong);
   cursor: pointer;
 }
 
 .cactus-error-close:active:not([disabled]) {
-  color: var(--cactus-button-color--moreactive);
+  color: var(--cactus-button-color--stronger);
   cursor: pointer;
 }
 
@@ -135,7 +135,7 @@
   text-align: center;
   line-height: 9rem;
   font-size: 1.5em;
-  color: var(--cactus-text-color--passive);
+  color: var(--cactus-text-color--soft);
 }
 
 /* login and post button */
@@ -172,7 +172,7 @@
 }
 
 .cactus-editor-name > span > input::placeholder {
-  color: var(--cactus-text-color--passive);
+  color: var(--cactus-text-color--soft);
 }
 
 /* div with login and send buttons  */
@@ -220,7 +220,7 @@ when guestPostingEnabled=false and loginEnabled=false */
   transform: translate(-50%, 0);
   z-index: 1;
   border-radius: var(--cactus-border-radius);
-  background-color: var(--cactus-background-color--active);
+  background-color: var(--cactus-background-color--strong);
   box-shadow: 0 0.5em 1em 0.5em var(--cactus-box-shadow-color);
   display: flex;
   flex-direction: column;
@@ -262,7 +262,7 @@ when guestPostingEnabled=false and loginEnabled=false */
 }
 
 .cactus-login-field > input::placeholder {
-  color: var(--cactus-text-color--passive);
+  color: var(--cactus-text-color--soft);
 }
 
 /* "back" and "log in" buttons */
@@ -346,7 +346,7 @@ when guestPostingEnabled=false and loginEnabled=false */
   justify-content: center;
   align-items: center;
   background-color: var(--cactus-border-color);
-  color: var(--cactus-text-color--passive);
+  color: var(--cactus-text-color--soft);
 }
 
 /* header and body */
@@ -381,7 +381,7 @@ when guestPostingEnabled=false and loginEnabled=false */
 
 /* comment posting time  */
 .cactus-comment-time {
-  color: var(--cactus-text-color--passive)
+  color: var(--cactus-text-color--soft)
 }
 
 /* text or media content of comment */
@@ -402,7 +402,7 @@ when guestPostingEnabled=false and loginEnabled=false */
 
 .cactus-message-emote {
   padding-top: 0.5em;
-  color: var(--cactus-text-color--passive);
+  color: var(--cactus-text-color--soft);
 }
 
 .cactus-message-image {
@@ -442,12 +442,12 @@ when guestPostingEnabled=false and loginEnabled=false */
 }
 
 .cactus-button:hover:not([disabled]) {
-  background-color: var(--cactus-button-color--active);
+  background-color: var(--cactus-button-color--strong);
   cursor: pointer;
 }
 
 .cactus-button:active:not([disabled]) {
-  background-color: var(--cactus-button-color--moreactive);
+  background-color: var(--cactus-button-color--stronger);
   cursor: pointer;
 }
 
