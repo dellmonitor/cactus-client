@@ -136,10 +136,12 @@ viewLoginForm (LoginForm form) roomAlias { editMsg, submitMsg, hideMsg } =
             , anotherClientLink
             ]
     in
-    div [ class "cactus-login-form" ] <|
-        [ h3 [] [ text "Log in using Matrix" ]
-        , username
-        , password
-        , homeserverUrl
-        ]
+    div [ class "cactus-login-form-wrapper" ]
+        [ div [ class "cactus-login-form" ] <|
+            [ h3 [] [ text "Log in using Matrix" ]
+            , username
+            , password
+            , homeserverUrl
+            ]
             ++ buttons
+        ]

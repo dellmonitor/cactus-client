@@ -202,24 +202,30 @@ when guestPostingEnabled=false and loginEnabled=false */
 /*
  * ***** LOGIN FORM *****
  */
- /* pop-up login form */
-.cactus-login-form {
-  /* place statically in viewport */
+.cactus-login-form-wrapper {
   position: fixed;
-  left: 50%;
-  top: 10%;
-  transform: translate(-50%, 0);
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* pop-up login form */
+.cactus-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2em;
+  padding: 2rem;
   border-radius: var(--cactus-border-radius);
   background-color: var(--cactus-background-color--strong);
   box-shadow: 0 0.5em 1em 0.5em var(--cactus-box-shadow-color);
   box-sizing: border-box;
   inline-size: 100%;
   max-inline-size: 300px;
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5em;
 }
 
 /* todo: use a class */
