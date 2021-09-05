@@ -1,6 +1,6 @@
 module LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
 
-import Accessibility exposing (Html, a, button, div, h3, inputText, labelBefore, p, text)
+import Accessibility exposing (Html, a, button, div, h3, h4, inputText, labelBefore, p, text)
 import ApiUtils exposing (matrixDotToUrl)
 import Html.Attributes exposing (class, disabled, href, placeholder, required, type_)
 import Html.Events exposing (onClick, onInput)
@@ -61,6 +61,43 @@ loginWithForm (LoginForm form) =
 viewLoginForm : LoginForm -> String -> { editMsg : LoginForm -> msg, submitMsg : LoginForm -> msg, hideMsg : msg } -> Html msg
 viewLoginForm (LoginForm form) roomAlias { editMsg, submitMsg, hideMsg } =
     let
+        closeButton =
+            button
+                [ class "cactus-login-close"
+                , onClick hideMsg
+
+                -- todo: add aria label
+                ]
+                [ text "X" ]
+
+        title =
+            h3 [ class "cactus-login-title" ]
+                [ text "Log in using Matrix" ]
+
+        clientTitle =
+            h4 [ class "cactus-login-client-title" ]
+                [ text "Use a Matrix client" ]
+
+        clientLink =
+            a
+                [ class "cactus-button"
+                , class "cactus-matrixdotto-button"
+                , href <| matrixDotToUrl roomAlias
+                ]
+                [ text "Log in" ]
+
+        clientForm =
+            [ div
+                [ class "cactus-login-client" ]
+                [ clientTitle
+                , clientLink
+                ]
+            ]
+
+        credentialsTitle =
+            h4 [ class "cactus-login-credentials-title" ]
+                [ text "Or type in your credentials" ]
+
         textField { name, value, msgf, attrs } =
             labelBefore
                 [ class "cactus-login-field" ]
@@ -97,16 +134,10 @@ viewLoginForm (LoginForm form) roomAlias { editMsg, submitMsg, hideMsg } =
                 , attrs = []
                 }
 
-        backButton =
-            button
-                [ class "cactus-button"
-                , onClick hideMsg
-                ]
-                [ text "Back" ]
-
         submitButton =
             button
                 [ class "cactus-button"
+                , class "cactus-login-credentials-button"
                 , onClick <| submitMsg (LoginForm form)
                 , disabled <| not (isValid form && form.state == Ready)
                 ]
@@ -119,29 +150,22 @@ viewLoginForm (LoginForm form) roomAlias { editMsg, submitMsg, hideMsg } =
                             "Logging in..."
                 ]
 
-        anotherClientLink =
-            a
-                [ class "cactus-button"
-                , class "cactus-matrixdotto-button"
-                , href <| matrixDotToUrl roomAlias
-                ]
-                [ text "Use a Matrix client" ]
-
-        buttons =
+        credentialsForm =
             [ div
-                [ class "cactus-login-buttons" ]
-                [ backButton
+                [ class "cactus-login-credentials" ]
+                [ credentialsTitle
+                , username
+                , password
+                , homeserverUrl
                 , submitButton
                 ]
-            , anotherClientLink
             ]
     in
     div [ class "cactus-login-form-wrapper" ]
         [ div [ class "cactus-login-form" ] <|
-            [ h3 [] [ text "Log in using Matrix" ]
-            , username
-            , password
-            , homeserverUrl
+            [ closeButton
+            , title
             ]
-            ++ buttons
+                ++ clientForm
+                ++ credentialsForm
         ]
