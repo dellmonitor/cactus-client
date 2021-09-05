@@ -7,7 +7,7 @@ import Config exposing (StaticConfig, parseConfig)
 import Duration
 import Editor exposing (Editor)
 import Event exposing (GetMessagesResponse)
-import Html.Attributes exposing (class, attribute)
+import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
 import Json.Decode as JD
 import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
@@ -383,7 +383,7 @@ viewError { id, message } =
             , onClick <| CloseError id
             ]
             [ text "×" ]
-        , p [ class "cactus-error-text"]
+        , p [ class "cactus-error-text" ]
             [ text <| " Error: " ++ message ]
         ]
 
