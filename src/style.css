@@ -213,10 +213,13 @@ when guestPostingEnabled=false and loginEnabled=false */
   border-radius: var(--cactus-border-radius);
   background-color: var(--cactus-background-color--strong);
   box-shadow: 0 0.5em 1em 0.5em var(--cactus-box-shadow-color);
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: 300px;
+  padding: 2rem;
   display: flex;
   flex-direction: column;
   gap: 0.5em;
-  padding: 2rem;
 }
 
 /* todo: use a class */
@@ -242,7 +245,6 @@ when guestPostingEnabled=false and loginEnabled=false */
 
 /* todo: use a class */
 .cactus-login-field > input {
-  inline-size: 100%;
   border-radius: var(--cactus-border-radius);
   border: solid var(--cactus-border-width) var(--cactus-border-color);
   padding: 0.5em;
@@ -259,8 +261,9 @@ when guestPostingEnabled=false and loginEnabled=false */
 /* "back" and "log in" buttons */
 .cactus-login-buttons {
   display: flex;
-  gap: 1em;
+  gap: 0.5em;
   justify-content: space-between;
+  flex-wrap: wrap;
 }
 
 .cactus-login-buttons > .cactus-button {
