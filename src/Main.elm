@@ -234,7 +234,7 @@ update msg model_ =
                             newModel =
                                 { model
                                     | room = newRoom
-                                    , gotAllComments = List.isEmpty newMsgs.chunk && dir == Older
+                                    , gotAllComments = model.gotAllComments || (List.isEmpty newMsgs.chunk && dir == Older)
                                 }
                         in
                         ( newModel
