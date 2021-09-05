@@ -251,10 +251,45 @@ when guestPostingEnabled=false and loginEnabled=false */
   cursor: pointer;
 }
 
-/* todo: use a class */
-.cactus-login-form > h3 {
+/* title */
+.cactus-login-title {
   align-self: center;
   font-size: 1.17em;
+  font-weight: bold;
+  /* todo: remove after using all: unset */
+  margin: 0;
+}
+
+/* client section */
+.cactus-login-client {
+  display: flex;
+  flex-direction: column;
+  gap: 1em
+}
+
+.cactus-login-client-title {
+  font-size: 1em;
+  font-weight: bold;
+  /* todo: remove after using all: unset */
+  margin: 0;
+}
+
+/* "log in" button */
+.cactus-matrixdotto-button {
+  justify-content: center;
+  /* todo: remove after using all: unset */
+  text-decoration: none;
+}
+
+/* credentials section */
+.cactus-login-credentials {
+  display: flex;
+  flex-direction: column;
+  gap: 1em
+}
+
+.cactus-login-credentials-title {
+  font-size: 1em;
   font-weight: bold;
   /* todo: remove after using all: unset */
   margin: 0;
@@ -287,24 +322,9 @@ when guestPostingEnabled=false and loginEnabled=false */
   color: var(--cactus-text-color--soft);
 }
 
-/* "back" and "log in" buttons */
-.cactus-login-buttons {
-  display: flex;
-  gap: 0.5em;
-  justify-content: space-between;
-  flex-wrap: wrap;
-}
-
-.cactus-login-buttons > .cactus-button {
-  flex: 1;
+/* "log in" button */
+.cactus-login-credentials-button {
   justify-content: center;
-}
-
-/* "Use a Matrix client" button */
-.cactus-matrixdotto-button {
-  justify-content: center;
-  /* todo: remove after using all: unset */
-  text-decoration: none;
 }
 
 
