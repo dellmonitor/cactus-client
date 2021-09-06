@@ -74,10 +74,9 @@
 /* close button */
 .cactus-error-close {
   position: absolute;
-  right: 0;
-  top: 0;
-  transform: translate(+5%, -20%);
-  font-size: 1.5em;
+  right: 0.2em;
+  top: 0em;
+  scale: 2;
   color: var(--cactus-button-color);
   /* todo: remove after using all: unset */
   background-color: transparent;
@@ -214,7 +213,7 @@ when guestPostingEnabled=false and loginEnabled=false */
   justify-content: center;
 }
 
-/* pop-up login form */
+/* login form */
 .cactus-login-form {
   display: flex;
   flex-direction: column;
@@ -226,6 +225,30 @@ when guestPostingEnabled=false and loginEnabled=false */
   box-sizing: border-box;
   inline-size: 100%;
   max-inline-size: 300px;
+  /* for absolutely positioned close button */
+  position: relative;
+}
+
+/* close button */
+.cactus-login-close {
+  position: absolute;
+  right: 0.4em;
+  top: 0.2em;
+  scale: 2;
+  color: var(--cactus-button-color);
+  /* todo: remove after using all: unset */
+  background-color: transparent;
+  border: none;
+}
+
+.cactus-login-close:hover:not([disabled]) {
+  color: var(--cactus-button-color--strong);
+  cursor: pointer;
+}
+
+.cactus-login-close:active:not([disabled]) {
+  color: var(--cactus-button-color--stronger);
+  cursor: pointer;
 }
 
 /* todo: use a class */

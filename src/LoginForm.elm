@@ -2,7 +2,7 @@ module LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithFor
 
 import Accessibility exposing (Html, a, button, div, h3, h4, inputText, labelBefore, p, text)
 import ApiUtils exposing (matrixDotToUrl)
-import Html.Attributes exposing (class, disabled, href, placeholder, required, type_)
+import Html.Attributes exposing (attribute, class, disabled, href, placeholder, required, type_)
 import Html.Events exposing (onClick, onInput)
 import Session exposing (Session, login)
 import Task exposing (Task)
@@ -64,11 +64,10 @@ viewLoginForm (LoginForm form) roomAlias { editMsg, submitMsg, hideMsg } =
         closeButton =
             button
                 [ class "cactus-login-close"
+                , attribute "aria-label" "close"
                 , onClick hideMsg
-
-                -- todo: add aria label
                 ]
-                [ text "X" ]
+                [ text "×" ]
 
         title =
             h3 [ class "cactus-login-title" ]
