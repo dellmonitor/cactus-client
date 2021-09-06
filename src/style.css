@@ -232,9 +232,8 @@ when guestPostingEnabled=false and loginEnabled=false */
 /* close button */
 .cactus-login-close {
   position: absolute;
-  right: 0.4em;
-  top: 0.2em;
-  scale: 2;
+  right: 0;
+  top: 0;
   color: var(--cactus-button-color);
   /* todo: remove after using all: unset */
   background-color: transparent;
@@ -249,6 +248,11 @@ when guestPostingEnabled=false and loginEnabled=false */
 .cactus-login-close:active:not([disabled]) {
   color: var(--cactus-button-color--stronger);
   cursor: pointer;
+}
+
+.cactus-login-close-icon {
+  inline-size: 20px;
+  block-size: 20px;
 }
 
 /* title */
