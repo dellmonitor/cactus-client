@@ -7,7 +7,7 @@ import Config exposing (StaticConfig, parseConfig)
 import Duration
 import Editor exposing (Editor)
 import Event exposing (GetMessagesResponse)
-import Html.Attributes exposing (class, attribute)
+import Html.Attributes exposing (attribute, class)
 import Html.Events exposing (onClick)
 import Json.Decode as JD
 import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
@@ -383,7 +383,7 @@ viewError { id, message } =
             , onClick <| CloseError id
             ]
             [ text "×" ]
-        , p [ class "cactus-error-text"]
+        , p [ class "cactus-error-text" ]
             [ text <| " Error: " ++ message ]
         ]
 
@@ -401,7 +401,12 @@ view model_ =
         GoodConfig model ->
             let
                 errors =
-                    div [] <| List.map viewError model.errors
+                    if List.length model.errors > 0 then
+                        div [ class "cactus-errors" ] <|
+                            List.map viewError model.errors
+
+                    else
+                        text ""
 
                 loginPopup =
                     case model.loginForm of
@@ -435,7 +440,7 @@ view model_ =
                 , editor
                 , case ( model.room, model.session ) of
                     ( Just room, Just session ) ->
-                        div []
+                        div [ class "cactus-comments-container" ]
                             [ viewRoomEvents
                                 (getHomeserverUrl session)
                                 room

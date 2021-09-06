@@ -125,5 +125,4 @@ testBothDisabled =
         \_ ->
             viewEditorHelper { loginEnabled = False, guestPostingEnabled = False, session = Nothing }
                 |> Query.fromHtml
-                |> Query.find [ Selector.tag "button", Selector.class "cactus-button" ]
-                |> Query.has [ Selector.class "cactus-matrixdotto-only" ]
+                |> Query.has [ Selector.tag "a", Selector.classes ["cactus-button", "cactus-matrixdotto-only"] ]

@@ -217,9 +217,11 @@ viewMessageEvent defaultHomeserverUrl now messageTime senderId sender message =
         , div [ class "cactus-comment-content" ]
             -- name and time
             [ div [ class "cactus-comment-header" ]
-                [ p
-                    [ class "cactus-comment-displayname" ]
-                    [ a [ href matrixDotToUrl ] [ text displayname ] ]
+                [ a
+                    [ class "cactus-comment-displayname"
+                    , href matrixDotToUrl
+                    ]
+                    [ text displayname ]
                 , Accessibility.time
                     [ class "cactus-comment-time", title timeUtc, datetime timeUtcIso ]
                     [ text timeStr ]
@@ -246,7 +248,7 @@ viewAvatar homeserverUrl member =
                 [ img "user avatar image" [ src url ] ]
 
             Nothing ->
-                [ p [] [ text "?" ] ]
+                [ div [ class "cactus-comment-avatar-placeholder" ] [] ]
 
 
 viewMessage : String -> String -> Message -> Html msg

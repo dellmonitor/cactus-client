@@ -154,13 +154,11 @@ view (Editor editor) { session, roomAlias, loginEnabled, guestPostingEnabled, ms
             ( False, False ) ->
                 -- no posting. only show matrix.to button
                 [ a
-                    [ href <| matrixDotToUrl roomAlias ]
-                    [ button
-                        [ class "cactus-button"
-                        , class "cactus-matrixdotto-only"
-                        ]
-                        [ text "Comment using a Matrix client" ]
+                    [ href <| matrixDotToUrl roomAlias
+                    , class "cactus-button"
+                    , class "cactus-matrixdotto-only"
                     ]
+                    [ text "Comment using a Matrix client" ]
                 ]
 
 

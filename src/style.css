@@ -192,19 +192,10 @@
 
 /* "Use a Matrix client" button
 when guestPostingEnabled=false and loginEnabled=false */
-/* todo: use on anchor directly without button in it */
 .cactus-matrixdotto-only {
-}
-
-/* dont style link */
-/* todo: use .cactus-matrixdotto-only here when button is removed */
-.cactus-editor > a:first-child {
-  display: flex;
-  justify-content: center;
-  cursor: pointer;
+  align-self: center;
   /* todo: remove after using all: unset */
   text-decoration: none;
-  color: inherit;
 }
 
 
@@ -222,10 +213,13 @@ when guestPostingEnabled=false and loginEnabled=false */
   border-radius: var(--cactus-border-radius);
   background-color: var(--cactus-background-color--strong);
   box-shadow: 0 0.5em 1em 0.5em var(--cactus-box-shadow-color);
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: 300px;
+  padding: 2rem;
   display: flex;
   flex-direction: column;
   gap: 0.5em;
-  padding: 2rem;
 }
 
 /* todo: use a class */
@@ -251,7 +245,6 @@ when guestPostingEnabled=false and loginEnabled=false */
 
 /* todo: use a class */
 .cactus-login-field > input {
-  inline-size: 100%;
   border-radius: var(--cactus-border-radius);
   border: solid var(--cactus-border-width) var(--cactus-border-color);
   padding: 0.5em;
@@ -268,8 +261,9 @@ when guestPostingEnabled=false and loginEnabled=false */
 /* "back" and "log in" buttons */
 .cactus-login-buttons {
   display: flex;
-  gap: 1em;
+  gap: 0.5em;
   justify-content: space-between;
+  flex-wrap: wrap;
 }
 
 .cactus-login-buttons > .cactus-button {
@@ -278,20 +272,10 @@ when guestPostingEnabled=false and loginEnabled=false */
 }
 
 /* "Use a Matrix client" button */
-/* todo: use on anchor directly without button in it */
 .cactus-matrixdotto-button {
-  flex: 1;
   justify-content: center;
-}
-
-/* dont style link */
-/* todo: use .cactus-matrixdotto-button here when button is removed */
-.cactus-login-form > a {
-  display: flex;
-  cursor: pointer;
   /* todo: remove after using all: unset */
   text-decoration: none;
-  color: inherit;
 }
 
 
@@ -299,16 +283,14 @@ when guestPostingEnabled=false and loginEnabled=false */
  * ***** COMMENTS LIST *****
  */
 /* comments container */
-/* todo: use a class */
-.cactus-container>div:last-child {
+.cactus-comments-container {
   display: flex;
   flex-direction: column;
   gap: 1em;
 }
 
-/* comments */
-/* todo: use a class */
-.cactus-container>div:last-child>div:first-child {
+/* comments list */
+.cactus-comments-list {
   display: flex;
   flex-direction: column;
   gap: 0.5em;
@@ -340,13 +322,15 @@ when guestPostingEnabled=false and loginEnabled=false */
 }
 
 /* in case of no avatar */
-/* todo: use a class same as above */
-.cactus-comment-avatar > p {
+.cactus-comment-avatar-placeholder {
   display: flex;
   justify-content: center;
   align-items: center;
   background-color: var(--cactus-border-color);
   color: var(--cactus-text-color--soft);
+}
+.cactus-comment-avatar-placeholder::before {
+  content: "?"
 }
 
 /* header and body */
@@ -366,13 +350,6 @@ when guestPostingEnabled=false and loginEnabled=false */
 /* user name */
 .cactus-comment-displayname {
   font-weight: bold;
-  /* todo: remove after using all: unset */
-  margin: 0;
-}
-
-/* dont style link */
-/* todo: use a class name, or better replace displayname paragraph with it */
-.cactus-comment-displayname > a {
   cursor: pointer;
   /* todo: remove after using all: unset */
   text-decoration: none;

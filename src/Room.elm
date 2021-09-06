@@ -18,6 +18,7 @@ module Room exposing
 import Accessibility exposing (Html, div)
 import Dict exposing (Dict)
 import Event exposing (GetMessagesResponse, RoomEvent(..), decodePaginatedEvents, latestMemberDataBefore, messageEvents)
+import Html.Attributes exposing (class)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
@@ -217,7 +218,7 @@ The `homeserverUrl` is used translate mxc:// to media API endpoints
 -}
 viewRoomEvents : String -> Room -> Int -> Time.Posix -> Html msg
 viewRoomEvents homeserverUrl (Room room) count now =
-    div [] <|
+    div [ class "cactus-comments-list" ] <|
         List.map
             (\e ->
                 let
