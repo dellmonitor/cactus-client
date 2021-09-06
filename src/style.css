@@ -74,9 +74,8 @@
 /* close button */
 .cactus-error-close {
   position: absolute;
-  right: 0.2em;
-  top: 0em;
-  scale: 2;
+  right: 0;
+  top: 0;
   color: var(--cactus-button-color);
   /* todo: remove after using all: unset */
   background-color: transparent;
@@ -91,6 +90,11 @@
 .cactus-error-close:active:not([disabled]) {
   color: var(--cactus-button-color--stronger);
   cursor: pointer;
+}
+
+.cactus-error-close-icon {
+  inline-size: 20px;
+  block-size: 20px;
 }
 
 /* error message */

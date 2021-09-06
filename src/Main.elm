@@ -7,7 +7,7 @@ import Config exposing (StaticConfig, parseConfig)
 import Duration
 import Editor exposing (Editor)
 import Event exposing (GetMessagesResponse)
-import Html.Attributes exposing (attribute, class)
+import Html.Attributes exposing (attribute, class, style)
 import Html.Events exposing (onClick)
 import Json.Decode as JD
 import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
@@ -37,6 +37,8 @@ import Session
         , sessionKind
         , storeSessionCmd
         )
+import Svg exposing (path, svg)
+import Svg.Attributes as S exposing (d, viewBox)
 import Task
 import Time
 
@@ -376,15 +378,34 @@ addError errors message =
 
 viewError : Error -> Html Msg
 viewError { id, message } =
+    let
+        closeButton =
+            button
+                [ class "cactus-error-close"
+                , attribute "aria-label" "close"
+                , onClick <| CloseError id
+                ]
+                [ svg
+                    [ viewBox "0 0 20 20"
+                    , S.class "cactus-error-close-icon"
+                    , style "fill" "currentColor"
+                    ]
+                    [ path
+                        [ style "fill-rule" "evenodd"
+                        , d "M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        , style "clip-rule" "evenodd"
+                        ]
+                        []
+                    ]
+                ]
+
+        content =
+            p [ class "cactus-error-text" ]
+                [ text <| " Error: " ++ message ]
+    in
     div [ class "cactus-error", errorMessage message ]
-        [ button
-            [ class "cactus-error-close"
-            , attribute "aria-label" "close"
-            , onClick <| CloseError id
-            ]
-            [ text "×" ]
-        , p [ class "cactus-error-text" ]
-            [ text <| " Error: " ++ message ]
+        [ closeButton
+        , content
         ]
 
 
