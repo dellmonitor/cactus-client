@@ -128,6 +128,7 @@
   border-radius: var(--cactus-border-radius);
   border: solid var(--cactus-border-width) var(--cactus-border-color);
   padding: 0.5em;
+  box-sizing: content-box;
   /* todo: remove after using all: unset */
   background-color: transparent;
   color: inherit;
