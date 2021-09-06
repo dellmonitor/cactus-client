@@ -34,7 +34,9 @@ initLoginForm : LoginForm
 initLoginForm =
     LoginForm
         { userIdField = ""
-        , userId = Err "User ID must not be empty"
+        , userId =
+            parseUserId "@alice:example.com"
+                |> Result.mapError (\_ -> "Something's wrong with the user ID parser")
         , passwordField = ""
         , homeserverUrlField = Nothing
         , loginError = Nothing
@@ -151,7 +153,7 @@ textField params =
             [ -- the actual text field
               inputText params.value <|
                 (params.attrs
-                    ++ [ placeholder params.name
+                    ++ [ placeholder params.placeholder
                        , onInput params.msgf
                        , required True
                        ]
@@ -189,7 +191,7 @@ viewLoginForm (LoginForm form) roomAlias =
         password =
             textField
                 { name = "Password"
-                , placeholder = "password"
+                , placeholder = "••••••••••••"
                 , value = form.passwordField
                 , msgf = EditPassword
                 , attrs = [ type_ "password" ]
