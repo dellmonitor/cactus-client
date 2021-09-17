@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.0
+
+- Relicense from GPLv3 to LGPLv3.
+- Rewrite large parts of the stylesheet to use flexbox (Thanks to asdfkcdk for !8).
+- Introduce CSS variables to the stylesheet (Thanks to asdfkcdk for !9).
+- `.dark` and `.light` CSS classes with default values for dark/light mode (Thanks to asdfkcdk for !9).
+- Bugfix: "View More" button no longer blinks when auto-refreshing short comment sections.
+
 ## 0.10.0
 
 - Allow commenting with Markdown.
