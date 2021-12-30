@@ -143,8 +143,8 @@
 
 .cactus-editor-textarea::placeholder {
   text-align: center;
-  line-height: 9rem;
-  font-size: 1.5em;
+  line-height: 8rem;
+  font-size: 1.5rem;
   color: var(--cactus-text-color--soft);
 }
 
