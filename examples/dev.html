@@ -16,26 +16,24 @@
       max-width: 350px;
     }
 
-    /* automatic / manual light mode */
+    /* explicit light mode - also the default */
     :root, :root.light {
       background-color: white;
       color: black;
     }
-    
+
+    /* explicit dark mode */
+    :root.dark {
+      background-color: black;
+      color: white;
+    }
+
     /* automatic dark mode */
-    /* ❗️ keep these rules in sync with the manual dark mode below! */
     @media (prefers-color-scheme: dark) {
       :root {
         background-color: black;
         color: white;
       }
-    }
-    
-    /* manual dark mode 
-    /* ❗️ keep these rules in sync with the automatic dark mode above! */
-    :root.dark {
-      background-color: black;
-      color: white;
     }
   </style>
   <script>
@@ -61,8 +59,6 @@
 </head>
 
 <body>
-  <p>(Note, by default automatic light/dark mode is used based on the system color scheme. Using the toggle switches to
-    manual light/dark mode. It returns to automatic light/dark mode after refreshing the page (or removing the class from the <code>&lt;html&gt;</code> element)</p>
   <button onClick="toggleDarkMode()">Toggle Dark Mode</button>
   <h1>Comments</h1>
   <div id="my-comments"></div>
@@ -79,24 +75,5 @@
           data-guest-posting-enabled=true
           data-update-interval=30.0>
   </script>
-
-  <!-- The element above is equivalent to:
-    <script type="text/javascript" src="../src/cactus.js"></script>
-    <script>
-      initComments({
-        node: "#my-comments",
-        defaultHomeserverUrl: "https://matrix.cactus.chat:8448",
-        serverName: "cactus.chat",
-        siteName: "my-blog",
-        commentSectionId: "example-page", // another id: all-event-types
-
-        pageSize: 10,
-        loginEnabled: true,
-        guestPostingEnabled: true,
-        updateInterval: 30.0,
-      })
-    </script>
-  -->
 </body>
-
 </html>
