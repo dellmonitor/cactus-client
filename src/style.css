@@ -82,7 +82,6 @@
   position: absolute;
   right: 0.2em;
   top: 0em;
-  scale: 2;
   color: var(--cactus-button-color);
   /* todo: remove after using all: unset */
   background-color: transparent;
@@ -238,12 +237,6 @@ when guestPostingEnabled=false and loginEnabled=false */
   box-sizing: border-box;
   inline-size: 100%;
   max-inline-size: 300px;
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5em;
-  align-items: center;
-  justify-content: center;
 }
 
 /* close button */
@@ -253,6 +246,7 @@ when guestPostingEnabled=false and loginEnabled=false */
   top: 0;
   color: var(--cactus-button-color);
   /* todo: remove after using all: unset */
+  scale: 2.0;
   background-color: transparent;
   border: none;
 }
