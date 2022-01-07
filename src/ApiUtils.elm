@@ -100,7 +100,7 @@ parseUserId : String -> Result String UserId
 parseUserId =
     String.toLower
         >> Parser.run userIdParser
-        >> Result.mapError (\_ -> "User ID not in format: @user:example.com")
+        >> Result.mapError (\_ -> "Must follow format: @user:example.com")
 
 
 username : UserId -> String
