@@ -1,11 +1,13 @@
 module LoginForm exposing (LoginForm, Msg, initLoginForm, showLogin, updateLoginForm, viewLoginForm)
 
-import Accessibility exposing (Html, a, button, div, h3, inputText, labelBefore, p, text)
+import Accessibility exposing (Html, a, button, div, h3, h4, inputText, labelBefore, p, text)
 import ApiUtils exposing (UserId, lookupHomeserverUrl, matrixDotToUrl, parseUserId, username)
 import Html
-import Html.Attributes exposing (class, disabled, href, placeholder, required, type_)
+import Html.Attributes exposing (attribute, class, disabled, href, placeholder, required, style, type_)
 import Html.Events exposing (onClick, onInput)
 import Session exposing (Session, login)
+import Svg exposing (path, svg)
+import Svg.Attributes as S exposing (d, viewBox)
 import Task exposing (Task)
 
 
@@ -138,33 +140,57 @@ with optional errors and appropriate ARIA tags
 textField :
     { name : String
     , value : String
-    , placeholder : String
+    , default : String
     , msgf : String -> Msg
     , attrs : List (Html.Attribute Msg)
     , error : Maybe String
     }
     -> Html Msg
-textField params =
+textField { name, value, default, msgf, attrs, error } =
     labelBefore
         [ class "cactus-login-field" ]
-        (text params.name)
+        (p [] [ text name ])
     <|
         div []
             [ -- the actual text field
-              inputText params.value <|
-                (params.attrs
-                    ++ [ placeholder params.placeholder
-                       , onInput params.msgf
+              inputText value <|
+                (attrs
+                    ++ [ placeholder default
+                       , onInput msgf
                        , required True
                        ]
                  -- TODO: aria fields
                 )
             , -- optional error
-              params.error
+              error
                 -- TODO: style this
                 |> Maybe.map (text >> List.singleton >> p [])
                 |> Maybe.withDefault (text "")
             ]
+
+
+{-| An SVG "X" button that closes the login form
+-}
+closeButton : Html Msg
+closeButton =
+    button
+        [ class "cactus-login-close"
+        , attribute "aria-label" "close"
+        , onClick HideLogin
+        ]
+        [ svg
+            [ viewBox "0 0 20 20"
+            , S.class "cactus-login-close-icon"
+            , style "fill" "currentColor"
+            ]
+            [ path
+                [ style "fill-rule" "evenodd"
+                , d "M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                , style "clip-rule" "evenodd"
+                ]
+                []
+            ]
+        ]
 
 
 {-| HTML view for a login form.
@@ -172,10 +198,38 @@ textField params =
 viewLoginForm : LoginForm -> String -> Html Msg
 viewLoginForm (LoginForm form) roomAlias =
     let
+        title =
+            h3 [ class "cactus-login-title" ]
+                [ text "Log in using Matrix" ]
+
+        clientTitle =
+            h4 [ class "cactus-login-client-title" ]
+                [ text "Use a Matrix client" ]
+
+        clientLink =
+            a
+                [ href <| matrixDotToUrl roomAlias
+                , class "cactus-button"
+                , class "cactus-matrixdotto-button"
+                ]
+                [ text "Log in" ]
+
+        clientForm =
+            [ div
+                [ class "cactus-login-client" ]
+                [ clientTitle
+                , clientLink
+                ]
+            ]
+
+        credentialsTitle =
+            h4 [ class "cactus-login-credentials-title" ]
+                [ text "Or type in your credentials" ]
+
         username =
             textField
                 { name = "User ID"
-                , placeholder = "@alice:example.com"
+                , default = "@alice:example.com"
                 , value = form.userIdField
                 , msgf = EditUserId
                 , attrs = []
@@ -191,7 +245,7 @@ viewLoginForm (LoginForm form) roomAlias =
         password =
             textField
                 { name = "Password"
-                , placeholder = "••••••••••••"
+                , default = "••••••••••••"
                 , value = form.passwordField
                 , msgf = EditPassword
                 , attrs = [ type_ "password" ]
@@ -201,25 +255,20 @@ viewLoginForm (LoginForm form) roomAlias =
         homeserverUrl =
             textField
                 { name = "Homeserver Url"
-                , placeholder = "Homeserver Url"
+                , default = "Homeserver Url"
                 , value = form.homeserverUrlField |> Maybe.withDefault ""
                 , msgf = EditHomeserverUrl
                 , attrs = []
                 , error = Nothing
                 }
 
-        backButton =
-            button
-                [ class "cactus-button"
-                , onClick HideLogin
-                ]
-                [ text "Back" ]
-
         submitButton =
             button
                 ([ class "cactus-button"
+                 , class "cactus-login-credentials-button"
                  , disabled <| not (form.state == Ready)
                  ]
+                    -- append onclick handler if userid parses
                     ++ (form.userId
                             |> Result.map (Login >> onClick >> List.singleton)
                             |> Result.withDefault []
@@ -237,21 +286,15 @@ viewLoginForm (LoginForm form) roomAlias =
                             ""
                 ]
 
-        anotherClientLink =
-            a
-                [ class "cactus-button"
-                , class "cactus-matrixdotto-button"
-                , href <| matrixDotToUrl roomAlias
-                ]
-                [ text "Use a Matrix client" ]
-
-        buttons =
+        credentialsForm =
             [ div
-                [ class "cactus-login-buttons" ]
-                [ backButton
+                [ class "cactus-login-credentials" ]
+                [ credentialsTitle
+                , username
+                , password
+                , homeserverUrl
                 , submitButton
                 ]
-            , anotherClientLink
             ]
     in
     case form.state of
@@ -259,9 +302,11 @@ viewLoginForm (LoginForm form) roomAlias =
             text ""
 
         _ ->
-            div [ class "cactus-login-form" ] <|
-                [ h3 [] [ text "Log in using Matrix" ]
-                , username
-                , password
+            div [ class "cactus-login-form-wrapper" ]
+                [ div [ class "cactus-login-form" ] <|
+                    [ closeButton
+                    , title
+                    ]
+                        ++ clientForm
+                        ++ credentialsForm
                 ]
-                    ++ buttons
