@@ -1,7 +1,6 @@
 module LoginForm exposing (LoginForm, Msg, initLoginForm, showLogin, updateLoginForm, viewLoginForm)
 
-import Accessibility exposing (Html, a, button, div, h3, h4, inputText, label, labelBefore, p, text)
-import Accessibility.Aria as Aria
+import Accessibility exposing (Html, a, button, div, h3, h4, inputText, label, p, text)
 import Accessibility.Widget as Widget
 import ApiUtils exposing (UserId, lookupHomeserverUrl, matrixDotToUrl, parseUserId, username)
 import Html
@@ -98,7 +97,7 @@ updateLoginForm (LoginForm form) msg =
                     -- enable url field if homeserver err
                     , homeserverUrlField =
                         case ( err, form.homeserverUrlField ) of
-                            ( HomeserverLookupFailed hserr, Nothing ) ->
+                            ( HomeserverLookupFailed _, Nothing ) ->
                                 Just ""
 
                             _ ->
