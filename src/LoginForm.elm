@@ -2,10 +2,12 @@ module LoginForm exposing (LoginForm, Msg, initLoginForm, showLogin, updateLogin
 
 import Accessibility exposing (Html, a, button, div, h3, h4, inputText, label, labelBefore, p, text)
 import Accessibility.Aria as Aria
+import Accessibility.Widget as Widget
 import ApiUtils exposing (UserId, lookupHomeserverUrl, matrixDotToUrl, parseUserId, username)
 import Html
 import Html.Attributes exposing (attribute, class, disabled, href, placeholder, required, style, type_)
 import Html.Events exposing (onClick, onInput)
+import Maybe.Extra exposing (isJust)
 import Session exposing (Session, login)
 import Svg exposing (path, svg)
 import Svg.Attributes as S exposing (d, viewBox)
@@ -87,8 +89,21 @@ updateLoginForm (LoginForm form) msg =
             )
 
         LoggedIn (Err err) ->
-            -- login failed. show error
-            updateState { form | loginError = Just err }
+            updateState
+                { form
+                    | -- login failed. show error
+                      loginError = Just err
+                    , state = Ready
+
+                    -- enable url field if homeserver err
+                    , homeserverUrlField =
+                        case ( err, form.homeserverUrlField ) of
+                            ( HomeserverLookupFailed hserr, Nothing ) ->
+                                Just ""
+
+                            _ ->
+                                form.homeserverUrlField
+                }
 
         LoggedIn (Ok sess) ->
             -- Success! Reset login form and pass session up to caller
@@ -103,9 +118,20 @@ type LoginError
     | LoginFailed Session.Error
 
 
-{-| Login with the data from a loginform
-First look up the homeserver using .well-known
-then log in using that homeserver url.
+{-| Convert a login error to string for UI stuff
+-}
+errorToString : LoginError -> String
+errorToString err =
+    case err of
+        HomeserverLookupFailed hserr ->
+            "Could not find homeserver: " ++ hserr
+
+        LoginFailed (Session.Error code msg) ->
+            code ++ ": " ++ msg
+
+
+{-| Login with the data from a `LoginForm`.
+First look up the homeserver using .well-known, then log in using that homeserver url.
 -}
 loginWithForm : LoginForm -> UserId -> Task LoginError Session
 loginWithForm (LoginForm form) userId =
@@ -122,6 +148,9 @@ loginWithForm (LoginForm form) userId =
             )
 
 
+{-| Show the login popup.
+Sets `LoginForm.state` to `Ready`.
+-}
 showLogin : LoginForm -> LoginForm
 showLogin (LoginForm form) =
     if form.state == Hidden then
@@ -135,8 +164,7 @@ showLogin (LoginForm form) =
 -- VIEW
 
 
-{-| A single text field input,
-with optional errors and appropriate ARIA tags
+{-| A single text field input, with optional errors and appropriate ARIA tags.
 -}
 textField :
     { name : String
@@ -158,13 +186,16 @@ textField { name, value, default, msgf, attrs, error } =
                 ++ [ placeholder default
                    , onInput msgf
                    , required True
-                   , attribute "aria-label" name
+
+                   -- accessibility stuff
+                   , Widget.label name
+                   , Widget.invalid <| isJust error
                    ]
             )
 
         -- error (or nothing)
         , error
-            |> Maybe.map (text >> List.singleton >> p [])
+            |> Maybe.map (text >> List.singleton >> p [ class "cactus-login-error" ])
             |> Maybe.withDefault (text "")
         ]
 
@@ -252,14 +283,19 @@ viewLoginForm (LoginForm form) roomAlias =
                 }
 
         homeserverUrl =
-            textField
-                { name = "Homeserver URL"
-                , default = "https://matrix.cactus.chat:8448"
-                , value = form.homeserverUrlField |> Maybe.withDefault ""
-                , msgf = EditHomeserverUrl
-                , attrs = []
-                , error = Nothing
-                }
+            form.homeserverUrlField
+                |> Maybe.map
+                    (\value ->
+                        textField
+                            { name = "Homeserver URL"
+                            , default = "https://matrix.cactus.chat:8448"
+                            , value = value
+                            , msgf = EditHomeserverUrl
+                            , attrs = []
+                            , error = Nothing
+                            }
+                    )
+                |> Maybe.withDefault (text "")
 
         submitButton =
             button
@@ -285,6 +321,16 @@ viewLoginForm (LoginForm form) roomAlias =
                             ""
                 ]
 
+        loginError =
+            form.loginError
+                |> Maybe.map
+                    (errorToString
+                        >> text
+                        >> List.singleton
+                        >> p [ class "cactus-login-error" ]
+                    )
+                |> Maybe.withDefault (text "")
+
         credentialsForm =
             div
                 [ class "cactus-login-credentials" ]
@@ -293,6 +339,7 @@ viewLoginForm (LoginForm form) roomAlias =
                 , password
                 , homeserverUrl
                 , submitButton
+                , loginError
                 ]
     in
     case form.state of

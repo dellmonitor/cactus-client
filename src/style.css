@@ -317,15 +317,15 @@ when guestPostingEnabled=false and loginEnabled=false */
 }
 
 .cactus-login-label {
-  font-size: 0.9em;
+  font-size: 1em;
   padding-bottom: 0.25em;
-  color: var(--cactus-text-color);
+  color: var(--cactus-text-color--soft);
 }
 
-/* todo: use a class */
-.cactus-login-field > p {
-  /* todo: remove after using all: unset */
+.cactus-login-error {
   margin: 0;
+  font-size: 0.8em;
+  color: var(--cactus-text-color--soft);
 }
 
 /* todo: use a class */
