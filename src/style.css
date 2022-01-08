@@ -36,7 +36,7 @@
   }
 }
 
-/* manual dark mode 
+/* manual dark mode
 /* ❗️ keep these rules in sync with the automatic dark mode above! */
 :root.dark {
   --cactus-text-color--soft: hsl(0, 0%, 50%);
@@ -241,11 +241,11 @@ when guestPostingEnabled=false and loginEnabled=false */
 
 /* close button */
 .cactus-login-close {
-  position: absolute;
-  right: 0;
-  top: 0;
+  align-self: flex-end;
+  position: relative;
+  margin: -2em;
+  padding: 0;
   color: var(--cactus-button-color);
-  /* todo: remove after using all: unset */
   scale: 2.0;
   background-color: transparent;
   border: none;
