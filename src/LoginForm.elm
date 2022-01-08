@@ -148,9 +148,9 @@ textField :
     }
     -> Html Msg
 textField { name, value, default, msgf, attrs, error } =
-    label
+    div
         [ class "cactus-login-field" ]
-        [ p [] [ text name ]
+        [ label [ class "cactus-login-label" ] [ text name ]
 
         -- the text field
         , inputText value
@@ -254,7 +254,7 @@ viewLoginForm (LoginForm form) roomAlias =
         homeserverUrl =
             textField
                 { name = "Homeserver URL"
-                , default = "Homeserver URL"
+                , default = "https://matrix.cactus.chat:8448"
                 , value = form.homeserverUrlField |> Maybe.withDefault ""
                 , msgf = EditHomeserverUrl
                 , attrs = []
