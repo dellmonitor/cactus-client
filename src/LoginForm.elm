@@ -1,6 +1,7 @@
 module LoginForm exposing (LoginForm, Msg, initLoginForm, showLogin, updateLoginForm, viewLoginForm)
 
-import Accessibility exposing (Html, a, button, div, h3, h4, inputText, labelBefore, p, text)
+import Accessibility exposing (Html, a, button, div, h3, h4, inputText, label, labelBefore, p, text)
+import Accessibility.Aria as Aria
 import ApiUtils exposing (UserId, lookupHomeserverUrl, matrixDotToUrl, parseUserId, username)
 import Html
 import Html.Attributes exposing (attribute, class, disabled, href, placeholder, required, style, type_)
@@ -147,26 +148,25 @@ textField :
     }
     -> Html Msg
 textField { name, value, default, msgf, attrs, error } =
-    labelBefore
+    label
         [ class "cactus-login-field" ]
-        (p [] [ text name ])
-    <|
-        div []
-            [ -- the actual text field
-              inputText value <|
-                (attrs
-                    ++ [ placeholder default
-                       , onInput msgf
-                       , required True
-                       ]
-                 -- TODO: aria fields
-                )
-            , -- optional error
-              error
-                -- TODO: style this
-                |> Maybe.map (text >> List.singleton >> p [])
-                |> Maybe.withDefault (text "")
-            ]
+        [ p [] [ text name ]
+
+        -- the text field
+        , inputText value
+            (attrs
+                ++ [ placeholder default
+                   , onInput msgf
+                   , required True
+                   , attribute "aria-label" name
+                   ]
+            )
+
+        -- error (or nothing)
+        , error
+            |> Maybe.map (text >> List.singleton >> p [])
+            |> Maybe.withDefault (text "")
+        ]
 
 
 {-| An SVG "X" button that closes the login form
@@ -215,12 +215,11 @@ viewLoginForm (LoginForm form) roomAlias =
                 [ text "Log in" ]
 
         clientForm =
-            [ div
+            div
                 [ class "cactus-login-client" ]
                 [ clientTitle
                 , clientLink
                 ]
-            ]
 
         credentialsTitle =
             h4 [ class "cactus-login-credentials-title" ]
@@ -254,8 +253,8 @@ viewLoginForm (LoginForm form) roomAlias =
 
         homeserverUrl =
             textField
-                { name = "Homeserver Url"
-                , default = "Homeserver Url"
+                { name = "Homeserver URL"
+                , default = "Homeserver URL"
                 , value = form.homeserverUrlField |> Maybe.withDefault ""
                 , msgf = EditHomeserverUrl
                 , attrs = []
@@ -287,7 +286,7 @@ viewLoginForm (LoginForm form) roomAlias =
                 ]
 
         credentialsForm =
-            [ div
+            div
                 [ class "cactus-login-credentials" ]
                 [ credentialsTitle
                 , username
@@ -295,7 +294,6 @@ viewLoginForm (LoginForm form) roomAlias =
                 , homeserverUrl
                 , submitButton
                 ]
-            ]
     in
     case form.state of
         Hidden ->
@@ -306,7 +304,7 @@ viewLoginForm (LoginForm form) roomAlias =
                 [ div [ class "cactus-login-form" ] <|
                     [ closeButton
                     , title
+                    , clientForm
+                    , credentialsForm
                     ]
-                        ++ clientForm
-                        ++ credentialsForm
                 ]
