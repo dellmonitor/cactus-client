@@ -6,6 +6,7 @@ import ApiUtils exposing (UserId, lookupHomeserverUrl, matrixDotToUrl, parseUser
 import Html
 import Html.Attributes exposing (attribute, class, disabled, href, placeholder, required, style, type_)
 import Html.Events exposing (onClick, onInput)
+import Json.Decode as JD
 import Maybe.Extra exposing (isJust)
 import Session exposing (Session, login)
 import Svg exposing (path, svg)
@@ -356,7 +357,10 @@ viewLoginForm (LoginForm form) roomAlias =
             text ""
 
         _ ->
-            div [ class "cactus-login-form-wrapper" ]
+            Html.div
+                [ class "cactus-login-form-wrapper"
+                , Html.Events.on "click" <| containerClickDecoder
+                ]
                 [ div [ class "cactus-login-form" ] <|
                     [ closeButton
                     , title
@@ -364,3 +368,19 @@ viewLoginForm (LoginForm form) roomAlias =
                     , credentialsForm
                     ]
                 ]
+
+
+{-| Decode the json from a click event, and check the class of the targeted
+element. Succeed with a Hide Msg if the click was outside the login form.
+-}
+containerClickDecoder : JD.Decoder Msg
+containerClickDecoder =
+    JD.at [ "target", "className" ] JD.string
+        |> JD.andThen
+            (\c ->
+                if String.contains "cactus-login-form-wrapper" c then
+                    JD.succeed HideLogin
+
+                else
+                    JD.fail "Ignoring click event. Didn't hit wrapper."
+            )
