@@ -134,17 +134,27 @@ First look up the homeserver using .well-known, then log in using that homeserve
 -}
 loginWithForm : LoginForm -> UserId -> Task LoginError Session
 loginWithForm (LoginForm form) userId =
-    lookupHomeserverUrl userId
-        |> Task.mapError HomeserverLookupFailed
-        |> Task.andThen
-            (\homeserverUrl ->
-                login
-                    { homeserverUrl = homeserverUrl
-                    , user = username userId
-                    , password = form.passwordField
-                    }
-                    |> Task.mapError LoginFailed
-            )
+    case form.homeserverUrlField of
+        Just homeserverUrl ->
+            login
+                { homeserverUrl = homeserverUrl
+                , user = username userId
+                , password = form.passwordField
+                }
+                |> Task.mapError LoginFailed
+
+        Nothing ->
+            lookupHomeserverUrl userId
+                |> Task.mapError HomeserverLookupFailed
+                |> Task.andThen
+                    (\homeserverUrl ->
+                        login
+                            { homeserverUrl = homeserverUrl
+                            , user = username userId
+                            , password = form.passwordField
+                            }
+                            |> Task.mapError LoginFailed
+                    )
 
 
 {-| Show the login popup.
