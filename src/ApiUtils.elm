@@ -1,7 +1,22 @@
-module ApiUtils exposing (clientEndpoint, httpFromMxc, matrixDotToUrl, mediaEndpoint, serverNameFromId, thumbnailFromMxc)
+module ApiUtils exposing
+    ( UserId
+    , clientEndpoint
+    , httpFromMxc
+    , lookupHomeserverUrl
+    , matrixDotToUrl
+    , mediaEndpoint
+    , parseUserId
+    , serverNameFromId
+    , thumbnailFromMxc
+    , toString
+    , username
+    )
 
+import Http
+import Json.Decode as JD
 import Parser exposing ((|.), (|=), Parser)
 import Set
+import Task exposing (Task)
 import Url exposing (percentEncode)
 import Url.Builder exposing (QueryParameter, crossOrigin)
 
@@ -63,6 +78,115 @@ serverNameFromId id =
 
     else
         Nothing
+
+
+
+-- USERID
+
+
+{-| User Id parsing implemented based on the identifier grammar described in the spec:
+<https://matrix.org/docs/spec/appendices#identifier-grammar>
+-}
+type UserId
+    = UserId String String
+
+
+toString : UserId -> String
+toString (UserId localpart serverpart) =
+    "@" ++ localpart ++ ":" ++ serverpart
+
+
+parseUserId : String -> Result String UserId
+parseUserId =
+    String.toLower
+        >> Parser.run userIdParser
+        >> Result.mapError (\_ -> "Must follow format: @user:example.com")
+
+
+username : UserId -> String
+username (UserId name _) =
+    name
+
+
+validLocalpartChar : Char -> Bool
+validLocalpartChar c =
+    Char.isLower c
+        || Char.isDigit c
+        || List.member c [ '-', '.', '=', '_', '/' ]
+
+
+validServernameChar : Char -> Bool
+validServernameChar c =
+    Char.isAlphaNum c || List.member c [ '.', '-', ':' ]
+
+
+userIdParser : Parser UserId
+userIdParser =
+    Parser.succeed UserId
+        |. Parser.token "@"
+        |= Parser.variable
+            { start = validLocalpartChar
+            , inner = validLocalpartChar
+            , reserved = Set.empty
+            }
+        |. Parser.token ":"
+        |= Parser.variable
+            { start = validServernameChar
+            , inner = validServernameChar
+            , reserved = Set.empty
+            }
+        |. Parser.end
+
+
+
+-- SERVER DISCOVERY
+
+
+lookupHomeserverUrl : UserId -> Task String String
+lookupHomeserverUrl (UserId _ servername) =
+    let
+        url =
+            "https://" ++ servername ++ "/.well-known/matrix/client"
+    in
+    Http.task
+        { method = "GET"
+        , url = url
+        , headers = []
+        , body = Http.emptyBody
+        , timeout = Nothing
+        , resolver =
+            Http.stringResolver <|
+                \resp ->
+                    case resp of
+                        Http.GoodStatus_ _ body ->
+                            let
+                                dropTrailingSlash : String -> String
+                                dropTrailingSlash str =
+                                    if String.endsWith "/" str then
+                                        String.dropRight 1 str
+
+                                    else
+                                        str
+
+                                decoder : JD.Decoder String
+                                decoder =
+                                    JD.field "m.homeserver" (JD.field "base_url" JD.string)
+                                        |> JD.map dropTrailingSlash
+
+                                decoded : Result JD.Error String
+                                decoded =
+                                    JD.decodeString decoder body
+                            in
+                            case decoded of
+                                Ok result ->
+                                    Ok result
+
+                                Err err ->
+                                    Err <| JD.errorToString err
+
+                        _ ->
+                            Err <| "Failed getting " ++ url
+        }
 
 
 

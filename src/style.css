@@ -36,7 +36,7 @@
   }
 }
 
-/* manual dark mode 
+/* manual dark mode
 /* ❗️ keep these rules in sync with the automatic dark mode above! */
 :root.dark {
   --cactus-text-color--soft: hsl(0, 0%, 50%);
@@ -80,10 +80,8 @@
 /* close button */
 .cactus-error-close {
   position: absolute;
-  right: 0;
-  top: 0;
-  transform: translate(+5%, -20%);
-  font-size: 1.5em;
+  right: 0.2em;
+  top: 0em;
   color: var(--cactus-button-color);
   /* todo: remove after using all: unset */
   background-color: transparent;
@@ -98,6 +96,11 @@
 .cactus-error-close:active:not([disabled]) {
   color: var(--cactus-button-color--stronger);
   cursor: pointer;
+}
+
+.cactus-error-close-icon {
+  inline-size: 20px;
+  block-size: 20px;
 }
 
 /* error message */
@@ -131,6 +134,7 @@
   border-radius: var(--cactus-border-radius);
   border: solid var(--cactus-border-width) var(--cactus-border-color);
   padding: 0.5em;
+  box-sizing: content-box;
   /* todo: remove after using all: unset */
   background-color: transparent;
   color: inherit;
@@ -208,14 +212,24 @@ when guestPostingEnabled=false and loginEnabled=false */
 /*
  * ***** LOGIN FORM *****
  */
- /* pop-up login form */
-.cactus-login-form {
-  /* place statically in viewport */
+.cactus-login-form-wrapper {
   position: fixed;
-  left: 50%;
-  top: 10%;
-  transform: translate(-50%, 0);
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* login form */
+.cactus-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2em;
+  padding: 2rem;
   border-radius: var(--cactus-border-radius);
   background-color: var(--cactus-background-color--strong);
   color: var(--cactus-login-form-text-color);
@@ -223,16 +237,74 @@ when guestPostingEnabled=false and loginEnabled=false */
   box-sizing: border-box;
   inline-size: 100%;
   max-inline-size: 300px;
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5em;
 }
 
-/* todo: use a class */
-.cactus-login-form > h3 {
+/* close button */
+.cactus-login-close {
+  align-self: flex-end;
+  position: relative;
+  margin: -2em;
+  padding: 0;
+  color: var(--cactus-button-color);
+  scale: 2.0;
+  background-color: transparent;
+  border: none;
+}
+
+.cactus-login-close:hover:not([disabled]) {
+  color: var(--cactus-button-color--strong);
+  cursor: pointer;
+}
+
+.cactus-login-close:active:not([disabled]) {
+  color: var(--cactus-button-color--stronger);
+  cursor: pointer;
+}
+
+.cactus-login-close-icon {
+  inline-size: 20px;
+  block-size: 20px;
+}
+
+/* title */
+.cactus-login-title {
   align-self: center;
   font-size: 1.17em;
+  font-weight: bold;
+  /* todo: remove after using all: unset */
+  margin: 0;
+}
+
+/* client section */
+.cactus-login-client {
+  display: flex;
+  flex-direction: column;
+  gap: 1em
+}
+
+.cactus-login-client-title {
+  font-size: 1em;
+  font-weight: bold;
+  /* todo: remove after using all: unset */
+  margin: 0;
+}
+
+/* "log in" button */
+.cactus-matrixdotto-button {
+  justify-content: center;
+  /* todo: remove after using all: unset */
+  text-decoration: none;
+}
+
+/* credentials section */
+.cactus-login-credentials {
+  display: flex;
+  flex-direction: column;
+  gap: 1em
+}
+
+.cactus-login-credentials-title {
+  font-size: 1em;
   font-weight: bold;
   /* todo: remove after using all: unset */
   margin: 0;
@@ -244,10 +316,16 @@ when guestPostingEnabled=false and loginEnabled=false */
   gap: 0.25em;
 }
 
-/* todo: use a class */
-.cactus-login-field > p {
-  /* todo: remove after using all: unset */
+.cactus-login-label {
+  font-size: 1em;
+  padding-bottom: 0.25em;
+  color: var(--cactus-text-color--soft);
+}
+
+.cactus-login-error {
   margin: 0;
+  font-size: 0.8em;
+  color: var(--cactus-text-color--soft);
 }
 
 /* todo: use a class */
@@ -265,24 +343,9 @@ when guestPostingEnabled=false and loginEnabled=false */
   color: var(--cactus-text-color--soft);
 }
 
-/* "back" and "log in" buttons */
-.cactus-login-buttons {
-  display: flex;
-  gap: 0.5em;
-  justify-content: space-between;
-  flex-wrap: wrap;
-}
-
-.cactus-login-buttons > .cactus-button {
-  flex: 1;
+/* "log in" button */
+.cactus-login-credentials-button {
   justify-content: center;
-}
-
-/* "Use a Matrix client" button */
-.cactus-matrixdotto-button {
-  justify-content: center;
-  /* todo: remove after using all: unset */
-  text-decoration: none;
 }
 
 
@@ -335,6 +398,9 @@ when guestPostingEnabled=false and loginEnabled=false */
   align-items: center;
   background-color: var(--cactus-border-color);
   color: var(--cactus-text-color--soft);
+}
+.cactus-comment-avatar-placeholder::before {
+  content: "?"
 }
 .cactus-comment-avatar-placeholder::before {
   content: "?"

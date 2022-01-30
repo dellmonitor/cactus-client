@@ -136,7 +136,7 @@ decodeKind =
 
 
 {-| Make authenticated requests using a Session object.
-Wraps ApiUtils.apiRequest
+Wraps `apiRequest`, adding Authorization headers.
 -}
 authenticatedRequest :
     Session

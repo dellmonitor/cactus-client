@@ -7,10 +7,11 @@ import Config exposing (StaticConfig, parseConfig)
 import Duration
 import Editor exposing (Editor)
 import Event exposing (GetMessagesResponse)
-import Html.Attributes exposing (attribute, class)
+import Html
+import Html.Attributes exposing (attribute, class, style)
 import Html.Events exposing (onClick)
 import Json.Decode as JD
-import LoginForm exposing (FormState(..), LoginForm, initLoginForm, loginWithForm, viewLoginForm)
+import LoginForm exposing (LoginForm, initLoginForm, showLogin, updateLoginForm, viewLoginForm)
 import Member exposing (setDisplayname)
 import Message exposing (Message(..))
 import Room
@@ -37,6 +38,8 @@ import Session
         , sessionKind
         , storeSessionCmd
         )
+import Svg exposing (path, svg)
+import Svg.Attributes as S exposing (d, viewBox)
 import Task
 import Time
 
@@ -58,7 +61,7 @@ type Model
         , editor : Editor
         , session : Maybe Session
         , room : Maybe Room
-        , loginForm : Maybe LoginForm
+        , loginForm : LoginForm
         , showComments : Int
         , gotAllComments : Bool
         , errors : List Error
@@ -98,7 +101,7 @@ init flags =
                 , editor = Editor.init
                 , session = session
                 , room = Nothing
-                , loginForm = Nothing
+                , loginForm = initLoginForm
                 , showComments = config.pageSize
                 , gotAllComments = False
                 , errors = []
@@ -145,21 +148,19 @@ joinIfUser session roomAlias =
 
 type Msg
     = Tick Time.Posix
+      -- UI Stuff
     | CloseError Int
-      -- LoginForm
-    | EditLogin LoginForm
     | ShowLogin
-    | HideLogin
-      -- Editor
+    | LogOut
+    | LoginMsg LoginForm.Msg
     | EditorMsg Editor.Msg
       -- Message Fetching
     | GotRoom (Result Session.Error ( Session, Room ))
     | GotMessages Session Direction (Result Session.Error GetMessagesResponse)
     | ViewMore Session Room
+      -- Sending
     | SendComment Session RoomId
     | SentComment Session (Result Session.Error ())
-    | Login LoginForm
-    | LogOut
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -208,7 +209,6 @@ update msg model_ =
                         ( { model
                             | session = Just session
                             , room = Just room
-                            , loginForm = Nothing
                           }
                         , Cmd.batch <|
                             [ storeSessionCmd session
@@ -294,8 +294,7 @@ update msg model_ =
                     SentComment session (Ok ()) ->
                         ( model
                         , model.room
-                            |> Maybe.map
-                                (getNewerMessages session >> Task.attempt (GotMessages session Newer))
+                            |> Maybe.map (getNewerMessages session >> Task.attempt (GotMessages session Newer))
                             |> Maybe.withDefault Cmd.none
                         )
 
@@ -304,20 +303,53 @@ update msg model_ =
                         , Cmd.none
                         )
 
+                    LoginMsg loginmsg ->
+                        let
+                            ( form, formCmd, newSession ) =
+                                updateLoginForm model.loginForm loginmsg
+
+                            joinAndGetRoom : Cmd Msg
+                            joinAndGetRoom =
+                                -- if updateLoginForm returned a session,
+                                -- join the room and fetch the room again
+                                newSession
+                                    |> Maybe.map
+                                        (\s ->
+                                            joinRoom s model.config.roomAlias
+                                                |> Task.andThen
+                                                    (\_ ->
+                                                        getInitialRoom s model.config.roomAlias
+                                                            |> Task.map (Tuple.pair s)
+                                                    )
+                                                |> Task.attempt GotRoom
+                                        )
+                                    |> Maybe.withDefault Cmd.none
+
+                            storeSession : Cmd Msg
+                            storeSession =
+                                newSession
+                                    |> Maybe.map storeSessionCmd
+                                    |> Maybe.withDefault Cmd.none
+                        in
+                        ( { model
+                            | loginForm = form
+                            , session =
+                                case newSession of
+                                    Just _ ->
+                                        newSession
+
+                                    Nothing ->
+                                        model.session
+                          }
+                        , Cmd.batch
+                            [ Cmd.map LoginMsg formCmd
+                            , joinAndGetRoom
+                            , storeSession
+                            ]
+                        )
+
                     ShowLogin ->
-                        ( { model | loginForm = Just initLoginForm }
-                        , Cmd.none
-                        )
-
-                    HideLogin ->
-                        ( { model | loginForm = Nothing }
-                        , Cmd.none
-                        )
-
-                    EditLogin form ->
-                        ( { model | loginForm = Just form }
-                        , Cmd.none
-                        )
+                        ( { model | loginForm = showLogin model.loginForm }, Cmd.none )
 
                     LogOut ->
                         ( model
@@ -327,26 +359,6 @@ update msg model_ =
                                     (\sess ->
                                         getInitialRoom sess model.config.roomAlias
                                             |> Task.map (Tuple.pair sess)
-                                    )
-                            )
-                        )
-
-                    Login form ->
-                        let
-                            ( newForm, loginTask ) =
-                                loginWithForm form
-                        in
-                        ( { model | loginForm = Just newForm }
-                        , Task.attempt GotRoom <|
-                            (loginTask
-                                |> Task.andThen
-                                    (\session ->
-                                        joinRoom session model.config.roomAlias
-                                            |> Task.andThen
-                                                (\_ ->
-                                                    getInitialRoom session model.config.roomAlias
-                                                        |> Task.map (\room -> ( session, room ))
-                                                )
                                     )
                             )
                         )
@@ -376,15 +388,34 @@ addError errors message =
 
 viewError : Error -> Html Msg
 viewError { id, message } =
+    let
+        closeButton =
+            button
+                [ class "cactus-error-close"
+                , attribute "aria-label" "close"
+                , onClick <| CloseError id
+                ]
+                [ svg
+                    [ viewBox "0 0 20 20"
+                    , S.class "cactus-error-close-icon"
+                    , style "fill" "currentColor"
+                    ]
+                    [ path
+                        [ style "fill-rule" "evenodd"
+                        , d "M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        , style "clip-rule" "evenodd"
+                        ]
+                        []
+                    ]
+                ]
+
+        content =
+            p [ class "cactus-error-text" ]
+                [ text <| " Error: " ++ message ]
+    in
     div [ class "cactus-error", errorMessage message ]
-        [ button
-            [ class "cactus-error-close"
-            , attribute "aria-label" "close"
-            , onClick <| CloseError id
-            ]
-            [ text "×" ]
-        , p [ class "cactus-error-text" ]
-            [ text <| " Error: " ++ message ]
+        [ closeButton
+        , content
         ]
 
 
@@ -409,17 +440,8 @@ view model_ =
                         text ""
 
                 loginPopup =
-                    case model.loginForm of
-                        Just loginForm ->
-                            viewLoginForm loginForm
-                                model.config.roomAlias
-                                { submitMsg = Login
-                                , hideMsg = HideLogin
-                                , editMsg = EditLogin
-                                }
-
-                        Nothing ->
-                            text ""
+                    viewLoginForm model.loginForm model.config.roomAlias
+                        |> Html.map LoginMsg
 
                 editor =
                     Editor.view
