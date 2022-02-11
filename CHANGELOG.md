@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.12.0
+
+- Re-structure login form to more clearly separate matrix.to links from direct login.
+- Require user id (e.g. `@alice:example.com`) instead of username. Only show homeserver url if .well-known lookup fails.
+- Add top-right "X" button to close login modal.
+- Login modal now closes when you press outside it.
+- Fix some CSS bugs related to positioning the login form in viewport center.
+- Make `LoginForm` a stateful component.
+
 ## 0.11.0
 
 - Relicense from GPLv3 to LGPLv3.
