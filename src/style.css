@@ -506,3 +506,41 @@ when guestPostingEnabled=false and loginEnabled=false */
   display: flex;
   justify-content: center;
 }
+
+
+/*
+ * ***** LOADING SPINNER *****
+ */
+ .spinner {
+  align-self: center;
+  width: 2em;
+  height: 2em;
+  display: flex;
+  gap: 0.3em;
+}
+
+.spinner > div {
+  flex: 1;
+  background-color: var(--cactus-border-color);
+  animation: sk-stretchdelay 2.4s infinite ease-in-out;
+}
+
+.spinner .rect2 {
+  animation-delay: -2.2s;
+}
+
+.spinner .rect3 {
+  animation-delay: -2.0s;
+}
+
+.spinner .rect4 {
+  animation-delay: -1.8s;
+}
+
+@keyframes sk-stretchdelay {
+  0%, 40%, 100% { 
+    transform: scaleY(0.4);
+  }  20% { 
+    transform: scaleY(1.0);
+  }
+}
