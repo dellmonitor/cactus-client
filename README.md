@@ -34,7 +34,7 @@ Here is a minimal HTML page with the latest Cactus Comments release:
 ```
 
 This is a valid configuration for the client. You also need to use an appservice.
-You can [host your own](https://cactus.chat/docs/self-hosting/howto/), or [use the public one at cactus.chat](https://cactus.chat/docs/getting-started/quick-start/#register-your-site).
+You can [host your own](https://cactus.chat/docs/server/self-host/), or [use the public one at cactus.chat](https://cactus.chat/docs/getting-started/quick-start/#register-your-site).
 
 Check out the [Quick Start guide](https://cactus.chat/docs/getting-started/quick-start/) on our website for a more complete tutorial.
 
