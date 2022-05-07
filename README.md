@@ -4,6 +4,7 @@ An embeddable web client for federated comments using the Matrix network.
 
 [![pipeline status](https://gitlab.com/cactus-comments/cactus-client/badges/main/pipeline.svg)](https://gitlab.com/cactus-comments/cactus-client/-/commits/main)
 [![](https://img.shields.io/badge/chat-%23cactus%3Acactus.chat-informational)](https://matrix.to/#/%23cactus:cactus.chat)
+[![](https://img.shields.io/badge/donate-via%20opencollective-orange)](https://opencollective.com/cactus-comments)
 
 
 There are two components to Cactus Comments: 
