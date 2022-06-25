@@ -46,7 +46,7 @@ type Room
         , roomId : RoomId
         , events : List RoomEvent
         , start : String
-        , end : Maybe String
+        , end : String
         , members : Dict String MemberData
         }
 
@@ -98,7 +98,11 @@ mergeNewerMessages (Room room) newMessages =
     Room
         { room
             | events = sortByTime (room.events ++ newMessages.chunk)
-            , end = newMessages.end
+            , end = case newMessages.end of
+                Nothing ->
+                    room.end
+                Just end ->
+                    end
         }
 
 
@@ -164,7 +168,11 @@ getInitialRoom session roomAlias =
                         , --
                           events = sortByTime events.chunk
                         , start = events.start
-                        , end = events.end
+                        , end = case events.end of
+                            Nothing ->
+                                events.start
+                            Just end ->
+                                end
                         }
                     )
 
@@ -284,12 +292,7 @@ getOlderMessages session (Room room) =
 -}
 getNewerMessages : Session -> Room -> Task Session.Error GetMessagesResponse
 getNewerMessages session (Room room) =
-    getMessages session room.roomId Newer (case room.end of
-        Nothing ->
-            room.start
-        Just end ->
-            end
-    )
+    getMessages session room.roomId Newer room.end
 
 
 joinRoom : Session -> String -> Task Session.Error ()
