@@ -46,7 +46,7 @@ type Room
         , roomId : RoomId
         , events : List RoomEvent
         , start : String
-        , end : String
+        , end : Maybe String
         , members : Dict String MemberData
         }
 
@@ -70,7 +70,7 @@ commentCount (Room room) =
     List.length <| messageEvents room.events
 
 
-mergeMessages : Room -> Direction -> { a | start : String, end : String, chunk : List RoomEvent } -> Room
+mergeMessages : Room -> Direction -> { a | start : String, end : Maybe String, chunk : List RoomEvent } -> Room
 mergeMessages room dir newMessages =
     case dir of
         Newer ->
@@ -80,16 +80,20 @@ mergeMessages room dir newMessages =
             mergeOlderMessages room newMessages
 
 
-mergeOlderMessages : Room -> { a | start : String, end : String, chunk : List RoomEvent } -> Room
+mergeOlderMessages : Room -> { a | start : String, end : Maybe String, chunk : List RoomEvent } -> Room
 mergeOlderMessages (Room room) newMessages =
     Room
         { room
             | events = sortByTime (room.events ++ newMessages.chunk)
-            , start = newMessages.end
+            , start = case newMessages.end of
+                Nothing ->
+                    newMessages.start
+                Just end ->
+                    end
         }
 
 
-mergeNewerMessages : Room -> { a | start : String, end : String, chunk : List RoomEvent } -> Room
+mergeNewerMessages : Room -> { a | start : String, end : Maybe String, chunk : List RoomEvent } -> Room
 mergeNewerMessages (Room room) newMessages =
     Room
         { room
@@ -201,7 +205,7 @@ getRoomId session roomAlias =
 
 {-| Get initial room events and sync tokens to get further messages
 -}
-getInitialSync : Session -> RoomId -> Task Session.Error { chunk : List RoomEvent, start : String, end : String }
+getInitialSync : Session -> RoomId -> Task Session.Error { chunk : List RoomEvent, start : String, end : Maybe String }
 getInitialSync session (RoomId roomId) =
     authenticatedRequest
         session
@@ -280,7 +284,12 @@ getOlderMessages session (Room room) =
 -}
 getNewerMessages : Session -> Room -> Task Session.Error GetMessagesResponse
 getNewerMessages session (Room room) =
-    getMessages session room.roomId Newer room.end
+    getMessages session room.roomId Newer (case room.end of
+        Nothing ->
+            room.start
+        Just end ->
+            end
+    )
 
 
 joinRoom : Session -> String -> Task Session.Error ()
