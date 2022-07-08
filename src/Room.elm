@@ -70,7 +70,7 @@ commentCount (Room room) =
     List.length <| messageEvents room.events
 
 
-mergeMessages : Room -> Direction -> { a | start : String, end : String, chunk : List RoomEvent } -> Room
+mergeMessages : Room -> Direction -> { a | start : String, end : Maybe String, chunk : List RoomEvent } -> Room
 mergeMessages room dir newMessages =
     case dir of
         Newer ->
@@ -80,21 +80,29 @@ mergeMessages room dir newMessages =
             mergeOlderMessages room newMessages
 
 
-mergeOlderMessages : Room -> { a | start : String, end : String, chunk : List RoomEvent } -> Room
+mergeOlderMessages : Room -> { a | start : String, end : Maybe String, chunk : List RoomEvent } -> Room
 mergeOlderMessages (Room room) newMessages =
     Room
         { room
             | events = sortByTime (room.events ++ newMessages.chunk)
-            , start = newMessages.end
+            , start = case newMessages.end of
+                Nothing ->
+                    newMessages.start
+                Just end ->
+                    end
         }
 
 
-mergeNewerMessages : Room -> { a | start : String, end : String, chunk : List RoomEvent } -> Room
+mergeNewerMessages : Room -> { a | start : String, end : Maybe String, chunk : List RoomEvent } -> Room
 mergeNewerMessages (Room room) newMessages =
     Room
         { room
             | events = sortByTime (room.events ++ newMessages.chunk)
-            , end = newMessages.end
+            , end = case newMessages.end of
+                Nothing ->
+                    room.end
+                Just end ->
+                    end
         }
 
 
@@ -160,7 +168,11 @@ getInitialRoom session roomAlias =
                         , --
                           events = sortByTime events.chunk
                         , start = events.start
-                        , end = events.end
+                        , end = case events.end of
+                            Nothing ->
+                                events.start
+                            Just end ->
+                                end
                         }
                     )
 
@@ -201,7 +213,7 @@ getRoomId session roomAlias =
 
 {-| Get initial room events and sync tokens to get further messages
 -}
-getInitialSync : Session -> RoomId -> Task Session.Error { chunk : List RoomEvent, start : String, end : String }
+getInitialSync : Session -> RoomId -> Task Session.Error { chunk : List RoomEvent, start : String, end : Maybe String }
 getInitialSync session (RoomId roomId) =
     authenticatedRequest
         session

@@ -22,7 +22,7 @@ type alias Event a =
 
 type alias GetMessagesResponse =
     { start : String
-    , end : String
+    , end : Maybe String
     , chunk : List RoomEvent
     }
 
@@ -79,12 +79,12 @@ latestMemberDataBefore events time userid =
         |> Maybe.map .content
 
 
-decodePaginatedEvents : JD.Decoder { start : String, end : String, chunk : List RoomEvent }
+decodePaginatedEvents : JD.Decoder { start : String, end : Maybe String, chunk : List RoomEvent }
 decodePaginatedEvents =
     JD.map3
         (\start end chunk -> { start = start, end = end, chunk = chunk })
         (JD.field "start" JD.string)
-        (JD.field "end" JD.string)
+        (JD.field "end" JD.string |> JD.maybe)
         (JD.field "chunk" <| JD.list decodeRoomEvent)
 
 
