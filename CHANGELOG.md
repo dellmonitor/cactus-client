@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.0
+
+- Fix for missing `end` tokens, in sync responses from Synapse >= v1.61.0 (Thanks to Tom Price for !20).
+- A prettier animation while loading comments.
+
 ## 0.12.0
 
 - Re-structure login form to more clearly separate matrix.to links from direct login.
