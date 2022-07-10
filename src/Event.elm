@@ -1,5 +1,6 @@
 module Event exposing (Event, GetMessagesResponse, RoomEvent(..), decodePaginatedEvents, latestMemberDataBefore, messageEvents)
 
+import ApiUtils exposing (UserId, parseUserId)
 import Json.Decode as JD
 import Member exposing (MemberData, decodeMember)
 import Message exposing (Message, decodeMessage)
@@ -8,14 +9,14 @@ import Time
 
 type RoomEvent
     = MessageEvent (Event Message)
-    | MemberEvent String (Event MemberData)
+    | MemberEvent UserId (Event MemberData)
     | UnsupportedEvent (Event ())
 
 
 type alias Event a =
     { eventType : String
     , content : a
-    , sender : String
+    , sender : UserId
     , originServerTs : Time.Posix
     }
 
@@ -43,7 +44,7 @@ messageEvents roomEvents =
         roomEvents
 
 
-memberEvents : List RoomEvent -> List ( String, Event MemberData )
+memberEvents : List RoomEvent -> List ( UserId, Event MemberData )
 memberEvents roomEvents =
     -- filter room events for state events
     List.foldl
@@ -61,7 +62,7 @@ memberEvents roomEvents =
 
 {-| Get the latest event with `MemberData` that is before a given timestamp.
 -}
-latestMemberDataBefore : List RoomEvent -> Time.Posix -> String -> Maybe MemberData
+latestMemberDataBefore : List RoomEvent -> Time.Posix -> UserId -> Maybe MemberData
 latestMemberDataBefore events time userid =
     events
         |> memberEvents
@@ -88,13 +89,26 @@ decodePaginatedEvents =
         (JD.field "chunk" <| JD.list decodeRoomEvent)
 
 
-makeRoomEvent : (String -> a -> String -> Time.Posix -> RoomEvent) -> JD.Decoder a -> JD.Decoder RoomEvent
+makeRoomEvent : (String -> a -> UserId -> Time.Posix -> RoomEvent) -> JD.Decoder a -> JD.Decoder RoomEvent
 makeRoomEvent constructor contentDecoder =
+    let
+        decodeSender =
+            JD.field "sender" JD.string
+                |> JD.andThen
+                    (\str ->
+                        case parseUserId str of
+                            Ok userId ->
+                                JD.succeed userId
+
+                            Err e ->
+                                JD.fail e
+                    )
+    in
     JD.map4
         constructor
         (JD.field "type" JD.string)
         (JD.field "content" contentDecoder)
-        (JD.field "sender" JD.string)
+        decodeSender
         (JD.field "origin_server_ts" JD.int |> JD.map Time.millisToPosix)
 
 
@@ -120,6 +134,13 @@ decodeRoomEvent =
 
                         "m.room.member" ->
                             JD.field "state_key" JD.string
+                                |> JD.andThen
+                                    -- parse state key as user id
+                                    (parseUserId
+                                        >> Result.map JD.succeed
+                                        >> Result.withDefault
+                                            (JD.fail "Invalid userid in m.room.member state_key.")
+                                    )
                                 |> JD.andThen
                                     (\uid ->
                                         makeRoomEvent

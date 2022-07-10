@@ -16,6 +16,7 @@ module Room exposing
     )
 
 import Accessibility exposing (Html, div)
+import ApiUtils
 import Dict exposing (Dict)
 import Event exposing (GetMessagesResponse, RoomEvent(..), decodePaginatedEvents, latestMemberDataBefore, messageEvents)
 import Html.Attributes exposing (class)
@@ -85,11 +86,13 @@ mergeOlderMessages (Room room) newMessages =
     Room
         { room
             | events = sortByTime (room.events ++ newMessages.chunk)
-            , start = case newMessages.end of
-                Nothing ->
-                    newMessages.start
-                Just end ->
-                    end
+            , start =
+                case newMessages.end of
+                    Nothing ->
+                        newMessages.start
+
+                    Just end ->
+                        end
         }
 
 
@@ -98,11 +101,13 @@ mergeNewerMessages (Room room) newMessages =
     Room
         { room
             | events = sortByTime (room.events ++ newMessages.chunk)
-            , end = case newMessages.end of
-                Nothing ->
-                    room.end
-                Just end ->
-                    end
+            , end =
+                case newMessages.end of
+                    Nothing ->
+                        room.end
+
+                    Just end ->
+                        end
         }
 
 
@@ -168,11 +173,13 @@ getInitialRoom session roomAlias =
                         , --
                           events = sortByTime events.chunk
                         , start = events.start
-                        , end = case events.end of
-                            Nothing ->
-                                events.start
-                            Just end ->
-                                end
+                        , end =
+                            case events.end of
+                                Nothing ->
+                                    events.start
+
+                                Just end ->
+                                    end
                         }
                     )
 
@@ -236,9 +243,10 @@ viewRoomEvents homeserverUrl (Room room) count now =
                 let
                     member : Maybe MemberData
                     member =
+                        -- get the display name at the time
                         latestMemberDataBefore room.events e.originServerTs e.sender
                             |> Maybe.map Just
-                            |> Maybe.withDefault (Dict.get e.sender room.members)
+                            |> Maybe.withDefault (Dict.get (ApiUtils.toString e.sender) room.members)
                 in
                 viewMessageEvent
                     homeserverUrl
