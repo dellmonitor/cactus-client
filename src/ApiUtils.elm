@@ -9,6 +9,7 @@ module ApiUtils exposing
     , serverNameFromId
     , thumbnailFromMxc
     , toString
+    , toUserIdDecoder
     , username
     )
 
@@ -94,6 +95,21 @@ type UserId
 toString : UserId -> String
 toString (UserId localpart serverpart) =
     "@" ++ localpart ++ ":" ++ serverpart
+
+
+{-| Convert a JSON string decoder to a JSON UserId Decoder
+-}
+toUserIdDecoder : JD.Decoder String -> JD.Decoder UserId
+toUserIdDecoder =
+    JD.andThen
+        (\s ->
+            case parseUserId s of
+                Ok userid ->
+                    JD.succeed userid
+
+                Err e ->
+                    JD.fail e
+        )
 
 
 parseUserId : String -> Result String UserId

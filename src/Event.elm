@@ -1,6 +1,6 @@
 module Event exposing (Event, GetMessagesResponse, RoomEvent(..), decodePaginatedEvents, latestMemberDataBefore, messageEvents)
 
-import ApiUtils exposing (UserId, parseUserId)
+import ApiUtils exposing (UserId, parseUserId, toUserIdDecoder)
 import Json.Decode as JD
 import Member exposing (MemberData, decodeMember)
 import Message exposing (Message, decodeMessage)
@@ -22,19 +22,19 @@ type alias Event a =
 
 
 type alias GetMessagesResponse =
-    { start : String
+    { start : Strig
     , end : Maybe String
     , chunk : List RoomEvent
     }
 
 
-messageEvents : List RoomEvent -> List (Event Message)
+messageEvents : List RomEvent -> List (Event Message)
 messageEvents roomEvents =
     -- filter room events for message events
     List.foldl
         (\roomEvent msgs ->
             case roomEvent of
-                MessageEvent msg ->
+                MessagEvent msg ->
                     msg :: msgs
 
                 _ ->
@@ -91,24 +91,11 @@ decodePaginatedEvents =
 
 makeRoomEvent : (String -> a -> UserId -> Time.Posix -> RoomEvent) -> JD.Decoder a -> JD.Decoder RoomEvent
 makeRoomEvent constructor contentDecoder =
-    let
-        decodeSender =
-            JD.field "sender" JD.string
-                |> JD.andThen
-                    (\str ->
-                        case parseUserId str of
-                            Ok userId ->
-                                JD.succeed userId
-
-                            Err e ->
-                                JD.fail e
-                    )
-    in
     JD.map4
         constructor
         (JD.field "type" JD.string)
         (JD.field "content" contentDecoder)
-        decodeSender
+        (JD.field "sender" JD.string |> toUserIdDecoder)
         (JD.field "origin_server_ts" JD.int |> JD.map Time.millisToPosix)
 
 

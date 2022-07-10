@@ -1,5 +1,6 @@
 module Member exposing (MemberData, decodeMember, setDisplayname)
 
+import ApiUtils exposing (toString)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
@@ -68,7 +69,7 @@ setDisplayname : Session -> String -> Task Session.Error ()
 setDisplayname session displayname =
     authenticatedRequest session
         { method = "PUT"
-        , path = [ "profile", getUserId session, "displayname" ]
+        , path = [ "profile", getUserId session |> toString, "displayname" ]
         , params = []
         , responseDecoder = JD.succeed ()
         , body = Http.jsonBody <| JE.object [ ( "displayname", JE.string displayname ) ]
