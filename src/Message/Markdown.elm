@@ -74,7 +74,7 @@ renderer =
     , link =
         \link content ->
             case link.title of
-                Just title ->
+                Just _ ->
                     Html.a
                         [ Attr.href link.destination ]
                         content

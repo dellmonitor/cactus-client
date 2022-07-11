@@ -16,7 +16,6 @@ module Room exposing
     )
 
 import Accessibility exposing (Html, div)
-import ApiUtils
 import Dict exposing (Dict)
 import Event exposing (GetMessagesResponse, RoomEvent(..), decodePaginatedEvents, latestMemberDataBefore, messageEvents)
 import Html.Attributes exposing (class)

@@ -1,6 +1,6 @@
 module Message.FormattedText exposing (FormattedText(..), cleanHtml, decodeFormattedText, viewFormattedText)
 
-import Accessibility exposing (Html, div, p, text)
+import Accessibility exposing (Html, p, text)
 import ApiUtils exposing (httpFromMxc)
 import Html.Parser
 import Html.Parser.Util

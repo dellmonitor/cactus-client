@@ -15,7 +15,7 @@ import Set
 import Task exposing (Task)
 import Url exposing (percentEncode)
 import Url.Builder exposing (QueryParameter, crossOrigin)
-import UserId exposing (UserId, servername)
+import UserId exposing (UserId)
 
 
 
