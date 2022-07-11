@@ -15,13 +15,14 @@ port module Session exposing
     , transactionId
     )
 
-import ApiUtils exposing (UserId, clientEndpoint, toString, toUserIdDecoder)
+import ApiUtils exposing (clientEndpoint)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import Process
 import Task exposing (Task)
 import Url.Builder exposing (QueryParameter)
+import UserId exposing (UserId, toString, toUserIdDecoder)
 
 
 
@@ -352,7 +353,7 @@ encodeStoredSession (Session { homeserverUrl, kind, txnId, userId, accessToken }
         [ ( "homeserverUrl", JE.string homeserverUrl )
         , ( "kind", JE.string <| toString kind )
         , ( "txnId", JE.int txnId )
-        , ( "userId", JE.string <| ApiUtils.toString userId )
+        , ( "userId", JE.string <| UserId.toString userId )
         , ( "accessToken", JE.string accessToken )
         ]
         |> JE.encode 0

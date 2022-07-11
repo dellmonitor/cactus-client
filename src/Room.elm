@@ -39,6 +39,7 @@ import Session
 import Task exposing (Task)
 import Time
 import Url.Builder
+import UserId
 
 
 type Room
@@ -246,7 +247,7 @@ viewRoomEvents homeserverUrl (Room room) count now =
                         -- get the display name at the time
                         latestMemberDataBefore room.events e.originServerTs e.sender
                             |> Maybe.map Just
-                            |> Maybe.withDefault (Dict.get (ApiUtils.toString e.sender) room.members)
+                            |> Maybe.withDefault (Dict.get (UserId.toString e.sender) room.members)
                 in
                 viewMessageEvent
                     homeserverUrl

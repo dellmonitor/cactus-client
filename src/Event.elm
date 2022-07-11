@@ -1,10 +1,10 @@
 module Event exposing (Event, GetMessagesResponse, RoomEvent(..), decodePaginatedEvents, latestMemberDataBefore, messageEvents)
 
-import ApiUtils exposing (UserId, parseUserId, toUserIdDecoder)
 import Json.Decode as JD
 import Member exposing (MemberData, decodeMember)
 import Message exposing (Message, decodeMessage)
 import Time
+import UserId exposing (UserId, parseUserId, toUserIdDecoder)
 
 
 type RoomEvent
@@ -22,19 +22,19 @@ type alias Event a =
 
 
 type alias GetMessagesResponse =
-    { start : Strig
+    { start : String
     , end : Maybe String
     , chunk : List RoomEvent
     }
 
 
-messageEvents : List RomEvent -> List (Event Message)
+messageEvents : List RoomEvent -> List (Event Message)
 messageEvents roomEvents =
     -- filter room events for message events
     List.foldl
         (\roomEvent msgs ->
             case roomEvent of
-                MessagEvent msg ->
+                MessageEvent msg ->
                     msg :: msgs
 
                 _ ->

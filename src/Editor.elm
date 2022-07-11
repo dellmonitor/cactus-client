@@ -1,10 +1,11 @@
 module Editor exposing (Editor(..), Msg, clear, getComment, getName, init, update, view)
 
 import Accessibility exposing (Html, a, button, div, inputText, labelHidden, text, textarea)
-import ApiUtils exposing (matrixDotToUrl, toString)
+import ApiUtils exposing (matrixDotToUrl)
 import Html.Attributes exposing (class, disabled, href, placeholder, value)
 import Html.Events exposing (onClick, onInput)
 import Session exposing (Kind(..), Session, getUserId, isUser)
+import UserId exposing (toString)
 
 
 
@@ -221,7 +222,7 @@ viewSendButton session msg editorContent =
             case ( Maybe.map isUser session, Maybe.map getUserId session ) of
                 ( Just True, Just userid ) ->
                     -- when signed in: show matrix user id on button
-                    "Post as " ++ toString userid
+                    "Post as " ++ UserId.toString userid
 
                 _ ->
                     -- when unauthenticated or guest

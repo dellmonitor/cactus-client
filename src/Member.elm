@@ -1,11 +1,11 @@
 module Member exposing (MemberData, decodeMember, setDisplayname)
 
-import ApiUtils exposing (toString)
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import Session exposing (Session, authenticatedRequest, getUserId)
 import Task exposing (Task)
+import UserId exposing (toString)
 
 
 type alias MemberData =

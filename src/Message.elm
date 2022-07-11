@@ -8,7 +8,7 @@ module Message exposing
     )
 
 import Accessibility exposing (Html, a, div, img, p, text)
-import ApiUtils exposing (UserId, thumbnailFromMxc)
+import ApiUtils exposing (thumbnailFromMxc)
 import DateFormat
 import Duration
 import Html.Attributes exposing (class, datetime, href, src, title)
@@ -21,6 +21,7 @@ import Message.FormattedText exposing (FormattedText(..), decodeFormattedText, v
 import Message.Image exposing (ImageData, decodeImage, viewImage)
 import Message.Video exposing (VideoData, decodeVideo, viewVideo)
 import Time
+import UserId exposing (UserId)
 
 
 type Message
@@ -187,7 +188,7 @@ viewMessageEvent defaultHomeserverUrl now messageTime senderId sender message =
     let
         senderIdStr : String
         senderIdStr =
-            ApiUtils.toString senderId
+            UserId.toString senderId
 
         displayname : String
         displayname =
@@ -197,7 +198,7 @@ viewMessageEvent defaultHomeserverUrl now messageTime senderId sender message =
 
         matrixDotToUrl : String
         matrixDotToUrl =
-            "https://matrix.to/#/" ++ ApiUtils.toString senderId
+            "https://matrix.to/#/" ++ UserId.toString senderId
 
         timeStr : String
         timeStr =
