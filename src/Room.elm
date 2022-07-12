@@ -217,20 +217,6 @@ getRoomId session roomAlias =
         }
 
 
-{-| Get initial room events and sync tokens to get further messages
--}
-getInitialSync : Session -> RoomId -> Task Session.Error { chunk : List RoomEvent, start : String, end : Maybe String }
-getInitialSync session (RoomId roomId) =
-    authenticatedRequest
-        session
-        { method = "GET"
-        , path = [ "rooms", roomId, "initialSync" ]
-        , params = []
-        , responseDecoder = JD.field "messages" decodePaginatedEvents
-        , body = Http.emptyBody
-        }
-
-
 {-| View all of the comments in a Room
 The `homeserverUrl` is used translate mxc:// to media API endpoints
 -}
