@@ -69,7 +69,7 @@ testDecodeFullImage =
                                             , Test.Html.Selector.class "cactus-message-image"
                                             , Test.Html.Selector.attribute (Html.Attributes.height 500)
                                             , Test.Html.Selector.attribute (Html.Attributes.width 800)
-                                            , Test.Html.Selector.attribute (Html.Attributes.src "https://example.com/_matrix/media/r0/download/matrix.org/WkIsslUoLuyGsSHsRRKWUWMe")
+                                            , Test.Html.Selector.attribute (Html.Attributes.src "https://example.com/_matrix/media/v3/download/matrix.org/WkIsslUoLuyGsSHsRRKWUWMe")
                                             ]
 
                                 -- check link to full image
@@ -77,7 +77,7 @@ testDecodeFullImage =
                                     h
                                         |> Test.Html.Query.has
                                             [ Test.Html.Selector.tag "a"
-                                            , Test.Html.Selector.attribute (Html.Attributes.href "https://example.com/_matrix/media/r0/download/matrix.org/PWXbVKjGzmLGgaQvVSAlCfBR")
+                                            , Test.Html.Selector.attribute (Html.Attributes.href "https://example.com/_matrix/media/v3/download/matrix.org/PWXbVKjGzmLGgaQvVSAlCfBR")
                                             ]
                                 ]
                     )
@@ -114,7 +114,7 @@ testDecodeNoThumbnail =
                                 , Test.Html.Selector.class "cactus-message-image"
                                 , Test.Html.Selector.attribute (Html.Attributes.height 1800)
                                 , Test.Html.Selector.attribute (Html.Attributes.width 2880)
-                                , Test.Html.Selector.attribute (Html.Attributes.src "https://example.com/_matrix/media/r0/download/matrix.org/PWXbVKjGzmLGgaQvVSAlCfBR")
+                                , Test.Html.Selector.attribute (Html.Attributes.src "https://example.com/_matrix/media/v3/download/matrix.org/PWXbVKjGzmLGgaQvVSAlCfBR")
                                 ]
                     )
                 |> failIfError
@@ -142,7 +142,7 @@ testMinimalImageEvent =
                             |> Test.Html.Query.has
                                 [ Test.Html.Selector.tag "img"
                                 , Test.Html.Selector.class "cactus-message-image"
-                                , Test.Html.Selector.attribute (Html.Attributes.src "https://example.com/_matrix/media/r0/download/matrix.org/PWXbVKjGzmLGgaQvVSAlCfBR")
+                                , Test.Html.Selector.attribute (Html.Attributes.src "https://example.com/_matrix/media/v3/download/matrix.org/PWXbVKjGzmLGgaQvVSAlCfBR")
                                 ]
                     )
                 |> failIfError

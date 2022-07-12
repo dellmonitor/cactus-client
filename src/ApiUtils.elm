@@ -35,12 +35,12 @@ apiEndpoint pathPrefix homeserverUrl path params =
 
 clientEndpoint : String -> List String -> List QueryParameter -> String
 clientEndpoint =
-    apiEndpoint [ "_matrix", "client", "r0" ]
+    apiEndpoint [ "_matrix", "client", "v3" ]
 
 
 mediaEndpoint : String -> List String -> List QueryParameter -> String
 mediaEndpoint =
-    apiEndpoint [ "_matrix", "media", "r0" ]
+    apiEndpoint [ "_matrix", "media", "v3" ]
 
 
 {-| Make a matrix.to link from a matrix resource identifier.

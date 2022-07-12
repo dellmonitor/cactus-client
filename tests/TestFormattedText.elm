@@ -52,7 +52,7 @@ testViewFormattedText =
                         [ tag "img"
                         , attribute <| width 200
                         , attribute <| height 200
-                        , attribute <| src "https://my.homeserver.tld/_matrix/media/r0/download/olli.ng/sWMkCgSyfhXzCoqWqzImfrFO"
+                        , attribute <| src "https://my.homeserver.tld/_matrix/media/v3/download/olli.ng/sWMkCgSyfhXzCoqWqzImfrFO"
                         ]
         , test "Dirty image" <|
             let

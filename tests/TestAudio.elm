@@ -54,7 +54,7 @@ testAudioEvent =
                             |> Test.Html.Query.has
                                 [ Test.Html.Selector.tag "audio"
                                 , Test.Html.Selector.class "cactus-message-audio"
-                                , Test.Html.Selector.attribute (Html.Attributes.src "https://example.com/_matrix/media/r0/download/olli.ng/ORlpaptUIgIQNySiRuuEzaXy")
+                                , Test.Html.Selector.attribute (Html.Attributes.src "https://example.com/_matrix/media/v3/download/olli.ng/ORlpaptUIgIQNySiRuuEzaXy")
                                 ]
                     )
                 |> failIfError

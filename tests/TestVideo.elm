@@ -63,7 +63,7 @@ testVideoEvent =
                             |> Test.Html.Query.has
                                 [ Test.Html.Selector.tag "video"
                                 , Test.Html.Selector.class "cactus-message-video"
-                                , Test.Html.Selector.attribute (Html.Attributes.src "https://example.com/_matrix/media/r0/download/olli.ng/jidXyHtxcMglwqJKscmbFeSs")
+                                , Test.Html.Selector.attribute (Html.Attributes.src "https://example.com/_matrix/media/v3/download/olli.ng/jidXyHtxcMglwqJKscmbFeSs")
                                 ]
                     )
                 |> failIfError

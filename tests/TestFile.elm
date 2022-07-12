@@ -54,7 +54,7 @@ testFileEvent =
                             |> Test.Html.Query.has
                                 [ Test.Html.Selector.tag "a"
                                 , Test.Html.Selector.class "cactus-message-file"
-                                , Test.Html.Selector.attribute (Html.Attributes.href "https://example.com/_matrix/media/r0/download/matrix.org/BeqOYyVVkcDyNChnhQMOcInH")
+                                , Test.Html.Selector.attribute (Html.Attributes.href "https://example.com/_matrix/media/v3/download/matrix.org/BeqOYyVVkcDyNChnhQMOcInH")
                                 ]
                     )
                 |> failIfError

@@ -30,15 +30,15 @@ testClientEndpoint =
         [ test "sync endpoint" <|
             \_ ->
                 clientEndpoint "https://matrix.org" [ "sync" ] []
-                    |> Expect.equal "https://matrix.org/_matrix/client/r0/sync"
+                    |> Expect.equal "https://matrix.org/_matrix/client/v3/sync"
         , test "joined members endpoint" <|
             \_ ->
                 clientEndpoint "https://matrix.org" [ "rooms", "#roomalias:matrix.org", "joined_members" ] []
-                    |> Expect.equal "https://matrix.org/_matrix/client/r0/rooms/%23roomalias%3Amatrix.org/joined_members"
+                    |> Expect.equal "https://matrix.org/_matrix/client/v3/rooms/%23roomalias%3Amatrix.org/joined_members"
         , test "register guest endpoint" <|
             \_ ->
                 clientEndpoint "https://matrix.org" [ "register" ] [ Url.Builder.string "kind" "guest" ]
-                    |> Expect.equal "https://matrix.org/_matrix/client/r0/register?kind=guest"
+                    |> Expect.equal "https://matrix.org/_matrix/client/v3/register?kind=guest"
         ]
 
 
@@ -48,7 +48,7 @@ testMediaEndpoint =
         [ test "media download endpoint" <|
             \_ ->
                 mediaEndpoint "https://matrix.org" [ "download", "matrix.example.com", "SEsfnsuifSDFSSEF" ] []
-                    |> Expect.equal "https://matrix.org/_matrix/media/r0/download/matrix.example.com/SEsfnsuifSDFSSEF"
+                    |> Expect.equal "https://matrix.org/_matrix/media/v3/download/matrix.example.com/SEsfnsuifSDFSSEF"
         ]
 
 
@@ -72,7 +72,7 @@ testThumbnailFromMxc =
         [ test "Test user avatar" <|
             \_ ->
                 thumbnailFromMxc "https://matrix.org" "mxc://olli.ng/sWMkCgSyfhXzCoqWqzImfrFO"
-                    |> Expect.equal (Just "https://matrix.org/_matrix/media/r0/thumbnail/olli.ng/sWMkCgSyfhXzCoqWqzImfrFO?width=64&height=64&method=crop")
+                    |> Expect.equal (Just "https://matrix.org/_matrix/media/v3/thumbnail/olli.ng/sWMkCgSyfhXzCoqWqzImfrFO?width=64&height=64&method=crop")
         ]
 
 

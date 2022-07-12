@@ -85,11 +85,13 @@ mergeOlderMessages (Room room) newMessages =
     Room
         { room
             | events = sortByTime (room.events ++ newMessages.chunk)
-            , start = case newMessages.end of
-                Nothing ->
-                    newMessages.start
-                Just end ->
-                    end
+            , start =
+                case newMessages.end of
+                    Nothing ->
+                        newMessages.start
+
+                    Just end ->
+                        end
         }
 
 
@@ -98,11 +100,13 @@ mergeNewerMessages (Room room) newMessages =
     Room
         { room
             | events = sortByTime (room.events ++ newMessages.chunk)
-            , end = case newMessages.end of
-                Nothing ->
-                    room.end
-                Just end ->
-                    end
+            , end =
+                case newMessages.end of
+                    Nothing ->
+                        room.end
+
+                    Just end ->
+                        end
         }
 
 
@@ -160,7 +164,7 @@ getInitialRoom session roomAlias =
 
         -- get messages from /room/{roomId}/messages
         addEvents data =
-            getInitialSync session data.roomId
+            getMessages session data.roomId Newer Nothing
                 |> Task.map
                     (\events ->
                         { roomAlias = data.roomAlias
@@ -168,11 +172,13 @@ getInitialRoom session roomAlias =
                         , --
                           events = sortByTime events.chunk
                         , start = events.start
-                        , end = case events.end of
-                            Nothing ->
-                                events.start
-                            Just end ->
-                                end
+                        , end =
+                            case events.end of
+                                Nothing ->
+                                    events.start
+
+                                Just end ->
+                                    end
                         }
                     )
 
@@ -260,22 +266,28 @@ type Direction
     | Newer
 
 
-getMessages : Session -> RoomId -> Direction -> String -> Task Session.Error GetMessagesResponse
+getMessages : Session -> RoomId -> Direction -> Maybe String -> Task Session.Error GetMessagesResponse
 getMessages session (RoomId roomId) dir from =
     authenticatedRequest
         session
         { method = "GET"
         , path = [ "rooms", roomId, "messages" ]
         , params =
-            [ Url.Builder.string "from" from
-            , Url.Builder.string "dir" <|
+            (-- direction parameter
+             Url.Builder.string "dir" <|
                 case dir of
                     Older ->
                         "b"
 
                     Newer ->
                         "f"
-            ]
+            )
+                -- add `from` parameter if supplied
+                :: (from
+                        |> Maybe.map (Url.Builder.string "from")
+                        |> Maybe.map List.singleton
+                        |> Maybe.withDefault []
+                   )
         , responseDecoder = decodePaginatedEvents
         , body = Http.emptyBody
         }
@@ -285,14 +297,14 @@ getMessages session (RoomId roomId) dir from =
 -}
 getOlderMessages : Session -> Room -> Task Session.Error GetMessagesResponse
 getOlderMessages session (Room room) =
-    getMessages session room.roomId Older room.start
+    getMessages session room.roomId Older (Just room.start)
 
 
 {-| Get more messages, scanning forwards from the earliest event in the room
 -}
 getNewerMessages : Session -> Room -> Task Session.Error GetMessagesResponse
 getNewerMessages session (Room room) =
-    getMessages session room.roomId Newer room.end
+    getMessages session room.roomId Newer (Just room.end)
 
 
 joinRoom : Session -> String -> Task Session.Error ()
