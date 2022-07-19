@@ -21,6 +21,7 @@ import Message.FormattedText exposing (FormattedText(..), decodeFormattedText, v
 import Message.Image exposing (ImageData, decodeImage, viewImage)
 import Message.Video exposing (VideoData, decodeVideo, viewVideo)
 import Time
+import UserId exposing (UserId)
 
 
 type Message
@@ -182,18 +183,22 @@ formatTimeAsIsoUtcString time =
     timeFormatter Time.utc time
 
 
-viewMessageEvent : String -> Time.Posix -> Time.Posix -> String -> Maybe MemberData -> Message -> Html msg
+viewMessageEvent : String -> Time.Posix -> Time.Posix -> UserId -> Maybe MemberData -> Message -> Html msg
 viewMessageEvent defaultHomeserverUrl now messageTime senderId sender message =
     let
+        senderIdStr : String
+        senderIdStr =
+            UserId.toString senderId
+
         displayname : String
         displayname =
             sender
-                |> Maybe.map (\m -> Maybe.withDefault senderId m.displayname)
-                |> Maybe.withDefault senderId
+                |> Maybe.map (\m -> Maybe.withDefault senderIdStr m.displayname)
+                |> Maybe.withDefault senderIdStr
 
         matrixDotToUrl : String
         matrixDotToUrl =
-            "https://matrix.to/#/" ++ senderId
+            "https://matrix.to/#/" ++ UserId.toString senderId
 
         timeStr : String
         timeStr =

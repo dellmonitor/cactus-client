@@ -22,6 +22,7 @@ import Json.Encode as JE
 import Process
 import Task exposing (Task)
 import Url.Builder exposing (QueryParameter)
+import UserId exposing (UserId, toString, toUserIdDecoder)
 
 
 
@@ -40,7 +41,7 @@ type alias SessionData =
     { homeserverUrl : String
     , kind : Kind
     , txnId : Int
-    , userId : String
+    , userId : UserId
     , accessToken : String
     }
 
@@ -56,12 +57,12 @@ Can be used for both /register and /login.
 decodeSession : String -> Kind -> JD.Decoder Session
 decodeSession homeserverUrl kind =
     JD.map2 (SessionData homeserverUrl kind 0)
-        (JD.field "user_id" JD.string)
+        (JD.field "user_id" JD.string |> toUserIdDecoder)
         (JD.field "access_token" JD.string)
         |> JD.map Session
 
 
-getUserId : Session -> String
+getUserId : Session -> UserId
 getUserId (Session session) =
     session.userId
 
@@ -352,7 +353,7 @@ encodeStoredSession (Session { homeserverUrl, kind, txnId, userId, accessToken }
         [ ( "homeserverUrl", JE.string homeserverUrl )
         , ( "kind", JE.string <| toString kind )
         , ( "txnId", JE.int txnId )
-        , ( "userId", JE.string userId )
+        , ( "userId", JE.string <| UserId.toString userId )
         , ( "accessToken", JE.string accessToken )
         ]
         |> JE.encode 0
@@ -365,5 +366,5 @@ decodeStoredSession =
             (JD.field "homeserverUrl" JD.string)
             (JD.field "kind" decodeKind)
             (JD.field "txnId" JD.int)
-            (JD.field "userId" JD.string)
+            (JD.field "userId" JD.string |> toUserIdDecoder)
             (JD.field "accessToken" JD.string)

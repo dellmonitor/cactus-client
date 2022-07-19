@@ -2,7 +2,7 @@ module LoginForm exposing (LoginForm, Msg, initLoginForm, showLogin, updateLogin
 
 import Accessibility exposing (Html, a, button, div, h3, h4, inputText, label, p, text)
 import Accessibility.Widget as Widget
-import ApiUtils exposing (UserId, lookupHomeserverUrl, matrixDotToUrl, parseUserId, username)
+import ApiUtils exposing (lookupHomeserverUrl, matrixDotToUrl)
 import Html
 import Html.Attributes exposing (attribute, class, disabled, href, placeholder, required, style, type_)
 import Html.Events exposing (onClick, onInput)
@@ -12,6 +12,7 @@ import Session exposing (Session, login)
 import Svg exposing (path, svg)
 import Svg.Attributes as S exposing (d, viewBox)
 import Task exposing (Task)
+import UserId exposing (UserId, parseUserId, username)
 
 
 
