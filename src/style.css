@@ -383,7 +383,7 @@ when guestPostingEnabled=false and loginEnabled=false */
 
 /* the avatar image */
 /* todo: use a class */
-.cactus-comment-avatar > * {
+.cactus-comment-avatar > *:not(#dummy) {
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 50%;
